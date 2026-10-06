@@ -319,6 +319,71 @@ class SessionManagerTest {
         assertNull(manager.currentSession.value)
     }
 
+    // --- Swipes from the accessibility service (M7) -------------------------------------------
+
+    private fun TestScope.swipe(packageName: String): Boolean {
+        var counted = false
+        backgroundScope.launch { counted = manager.onSwipe(packageName) }
+        runCurrent()
+        return counted
+    }
+
+    @Test
+    fun swipes_areCountedOnTheForegroundSession_andSaved() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        assertEquals(0, manager.swipes.value?.count)
+
+        repeat(3) { assertEquals(true, swipe(INSTAGRAM)) }
+
+        assertEquals(3, manager.swipes.value?.count)
+        assertEquals(1L, manager.swipes.value?.sessionId)
+        assertEquals(3, store.sessions.single().scrollCount)
+    }
+
+    @Test
+    fun swipes_withoutASession_orFromAnotherApp_areIgnored() = runTest {
+        startTracking()
+        assertEquals(false, swipe(INSTAGRAM))
+        assertNull(manager.swipes.value)
+
+        foreground(INSTAGRAM, atMillis = 0)
+        assertEquals(false, swipe(FACEBOOK))
+        assertEquals(0, store.sessions.single().scrollCount)
+    }
+
+    @Test
+    fun swipes_duringTheDebounceWindow_areIgnored_butTheCountSurvivesAQuickReturn() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        swipe(INSTAGRAM)
+        swipe(INSTAGRAM)
+
+        foreground(LAUNCHER, atMillis = 10_000)
+        assertEquals(false, swipe(INSTAGRAM))
+
+        foreground(INSTAGRAM, atMillis = 11_000)
+        swipe(INSTAGRAM)
+        assertEquals(3, manager.swipes.value?.count)
+        assertEquals(3, store.sessions.single().scrollCount)
+    }
+
+    @Test
+    fun newSession_startsCountingFromZero_andClosedSessionsKeepTheirCount() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        swipe(INSTAGRAM)
+        swipe(INSTAGRAM)
+        foreground(TIKTOK, atMillis = 5_000)
+        swipe(TIKTOK)
+
+        assertEquals(1, manager.swipes.value?.count)
+        assertEquals(listOf(2, 1), store.sessions.map { it.scrollCount })
+
+        screenOff(atMillis = 6_000)
+        assertNull(manager.swipes.value)
+    }
+
     private companion object {
         const val LAUNCHER = "com.android.launcher3"
         const val BROWSER = "com.android.chrome"

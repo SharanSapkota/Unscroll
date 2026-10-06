@@ -100,6 +100,10 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { overlayPreferences.setShowTodayTotal(show) }
     }
 
+    fun setShowSwipes(show: Boolean) {
+        viewModelScope.launch { overlayPreferences.setShowSwipes(show) }
+    }
+
     fun setWarningMinutes(minutes: Int) {
         val current = overlaySettings.value.thresholds
         // Pushing warning past danger drags danger along with it.

@@ -67,6 +67,32 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Unscroll" />
 
+        <!-- Take-a-break screen after N swipes (M7): same task setup as the pause screen. -->
+        <activity
+            android:name=".ui.scroll.BreakActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Unscroll" />
+
+        <!--
+            Optional scroll counting (M7). Only enabled by the user in Accessibility settings, after
+            the in-app disclosure. See res/xml/accessibility_service_config.xml for its limits.
+        -->
+        <service
+            android:name=".service.ScrollAccessibilityService"
+            android:exported="false"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
         <service
             android:name=".service.TrackingService"
             android:exported="false"

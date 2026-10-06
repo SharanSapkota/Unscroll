@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         PauseOutcomeEntity::class,
         NudgeLogEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class UnscrollDatabase : RoomDatabase() {

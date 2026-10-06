@@ -15,3 +15,10 @@ data class ActiveSession(
     val packageName: String,
     val startTime: Long,
 )
+
+/** Swipes counted so far in the session in progress. */
+data class SessionSwipes(
+    val sessionId: Long,
+    val packageName: String,
+    val count: Int,
+)

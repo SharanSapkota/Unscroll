@@ -40,6 +40,8 @@ class OverlayPreferences @Inject constructor(
 
     suspend fun setShowTodayTotal(show: Boolean) = edit { it[SHOW_TODAY_TOTAL] = show }
 
+    suspend fun setShowSwipes(show: Boolean) = edit { it[SHOW_SWIPES] = show }
+
     suspend fun setThresholds(thresholds: ColorThresholds) {
         val safe = thresholds.normalized()
         edit {
@@ -86,6 +88,7 @@ class OverlayPreferences @Inject constructor(
         size = this[SIZE]?.let { name -> PillSize.entries.firstOrNull { it.name == name } }
             ?: PillSize.MEDIUM,
         opacity = OverlaySettings.clampOpacity(this[OPACITY] ?: OverlaySettings.DEFAULT_OPACITY),
+        showSwipes = this[SHOW_SWIPES] ?: true,
     )
 
     private companion object {
@@ -95,6 +98,7 @@ class OverlayPreferences @Inject constructor(
         val DANGER_MINUTES = intPreferencesKey("overlay_danger_minutes")
         val SIZE = stringPreferencesKey("overlay_size")
         val OPACITY = floatPreferencesKey("overlay_opacity")
+        val SHOW_SWIPES = booleanPreferencesKey("overlay_show_swipes")
 
         fun xKey(orientation: ScreenOrientation) =
             intPreferencesKey("overlay_x_${orientation.name.lowercase()}")

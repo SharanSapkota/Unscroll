@@ -1,5 +1,6 @@
 package com.unscroll.app.domain.insights
 
+import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.session.Session
 import kotlinx.coroutines.flow.Flow
 
@@ -15,9 +16,12 @@ interface UsageDataSource {
     /** Opens, total and longest duration per app, for sessions that started in [range]. */
     suspend fun appSessionStats(range: TimeRange, now: Long): List<AppSessionStats>
 
+    /** Swipes, sessions and their full length per app, for sessions that started in [range]. */
+    suspend fun appScrollStats(range: TimeRange, now: Long): List<AppScrollStats>
+
     /** Sessions that overlap [range], oldest first. */
     suspend fun sessionsOverlapping(range: TimeRange): List<Session>
 
-    /** Emits whenever sessions are added or closed. */
+    /** Emits whenever sessions are added, closed or get new swipes. */
     fun observeChanges(): Flow<Unit>
 }

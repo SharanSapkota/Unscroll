@@ -5,6 +5,7 @@ import com.unscroll.app.data.db.toSession
 import com.unscroll.app.domain.insights.AppSessionStats
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
+import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.session.Session
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,6 +24,11 @@ class UsageRepository @Inject constructor(
     override suspend fun appSessionStats(range: TimeRange, now: Long): List<AppSessionStats> =
         dao.appSessionStats(range.from, range.to, now).map {
             AppSessionStats(it.packageName, it.opens, it.totalDurationMillis, it.longestMillis)
+        }
+
+    override suspend fun appScrollStats(range: TimeRange, now: Long): List<AppScrollStats> =
+        dao.appScrollStats(range.from, range.to, now).map {
+            AppScrollStats(it.packageName, it.swipes, it.sessions, it.durationMillis)
         }
 
     override suspend fun sessionsOverlapping(range: TimeRange): List<Session> =

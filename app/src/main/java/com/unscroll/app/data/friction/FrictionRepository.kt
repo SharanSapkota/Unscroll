@@ -61,6 +61,7 @@ private fun AppFrictionEntity.toDomain() = FrictionSettings(
     breakIntervalMinutes = breakIntervalMinutes,
     limitWarningsEnabled = limitWarningsEnabled,
     tintEnabled = tintEnabled,
+    swipeBreakAfter = swipeBreakAfter,
 ).normalized()
 
 private fun FrictionSettings.toEntity(packageName: String) = AppFrictionEntity(
@@ -73,4 +74,5 @@ private fun FrictionSettings.toEntity(packageName: String) = AppFrictionEntity(
     breakIntervalMinutes = breakIntervalMinutes,
     limitWarningsEnabled = limitWarningsEnabled,
     tintEnabled = tintEnabled,
+    swipeBreakAfter = swipeBreakAfter,
 )

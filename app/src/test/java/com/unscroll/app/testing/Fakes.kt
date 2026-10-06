@@ -8,6 +8,7 @@ import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.session.SessionStore
@@ -46,6 +47,10 @@ class FakeSessionStore : SessionStore {
 
     override suspend fun closeSession(id: Long, endTime: Long) {
         sessions.replaceAll { if (it.id == id) it.copy(endTime = endTime) else it }
+    }
+
+    override suspend fun updateScrollCount(id: Long, scrollCount: Int) {
+        sessions.replaceAll { if (it.id == id) it.copy(scrollCount = scrollCount) else it }
     }
 
     override suspend fun closeOrphanedSessions(endTime: Long): Int {
@@ -99,6 +104,18 @@ class FakeUsageDataSource(val sessions: MutableList<Session> = mutableListOf()) 
             .map { (packageName, list) ->
                 val durations = list.map { ((it.endTime ?: now) - it.startTime).coerceAtLeast(0) }
                 AppSessionStats(packageName, list.size, durations.sum(), durations.max())
+            }
+
+    override suspend fun appScrollStats(range: TimeRange, now: Long): List<AppScrollStats> =
+        sessions.filter { it.startTime >= range.from && it.startTime < range.to }
+            .groupBy { it.packageName }
+            .map { (packageName, list) ->
+                AppScrollStats(
+                    packageName = packageName,
+                    swipes = list.sumOf { it.scrollCount },
+                    sessions = list.size,
+                    durationMillis = list.sumOf { ((it.endTime ?: now) - it.startTime).coerceAtLeast(0) },
+                )
             }
 
     override suspend fun sessionsOverlapping(range: TimeRange): List<Session> =

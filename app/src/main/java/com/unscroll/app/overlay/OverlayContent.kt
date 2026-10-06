@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -54,6 +55,8 @@ fun OverlayContent(
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
     onMessageAction: (PillAction) -> Unit = {},
+    /** Swipes in this session, or null when scroll counting is off or hidden (M7). */
+    swipes: Int? = null,
 ) {
     val currentTime by produceState(now(), state.sessionStart) {
         while (true) {
@@ -69,6 +72,7 @@ fun OverlayContent(
             durationText(base + (currentTime - state.todayBaseTime).coerceAtLeast(0)),
         )
     }
+    val swipesText = swipes?.let { pluralStringResource(R.plurals.overlay_swipes, it, it) }
     val pill = @Composable {
         TimerPill(
             state = TimerPillState(
@@ -80,6 +84,7 @@ fun OverlayContent(
                 opacity = state.settings.opacity,
                 // A message always expands a collapsed pill.
                 collapsed = state.collapsed && state.message == null,
+                swipesText = swipesText,
             ),
             modifier = Modifier
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }

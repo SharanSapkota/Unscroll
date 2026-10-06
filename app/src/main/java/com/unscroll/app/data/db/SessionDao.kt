@@ -75,6 +75,30 @@ interface SessionDao {
     )
     suspend fun sessionsOverlapping(rangeStart: Long, rangeEnd: Long): List<SessionEntity>
 
-    @Query("SELECT COUNT(*) AS count, COALESCE(SUM(endTime), 0) AS endTimeSum FROM sessions")
+    /**
+     * Swipes, sessions and full session length per app, for sessions that started in
+     * [rangeStart, rangeEnd). Open sessions run until [now].
+     */
+    @Query(
+        """
+        SELECT packageName,
+            SUM(scrollCount) AS swipes,
+            COUNT(*) AS sessions,
+            SUM(MAX(0, COALESCE(endTime, :now) - startTime)) AS durationMillis
+        FROM sessions
+        WHERE startTime >= :rangeStart AND startTime < :rangeEnd
+        GROUP BY packageName
+        """,
+    )
+    suspend fun appScrollStats(rangeStart: Long, rangeEnd: Long, now: Long): List<AppScrollStatsRow>
+
+    /** Sets the swipe count of a session. Only SessionManager writes it. */
+    @Query("UPDATE sessions SET scrollCount = :scrollCount WHERE id = :id")
+    suspend fun updateScrollCount(id: Long, scrollCount: Int)
+
+    @Query(
+        "SELECT COUNT(*) AS count, COALESCE(SUM(endTime), 0) AS endTimeSum, " +
+            "COALESCE(SUM(scrollCount), 0) AS scrollSum FROM sessions",
+    )
     fun observeChangeToken(): Flow<SessionsChangeToken>
 }

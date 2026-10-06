@@ -4,6 +4,7 @@ import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.SessionStore
+import com.unscroll.app.domain.session.SessionSwipes
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.domain.tracking.ForegroundAppDetector
 import com.unscroll.app.domain.tracking.ScreenStateSource
@@ -35,6 +36,9 @@ import kotlinx.coroutines.withContext
  * - Turning the screen off closes the session immediately.
  * - While a session is open a heartbeat is saved every [HEARTBEAT_INTERVAL_MILLIS], so a session
  *   left open by a killed process can be closed at the last known time on the next start.
+ * - Swipes reported by the optional accessibility service ([onSwipe]) are added to the session
+ *   whose app is on screen. This class is the only writer of sessions, scroll counts included, so
+ *   the service and TrackingService never fight over a session.
  */
 @Singleton
 class SessionManager @Inject constructor(
@@ -60,6 +64,11 @@ class SessionManager @Inject constructor(
      * within the debounce window.
      */
     val foregroundSession: StateFlow<ActiveSession?> = _foregroundSession.asStateFlow()
+
+    private val _swipes = MutableStateFlow<SessionSwipes?>(null)
+
+    /** Swipes in the current session, or null when no session is open. */
+    val swipes: StateFlow<SessionSwipes?> = _swipes.asStateFlow()
 
     // All mutable state below is only touched while holding [mutex].
     private var leftAt: Long? = null
@@ -115,6 +124,19 @@ class SessionManager @Inject constructor(
         close(current, endTime = leftAt ?: clock.now())
     }
 
+    /**
+     * One swipe in [packageName], from ScrollAccessibilityService. Counted only if that app is the
+     * one on screen in an open session; otherwise ignored. Returns whether it was counted.
+     */
+    suspend fun onSwipe(packageName: String): Boolean = mutex.withLock {
+        val session = _foregroundSession.value
+        if (session == null || session.packageName != packageName) return@withLock false
+        val count = (_swipes.value?.takeIf { it.sessionId == session.id }?.count ?: 0) + 1
+        _swipes.value = SessionSwipes(session.id, session.packageName, count)
+        store.updateScrollCount(session.id, count)
+        true
+    }
+
     /** Closes the open session now, e.g. because tracking was turned off. */
     suspend fun endCurrentSession() = mutex.withLock {
         val current = _currentSession.value ?: return@withLock
@@ -126,6 +148,7 @@ class SessionManager @Inject constructor(
         val session = ActiveSession(id, packageName, now)
         _currentSession.value = session
         _foregroundSession.value = session
+        _swipes.value = SessionSwipes(id, packageName, 0)
         heartbeat = scope.launch {
             while (isActive) {
                 heartbeatStore.saveHeartbeat(clock.now())
@@ -161,6 +184,7 @@ class SessionManager @Inject constructor(
         heartbeat = null
         _currentSession.value = null
         _foregroundSession.value = null
+        _swipes.value = null
         store.closeSession(session.id, endTime)
     }
 

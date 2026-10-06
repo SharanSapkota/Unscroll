@@ -18,6 +18,7 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.scroll.SwipeBreakTracker
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.overlay.OverlayMessages
@@ -26,6 +27,7 @@ import com.unscroll.app.overlay.PillMessage
 import com.unscroll.app.overlay.PillMessageKind
 import com.unscroll.app.overlay.TintOverlay
 import com.unscroll.app.ui.pause.PauseActivity
+import com.unscroll.app.ui.scroll.BreakActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.ZoneId
 import javax.inject.Inject
@@ -36,6 +38,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,8 +49,9 @@ import kotlinx.coroutines.withContext
  * - open-count notifications (once per threshold per day),
  * - break reminders on the pill (or a heads-up notification without the overlay),
  * - 80 % / 100 % limit warnings,
- * - the experimental gray tint after the limit while an extension runs.
- * Quiet hours silence the nudges, reminders and warnings, never the pause screen or blocking.
+ * - the experimental gray tint after the limit while an extension runs,
+ * - the "take a break" screen after N swipes, when scroll counting is on (M7).
+ * Quiet hours silence the nudges, reminders and warnings, never the pause or break screens or blocking.
  */
 @Singleton
 class FrictionCoordinator @Inject constructor(
@@ -65,6 +69,7 @@ class FrictionCoordinator @Inject constructor(
     private val clock: Clock,
 ) {
     val pauseGate = PauseGate()
+    val swipeBreaks = SwipeBreakTracker()
 
     /** Break reminders already shown, per session id. */
     private val breaksShown = mutableMapOf<Long, Int>()
@@ -75,6 +80,7 @@ class FrictionCoordinator @Inject constructor(
         try {
             launch { watchPauseGate() }
             launch { watchOpenCounts() }
+            launch { watchSwipeBreaks() }
             watchForegroundSession()
         } finally {
             withContext(Dispatchers.Main.immediate + NonCancellable) {
@@ -126,6 +132,43 @@ class FrictionCoordinator @Inject constructor(
             Log.w(TAG, "Could not open the pause screen", e)
         } catch (e: SecurityException) {
             Log.w(TAG, "Could not open the pause screen", e)
+        }
+    }
+
+    // --- Take a break after N swipes (M7) --------------------------------------------------------
+
+    private suspend fun watchSwipeBreaks() {
+        // Swipes only arrive while the accessibility service counts them; otherwise this is idle.
+        sessionManager.swipes.filterNotNull().collect { swipes ->
+            if (swipes.count == 0 || !isSafe(swipes.packageName)) return@collect
+            val settings = friction.getSettings(swipes.packageName)
+            if (!swipeBreaks.onSwipeCount(swipes.sessionId, swipes.count, settings.swipeBreakAfter)) return@collect
+            // The block screen wins.
+            if (blockEnforcer.decide(swipes.packageName) is BlockDecision.Blocked) return@collect
+            val session = sessionManager.currentSession.value?.takeIf { it.id == swipes.sessionId } ?: return@collect
+            showBreakScreen(swipes.packageName, swipes.sessionId, swipes.count, clock.now() - session.startTime)
+        }
+    }
+
+    /** "Keep scrolling" on the break screen: no pause screen on the way back, next break after N more. */
+    fun onSwipeBreakKeepScrolling(packageName: String, sessionId: Long, swipes: Int) {
+        pauseGate.onContinued(packageName, clock.now())
+        swipeBreaks.onKeepScrolling(sessionId, swipes)
+    }
+
+    private fun showBreakScreen(packageName: String, sessionId: Long, swipes: Int, sessionMillis: Long) {
+        // Same as the pause screen: home first, so the app isn't left running underneath.
+        val home = Intent(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_HOME)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val breakScreen = BreakActivity.intent(context, packageName, sessionId, swipes, sessionMillis)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        try {
+            context.startActivities(arrayOf(home, breakScreen))
+        } catch (e: ActivityNotFoundException) {
+            Log.w(TAG, "Could not open the break screen", e)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Could not open the break screen", e)
         }
     }
 

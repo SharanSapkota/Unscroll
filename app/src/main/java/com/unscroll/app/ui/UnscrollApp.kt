@@ -21,7 +21,13 @@ import androidx.navigation.compose.rememberNavController
 import com.unscroll.app.ui.apps.AppsScreen
 import com.unscroll.app.ui.dashboard.DashboardScreen
 import com.unscroll.app.ui.navigation.TopLevelDestination
+import com.unscroll.app.ui.scroll.AccessibilityDisclosureScreen
+import com.unscroll.app.ui.scroll.RestrictedSettingHelpScreen
 import com.unscroll.app.ui.settings.SettingsScreen
+
+/** Sub-screens of Settings (M7). They keep the Settings tab selected. */
+private const val ROUTE_SCROLL_DISCLOSURE = "settings/scroll-disclosure"
+private const val ROUTE_RESTRICTED_HELP = "settings/restricted-setting-help"
 
 @Composable
 fun UnscrollApp(modifier: Modifier = Modifier) {
@@ -34,8 +40,10 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
         bottomBar = {
             NavigationBar {
                 TopLevelDestination.entries.forEach { destination ->
-                    val selected = currentDestination?.hierarchy
-                        ?.any { it.route == destination.route } == true
+                    val selected = currentDestination?.hierarchy?.any {
+                        // Sub-screens ("settings/...") keep their tab selected.
+                        it.route == destination.route || it.route?.startsWith("${destination.route}/") == true
+                    } == true
                     NavigationBarItem(
                         selected = selected,
                         onClick = {
@@ -68,7 +76,21 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
         ) {
             composable(TopLevelDestination.DASHBOARD.route) { DashboardScreen() }
             composable(TopLevelDestination.APPS.route) { AppsScreen() }
-            composable(TopLevelDestination.SETTINGS.route) { SettingsScreen() }
+            composable(TopLevelDestination.SETTINGS.route) {
+                SettingsScreen(
+                    onScrollCountingSetUp = { navController.navigate(ROUTE_SCROLL_DISCLOSURE) },
+                    onRestrictedSettingHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
+                )
+            }
+            composable(ROUTE_SCROLL_DISCLOSURE) {
+                AccessibilityDisclosureScreen(
+                    onFinished = { navController.popBackStack() },
+                    onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
+                )
+            }
+            composable(ROUTE_RESTRICTED_HELP) {
+                RestrictedSettingHelpScreen(onBack = { navController.popBackStack() })
+            }
         }
     }
 }

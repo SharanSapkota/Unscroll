@@ -10,6 +10,8 @@ data class OverlaySettings(
     val size: PillSize = PillSize.MEDIUM,
     /** 0.4 (faint) to 1.0 (solid). */
     val opacity: Float = DEFAULT_OPACITY,
+    /** Show the session's swipe count next to the timer while scroll counting is on (M7). */
+    val showSwipes: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_OPACITY = 0.9f

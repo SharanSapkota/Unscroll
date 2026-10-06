@@ -6,6 +6,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
 import com.unscroll.app.data.overlay.OverlayPreferences
+import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -49,6 +50,7 @@ class OverlayTimerManager @Inject constructor(
     private val preferences: OverlayPreferences,
     private val usage: UsageDataSource,
     private val messages: OverlayMessages,
+    private val scrollCounting: ScrollCountingRepository,
     private val clock: Clock,
 ) {
     private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
@@ -57,11 +59,13 @@ class OverlayTimerManager @Inject constructor(
     // Main-thread only.
     private var window: OverlayWindow? = null
     private var scope: CoroutineScope? = null
+    private var swipesShown: Int? = null
 
     suspend fun run() = withContext(Dispatchers.Main.immediate) {
         try {
             coroutineScope {
                 scope = this
+                launch { watchSwipes() }
                 combine(
                     sessionManager.foregroundSession,
                     preferences.settings,
@@ -107,6 +111,20 @@ class OverlayTimerManager @Inject constructor(
         }
     }
 
+    /** Keeps the swipe count on the pill current, if scroll counting is on and the user shows it. */
+    private suspend fun watchSwipes() {
+        combine(
+            sessionManager.swipes,
+            preferences.settings,
+            scrollCounting.isCounting,
+        ) { swipes, settings, counting ->
+            swipes?.count?.takeIf { counting && settings.showSwipes }
+        }.collect { count ->
+            swipesShown = count
+            window?.updateSwipes(count)
+        }
+    }
+
     /** True if messages can be shown on the pill (overlay on and permitted); else use notifications. */
     suspend fun canShowMessages(): Boolean = preferences.settings.first().enabled && canDrawOverlays()
 
@@ -138,6 +156,7 @@ class OverlayTimerManager @Inject constructor(
             onMessageAction = ::onMessageAction,
         )
         try {
+            newWindow.updateSwipes(swipesShown)
             newWindow.attach(preferences.position(context.screenOrientation()))
             window = newWindow
         } catch (e: WindowManager.BadTokenException) {

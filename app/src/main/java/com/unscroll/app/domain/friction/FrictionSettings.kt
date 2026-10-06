@@ -13,11 +13,14 @@ data class FrictionSettings(
     val limitWarningsEnabled: Boolean = true,
     /** Experimental gray tint after the daily limit, while an extension is running. */
     val tintEnabled: Boolean = false,
+    /** "Take a break" after this many swipes in a session (M7, needs scroll counting), or null for off. */
+    val swipeBreakAfter: Int? = null,
 ) {
     fun normalized(): FrictionSettings = copy(
         pauseSeconds = pauseSeconds.coerceIn(MIN_PAUSE_SECONDS, MAX_PAUSE_SECONDS),
         nudgeThresholds = nudgeThresholds.filter { it > 0 }.distinct().sorted(),
         breakIntervalMinutes = breakIntervalMinutes.coerceIn(1, 24 * 60),
+        swipeBreakAfter = swipeBreakAfter?.takeIf { it > 0 },
     )
 
     companion object {

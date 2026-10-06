@@ -7,6 +7,9 @@ interface SessionStore {
 
     suspend fun closeSession(id: Long, endTime: Long)
 
+    /** Saves the swipe count of a session (M7 scroll counting). */
+    suspend fun updateScrollCount(id: Long, scrollCount: Int)
+
     /**
      * Closes every session that is still open (left behind when the process died) at [endTime],
      * or at its own start time if [endTime] is earlier. Returns how many were closed.

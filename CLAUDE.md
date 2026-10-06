@@ -3,11 +3,11 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated with M6. Keep this section in sync when a milestone lands.
+Last updated with M7. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer) and M5 (limits and blocking). M6 (friction and nudges) is implemented and awaiting device testing. See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking) and M6 (friction and nudges). M7 (opt-in accessibility scroll counting) is implemented and awaiting device testing. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
-- **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and restarts tracking if it is enabled.
+- **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and the accessibility-service state, and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
 - **Permissions**:
   - `PermissionRepository` (`data/permission`) exposes a `StateFlow<PermissionState>` plus per-permission flows.
@@ -16,16 +16,17 @@ Last updated with M6. Keep this section in sync when a milestone lands.
   - `TrackingService`: specialUse foreground service with a low-importance notification, `START_STICKY`.
   - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start), `OverlayTimerManager.run()`, `BlockEnforcer.run()` and `FrictionCoordinator.run()`.
   - `SessionManager.currentSession` stays set during the debounce window. `foregroundSession` clears the moment the user leaves; the overlay uses that one.
+  - `SessionManager` is the only writer of sessions, `scrollCount` included: `onSwipe(pkg)` adds a swipe to the foreground session and saves it; `swipes` exposes the running count.
   - `AppDetector` polls `UsageStatsManager.queryEvents` every ~1 s, only while `ScreenStateMonitor` reports the screen on.
   - `ForegroundTracker` (`domain/tracking`) turns usage events into the foreground package.
   - `TrackingController` turns tracking on and off (Settings switch).
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v3): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction`, `pause_outcomes` and `nudge_log` (`FrictionDao`/`FrictionRepository`).
+  - Room `UnscrollDatabase` (v4): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`), `pause_outcomes` and `nudge_log` (`FrictionDao`/`FrictionRepository`).
   - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
   - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
-  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`).
+  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, blocking, quiet-hours and scroll-counting preferences.
 - **Dashboard** (`ui/dashboard`, `domain/insights`):
   - Today's total with a trend against yesterday at the same time of day.
   - A period selector (Today, Week = last 7 days, Month = last 30 days, All time) driving per-app cards (time, opens, average, longest), plus an "All apps" summary.
@@ -35,13 +36,15 @@ Last updated with M6. Keep this section in sync when a milestone lands.
     - `UsageMath` splits sessions into local days and hours (DST-safe).
     - Use cases (`GetPeriodUsageUseCase`, `GetTodayTrendUseCase`, `GetWeekComparisonUseCase`, `GetHoursInvestedUseCase`) sit on `UsageDataSource` (implemented by `UsageRepository`).
     - Conversion constants live in `Equivalents`.
+  - A "Swipes" card (swipes today; per app: total, per session, per minute, via `GetScrollStatsUseCase` and `SessionDao.appScrollStats`). It only shows once scroll counting was ever on, and only counts sessions since then. A banner asks to re-enable the service when the system switched it off.
   - `DashboardViewModel` exposes one `StateFlow<DashboardUiState>`. It refreshes on DB changes, every second while a session is open, and every minute otherwise, only while collected.
 - **Overlay timer** (`overlay/`, `domain/overlay`):
   - The pill lives in a `TYPE_APPLICATION_OVERLAY` window (`OverlayWindow`: `FLAG_NOT_FOCUSABLE | FLAG_LAYOUT_IN_SCREEN`, wrap content, so touches outside it pass through).
   - Compose runs in a `ComposeView` with its own `OverlayLifecycleOwner` (lifecycle, ViewModelStore and SavedStateRegistry).
   - `OverlayTimerManager` (owned by `TrackingService`) shows it while `foregroundSession` is set, the overlay is enabled, and `Settings.canDrawOverlays` holds (re-checked every 2 s). It hides it on leave, screen off, tracking stop and service destroy.
   - Pure rules: `PillRules` (mm:ss / h:mm:ss, green/yellow/red levels, `shouldShow`) and `PillPositioner` (clamping to screen minus status bar, cutout and nav bar; top-center default).
-  - Settings live in `OverlayPreferences` (DataStore): on/off, today's total, thresholds (10/20 min), size, opacity, position per orientation.
+  - Settings live in `OverlayPreferences` (DataStore): on/off, today's total, swipe count, thresholds (10/20 min), size, opacity, position per orientation.
+  - The swipe count ("86 swipes") shows under the timer while scroll counting is on; `OverlayWindow.updateSwipes` updates it without rebuilding the pill.
   - Settings screen: a live preview and "Reset position". Tap the pill to collapse it to a dot.
 - **Limits and blocking** (`domain/blocking`, `data/blocking`, `service/BlockEnforcer`, `ui/apps`, `ui/block`):
   - Per app: daily limit, "Block completely", and a schedule (days plus a start/end time, which may cross midnight).
@@ -59,8 +62,15 @@ Last updated with M6. Keep this section in sync when a milestone lands.
   - Break reminders and limit warnings expand the pill (`OverlayMessages`, Keep going / Leave). Without the overlay they become notifications (`NudgeNotifier`; "nudges" and high-importance "breaks" channels).
   - `TintOverlay`: a gray, non-touchable overlay with alpha 0.45, shown while over the limit with an extension running.
   - `QuietHours` (global, DataStore, may cross midnight) silences nudges, break reminders and limit warnings, but never pauses or blocking. Everything goes through `BlockSafety`.
+- **Scroll counting (optional)** (`domain/scroll`, `data/scroll`, `service/ScrollAccessibilityService`, `ui/scroll`):
+  - `ScrollAccessibilityService`: opt-in, `canRetrieveWindowContent="false"`, only `typeViewScrolled`/`typeWindowStateChanged`, only tracked packages (`res/xml/accessibility_service_config.xml`, kept equal to `TrackedApps` by `AccessibilityConfigTest` and set from `TrackedApps` on connect), `isAccessibilityTool="false"`. Reads only the event type and package name, and ignores everything without in-app consent.
+  - `SwipeDetector` (pure, injectable `Clock`): scroll events within `SWIPE_BURST_GAP_MILLIS` (300 ms) of each other are one swipe; screen off, untracked apps and window changes end a burst. Each swipe goes to `SessionManager.onSwipe`.
+  - Consent: `AccessibilityDisclosureScreen` (Settings › Scroll counting › Set up) must be accepted ("I agree") before the user is sent to Accessibility settings; "No thanks" keeps everything else working. `RestrictedSettingHelpScreen` explains the Android 13+ "Restricted setting".
+  - `ScrollCountingPreferences` (consent, first connection) and `ScrollCountingRepository` (enabled in `Settings.Secure`, re-checked on resume; connected, as reported by the service). `ScrollCountingRules.status` (pure) gives OFF / NEEDS_CONSENT / NEEDS_ENABLING / ACTIVE / NEEDS_REENABLE. "Turn off" withdraws consent and the service calls `disableSelf()`.
+  - Take a break: per-app `FrictionSettings.swipeBreakAfter` (off by default; 25/50/100/200). `SwipeBreakTracker` (pure) decides when; `FrictionCoordinator` opens `BreakActivity` (swipes, time, 15 s breathing countdown, "Keep scrolling" / "I'm done", Back disabled, Home always works). A blocked app gets the block screen instead.
+  - Play docs: `docs/ACCESSIBILITY_DECLARATION.md` and the disclosure wording in `STORE_LISTING.md`.
 - **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`).
-- **Not built yet**: Accessibility Service and scroll counting (M7), streaks and goals (M8).
+- **Not built yet**: accessibility events for foreground detection (still `UsageStatsManager` only); streaks, goals, weekly report, data export and release tasks (M8).
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
   - Repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`.
@@ -69,7 +79,7 @@ Last updated with M6. Keep this section in sync when a milestone lands.
 - **Cloud sessions**: the Claude Code cloud environment can't reach `dl.google.com`/`maven.google.com`, so Android builds can't run there. CI is the source of truth for `lint test assembleDebug`.
 
 ## Principles
-- **Privacy first**: all data stays on-device. No analytics SDKs, no network calls, no accounts in v1. Never read or store screen content, only package names and timestamps (plus scroll counts later).
+- **Privacy first**: all data stays on-device. No analytics SDKs, no network calls, no accounts in v1. Never read or store screen content, only package names and timestamps (plus swipe counts from the opt-in accessibility service).
 - **Friction over hard blocks**: hard blocks get bypassed. Prefer pause screens, cooldowns, and nudges.
 - **Battery**: only poll or tick while a tracked app is in the foreground and the screen is on.
 - **Play Store policy safe**: every sensitive permission must have a clear in-app explanation screen before the system prompt.
@@ -89,7 +99,7 @@ domain/      models, use cases (pure Kotlin, unit-testable)
 service/     TrackingService (foreground), AppDetector, SessionManager
 overlay/     OverlayTimerManager (WindowManager overlay), BlockActivity
 ui/          Compose screens, ViewModels, theme
-  onboarding/  dashboard/  apps/  settings/  block/
+  onboarding/  dashboard/  apps/  settings/  block/  pause/  scroll/
 util/        time formatting, permission helpers
 ```
 
@@ -104,13 +114,13 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 - `SYSTEM_ALERT_WINDOW` (overlay timer + block screen)
 - `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE`, `POST_NOTIFICATIONS`
 - `RECEIVE_BOOT_COMPLETED` (restart tracking after reboot)
-- Later, optional: AccessibilityService (scroll counting, more reliable foreground detection). Must be opt-in with its own explanation screen.
+- Optional: AccessibilityService for scroll counting (`BIND_ACCESSIBILITY_SERVICE`, M7). Opt-in, behind its own disclosure screen and in-app consent.
 
 ## Core data model
-- `SessionEntity(id, packageName, startTime, endTime, scrollCount)`
+- `SessionEntity(id, packageName, startTime, endTime, scrollCount)`; `scrollCount` is filled only while the optional accessibility service runs
 - `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute, pendingChangeJson?, pendingChangeAppliesAt?)`
 - `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension
-- `AppFrictionEntity(packageName, pauseEnabled, pauseSeconds, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled)`
+- `AppFrictionEntity(packageName, pauseEnabled, pauseSeconds, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter?)`
 - `PauseOutcomeEntity(id, packageName, shownAt, outcome)` and `NudgeLogEntity(packageName, day, kind, value, sentAt)`
 - `DailyStat` is computed from sessions via queries, not stored
 Sessions are logged from day one because Android only keeps short usage history.

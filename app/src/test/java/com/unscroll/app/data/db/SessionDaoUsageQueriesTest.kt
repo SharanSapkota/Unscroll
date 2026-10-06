@@ -182,6 +182,53 @@ class SessionDaoUsageQueriesTest {
         }
     }
 
+    @Test
+    fun changeToken_changesWhenSwipesAreCounted() = runTest {
+        val id = insert(INSTAGRAM, midnight, null)
+        dao.observeChangeToken().test {
+            val before = awaitItem()
+            dao.updateScrollCount(id, 12)
+            val after = awaitUntilChanged(before)
+            assertEquals(12L, after.scrollSum)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun appScrollStats_sumsSwipesSessionsAndFullLength_forSessionsStartedInRange() = runTest {
+        val first = insert(INSTAGRAM, midnight + 60 * MINUTE, midnight + 70 * MINUTE)
+        val second = insert(INSTAGRAM, midnight + 120 * MINUTE, null)
+        val facebook = insert(FACEBOOK, midnight + 30 * MINUTE, midnight + 35 * MINUTE)
+        // Started yesterday: not counted for today, even though it ends today.
+        val spanning = insert(INSTAGRAM, midnight - 10 * MINUTE, midnight + 5 * MINUTE)
+        dao.updateScrollCount(first, 40)
+        dao.updateScrollCount(second, 20)
+        dao.updateScrollCount(facebook, 7)
+        dao.updateScrollCount(spanning, 99)
+        val now = midnight + 125 * MINUTE
+
+        val rows = dao.appScrollStats(midnight, tomorrow, now).sortedBy { it.packageName }
+
+        assertEquals(
+            listOf(
+                AppScrollStatsRow(FACEBOOK, swipes = 7, sessions = 1, durationMillis = 5 * MINUTE),
+                AppScrollStatsRow(INSTAGRAM, swipes = 60, sessions = 2, durationMillis = 15 * MINUTE),
+            ),
+            rows,
+        )
+    }
+
+    @Test
+    fun updateScrollCount_onlyTouchesThatSession() = runTest {
+        val first = insert(INSTAGRAM, midnight, midnight + MINUTE)
+        val second = insert(INSTAGRAM, midnight + 2 * MINUTE, null)
+
+        dao.updateScrollCount(second, 5)
+
+        val sessions = dao.sessionsOverlapping(0, tomorrow).associate { it.id to it.scrollCount }
+        assertEquals(mapOf(first to 0, second to 5), sessions)
+    }
+
     /** Room may re-emit unchanged results, so skip items until the value changes. */
     private suspend fun app.cash.turbine.ReceiveTurbine<SessionsChangeToken>.awaitUntilChanged(
         previous: SessionsChangeToken,

@@ -100,9 +100,9 @@ fun PauseScreen(
     }
 }
 
-/** A circle that grows for ~4 s (breathe in) and shrinks for ~4 s (breathe out). */
+/** A circle that grows for ~4 s (breathe in) and shrinks for ~4 s (breathe out). Also used by the break screen. */
 @Composable
-private fun BreathingCircle() {
+internal fun BreathingCircle() {
     val transition = rememberInfiniteTransition(label = "breathing")
     val phase by transition.animateFloat(
         initialValue = 0f,

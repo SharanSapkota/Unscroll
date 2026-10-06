@@ -13,6 +13,7 @@ class FrictionSettingsTest {
         assertEquals(listOf(5, 10, 20), d.nudgeThresholds)
         assertEquals(15, d.breakIntervalMinutes)
         assertEquals(false, d.tintEnabled)
+        assertEquals(null, d.swipeBreakAfter)
     }
 
     @Test
@@ -21,6 +22,8 @@ class FrictionSettingsTest {
         assertEquals(30, n.pauseSeconds)
         assertEquals(listOf(5, 20), n.nudgeThresholds)
         assertEquals(5, FrictionSettings(pauseSeconds = 1).normalized().pauseSeconds)
+        assertEquals(null, FrictionSettings(swipeBreakAfter = -5).normalized().swipeBreakAfter)
+        assertEquals(25, FrictionSettings(swipeBreakAfter = 25).normalized().swipeBreakAfter)
     }
 
     @Test

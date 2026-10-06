@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Opt-in scroll counting (M7). Privacy limits, enforced by Android itself:
+    - canRetrieveWindowContent="false": the service gets no screen text, content descriptions or
+      view hierarchy. It only uses each event's type and package name.
+    - Only scroll and window-change events, and only from the tracked apps. packageNames must match
+      TrackedApps.packageNames (AccessibilityConfigTest checks this; the service also sets the list
+      from TrackedApps when it connects).
+
+    isAccessibilityTool="false": Unscroll is a digital-wellbeing app, not a tool that helps people
+    with disabilities use their device (like a screen reader or switch access). Claiming otherwise
+    would be inaccurate and against Google Play policy, so we declare it as false and complete the
+    Accessibility API declaration instead (docs/ACCESSIBILITY_DECLARATION.md).
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:accessibilityEventTypes="typeViewScrolled|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_service_description"
+    android:isAccessibilityTool="false"
+    android:notificationTimeout="100"
+    android:packageNames="com.instagram.android,com.zhiliaoapp.musically,com.ss.android.ugc.trill,com.facebook.katana"
+    android:settingsActivity="com.unscroll.app.MainActivity"
+    tools:ignore="UnusedAttribute" />
