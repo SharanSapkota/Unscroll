@@ -38,6 +38,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG gates debug-only tools such as sample data.
+        buildConfig = true
     }
 
     testOptions {

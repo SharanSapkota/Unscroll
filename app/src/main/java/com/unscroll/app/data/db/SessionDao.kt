@@ -11,6 +11,9 @@ interface SessionDao {
     @Insert
     suspend fun insert(session: SessionEntity): Long
 
+    @Insert
+    suspend fun insertAll(sessions: List<SessionEntity>)
+
     @Query("UPDATE sessions SET endTime = :endTime WHERE id = :id")
     suspend fun close(id: Long, endTime: Long)
 
@@ -23,4 +26,55 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions ORDER BY startTime DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<SessionEntity>>
+
+    /**
+     * Time per app inside [rangeStart, rangeEnd). Sessions are clipped to the range, so one that
+     * crosses midnight only counts the part on each side. Open sessions run until [now].
+     */
+    @Query(
+        """
+        SELECT packageName,
+            SUM(
+                MAX(0, MIN(COALESCE(endTime, :now), :rangeEnd) - MAX(startTime, :rangeStart))
+            ) AS totalMillis
+        FROM sessions
+        WHERE startTime < :rangeEnd AND COALESCE(endTime, :now) > :rangeStart
+        GROUP BY packageName
+        """,
+    )
+    suspend fun appTotals(rangeStart: Long, rangeEnd: Long, now: Long): List<AppTotalRow>
+
+    /**
+     * Opens, total and longest full-session duration per app, for sessions that started in
+     * [rangeStart, rangeEnd). Open sessions run until [now].
+     */
+    @Query(
+        """
+        SELECT packageName,
+            COUNT(*) AS opens,
+            SUM(MAX(0, COALESCE(endTime, :now) - startTime)) AS totalDurationMillis,
+            MAX(MAX(0, COALESCE(endTime, :now) - startTime)) AS longestMillis
+        FROM sessions
+        WHERE startTime >= :rangeStart AND startTime < :rangeEnd
+        GROUP BY packageName
+        """,
+    )
+    suspend fun appSessionStats(
+        rangeStart: Long,
+        rangeEnd: Long,
+        now: Long,
+    ): List<AppSessionStatsRow>
+
+    /** Sessions overlapping [rangeStart, rangeEnd), including open ones, oldest first. */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE startTime < :rangeEnd AND (endTime IS NULL OR endTime > :rangeStart)
+        ORDER BY startTime
+        """,
+    )
+    suspend fun sessionsOverlapping(rangeStart: Long, rangeEnd: Long): List<SessionEntity>
+
+    @Query("SELECT COUNT(*) AS count, COALESCE(SUM(endTime), 0) AS endTimeSum FROM sessions")
+    fun observeChangeToken(): Flow<SessionsChangeToken>
 }

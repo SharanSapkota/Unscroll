@@ -3,9 +3,9 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated after M2. Keep this section in sync when a milestone lands.
+Last updated with M3. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding) and M2 (foreground detection and session logging). See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding) and M2 (foreground detection and session logging). M3 (dashboard) is implemented and awaiting device testing. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
 - **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
@@ -21,10 +21,20 @@ Last updated after M2. Keep this section in sync when a milestone lands.
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v1, schema exported to `app/schemas/`) with `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`).
+  - Room `UnscrollDatabase` (v1) with `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`). The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
   - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`).
-- **Dashboard**: a temporary debug view (current session ticking, last 20 sessions). Replaced in M3.
-- **Not built yet**: real dashboard (M3), overlay, blocking, limits.
+- **Dashboard** (`ui/dashboard`, `domain/insights`):
+  - Today's total with a trend against yesterday at the same time of day.
+  - A period selector (Today, Week = last 7 days, Month = last 30 days, All time) driving per-app cards (time, opens, average, longest), plus an "All apps" summary.
+  - A Canvas hour-of-day heatmap, an "hours invested" card, and a Canvas chart of the last 7 days vs the 7 before.
+  - Data flow:
+    - SQL in `SessionDao` clips sessions to a range (sessions crossing midnight are split; open sessions run until `now`).
+    - `UsageMath` splits sessions into local days and hours (DST-safe).
+    - Use cases (`GetPeriodUsageUseCase`, `GetTodayTrendUseCase`, `GetWeekComparisonUseCase`, `GetHoursInvestedUseCase`) sit on `UsageDataSource` (implemented by `UsageRepository`).
+    - Conversion constants live in `Equivalents`.
+  - `DashboardViewModel` exposes one `StateFlow<DashboardUiState>`. It refreshes on DB changes, every second while a session is open, and every minute otherwise, only while collected.
+- **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`).
+- **Not built yet**: overlay, blocking, limits.
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
   - Repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`.
