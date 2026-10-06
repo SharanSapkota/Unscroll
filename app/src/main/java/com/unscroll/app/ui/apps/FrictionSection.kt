@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.unscroll.app.R
 import com.unscroll.app.domain.friction.FrictionSettings
+import com.unscroll.app.domain.scroll.SwipeBreakTracker
 import kotlin.math.roundToInt
 
 /**
@@ -138,6 +139,25 @@ fun FrictionSection(
             checked = settings.tintEnabled,
             onCheckedChange = { on -> onChange { it.copy(tintEnabled = on) } },
         )
+
+        // Take a break after N swipes (M7). Only does something while scroll counting is on.
+        val swipeBreakAfter = settings.swipeBreakAfter
+        ToggleRow(
+            title = stringResource(R.string.friction_swipe_break),
+            description = stringResource(R.string.friction_swipe_break_description),
+            checked = swipeBreakAfter != null,
+            onCheckedChange = { on ->
+                onChange { it.copy(swipeBreakAfter = if (on) SwipeBreakTracker.DEFAULT_BREAK_AFTER else null) }
+            },
+        )
+        if (swipeBreakAfter != null) {
+            ChipRow(
+                values = SwipeBreakTracker.PRESETS,
+                isSelected = { it == swipeBreakAfter },
+                label = { stringResource(R.string.friction_swipes_value, it) },
+                onClick = { value -> onChange { it.copy(swipeBreakAfter = value) } },
+            )
+        }
 
         TextButton(onClick = onReset) {
             Text(stringResource(R.string.friction_reset))

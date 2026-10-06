@@ -63,6 +63,17 @@ class FrictionDaoTest {
     }
 
     @Test
+    fun swipeBreak_isOffByDefault_andRoundTrips() = runTest {
+        assertEquals(null, repository.getSettings(INSTAGRAM).swipeBreakAfter)
+
+        repository.saveSettings(INSTAGRAM, FrictionSettings(swipeBreakAfter = 100))
+        assertEquals(100, repository.getSettings(INSTAGRAM).swipeBreakAfter)
+
+        repository.saveSettings(INSTAGRAM, FrictionSettings(swipeBreakAfter = 0))
+        assertEquals(null, repository.getSettings(INSTAGRAM).swipeBreakAfter)
+    }
+
+    @Test
     fun pauseOutcomes_statsSinceStartOfDay() = runTest {
         repository.logPauseOutcome(INSTAGRAM, shownAt = 50, outcome = PauseOutcome.ABANDONED) // yesterday
         repository.logPauseOutcome(INSTAGRAM, shownAt = 150, outcome = PauseOutcome.ABANDONED)

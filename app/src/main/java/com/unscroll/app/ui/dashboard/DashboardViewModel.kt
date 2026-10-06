@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.friction.PauseStat
+import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
 import com.unscroll.app.domain.insights.GetHoursInvestedUseCase
 import com.unscroll.app.domain.insights.GetPeriodUsageUseCase
@@ -18,6 +19,8 @@ import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.scroll.GetScrollStatsUseCase
+import com.unscroll.app.domain.scroll.ScrollStats
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +50,8 @@ data class DashboardUiState(
     val hoursInvested: HoursInvested = GetHoursInvestedUseCase.calculate(0),
     /** Today's pause screens per app, most skipped first. */
     val pauseStats: List<PauseStat> = emptyList(),
+    /** Swipe stats for the period, or null if scroll counting was never switched on (cards hidden). */
+    val scrollStats: ScrollStats? = null,
 ) {
     /** False until the first session has been logged. */
     val hasAnyData: Boolean get() = hoursInvested.totalMillis > 0
@@ -64,6 +69,8 @@ class DashboardViewModel @Inject constructor(
     sessionManager: SessionManager,
     trackingPreferences: TrackingPreferences,
     private val friction: FrictionRepository,
+    private val getScrollStats: GetScrollStatsUseCase,
+    scrollCounting: ScrollCountingRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -87,15 +94,16 @@ class DashboardViewModel @Inject constructor(
         trackingPreferences.trackingEnabled,
         usageDataSource.observeChanges(),
         refreshTicks,
-    ) { period, trackingEnabled, _, _ -> period to trackingEnabled }
-        .mapLatest { (period, trackingEnabled) -> load(period, trackingEnabled) }
+        scrollCounting.countingSince,
+    ) { period, trackingEnabled, _, _, countingSince -> LoadRequest(period, trackingEnabled, countingSince) }
+        .mapLatest { load(it.period, it.trackingEnabled, it.countingSince) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
     fun selectPeriod(period: UsagePeriod) {
         savedStateHandle[KEY_PERIOD] = period.name
     }
 
-    private suspend fun load(period: UsagePeriod, trackingEnabled: Boolean): DashboardUiState {
+    private suspend fun load(period: UsagePeriod, trackingEnabled: Boolean, countingSince: Long?): DashboardUiState {
         val now = clock.now()
         val zone = ZoneId.systemDefault()
         return DashboardUiState(
@@ -107,8 +115,11 @@ class DashboardViewModel @Inject constructor(
             weekComparison = getWeekComparison(now, zone),
             hoursInvested = getHoursInvested(now),
             pauseStats = friction.observePauseStatsSince(startOfDay(localDate(now, zone), zone)).first(),
+            scrollStats = countingSince?.let { getScrollStats(period, it, now, zone) },
         )
     }
+
+    private data class LoadRequest(val period: UsagePeriod, val trackingEnabled: Boolean, val countingSince: Long?)
 
     private fun ticker(intervalMillis: Long): Flow<Unit> = flow {
         while (true) {

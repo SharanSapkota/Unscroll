@@ -49,6 +49,7 @@ class MigrationTest {
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_sessions_startTime` ON `sessions` (`startTime`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_sessions_endTime` ON `sessions` (`endTime`)")
                         if (version >= 2) MIGRATION_1_2.migrate(db)
+                        if (version >= 3) MIGRATION_2_3.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -138,6 +139,45 @@ class MigrationTest {
             assertEquals(1, friction.observePauseStatsSince(0).first().single().abandoned)
             friction.insertNudges(listOf(NudgeLogEntity("com.instagram.android", "2026-10-06", "OPENS", 5, 1)))
             assertEquals(listOf(5), friction.sentNudges("com.instagram.android", "2026-10-06", "OPENS"))
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate3To4_keepsFrictionSettings_andAddsSwipeBreakOff() = runTest {
+        createDatabase(version = 3)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(DB_NAME)
+            .callback(
+                object : SupportSQLiteOpenHelper.Callback(3) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            )
+            .build()
+        FrameworkSQLiteOpenHelperFactory().create(config).apply {
+            writableDatabase.execSQL(
+                "INSERT INTO app_friction VALUES ('com.instagram.android', 1, 20, 1, '5,10', 0, 15, 1, 0)",
+            )
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val sessions = database.sessionDao().observeRecent(10).first()
+            assertEquals(listOf(3, 0), sessions.map { it.scrollCount })
+
+            val friction = database.frictionDao()
+            val migrated = friction.getSettings("com.instagram.android")
+            assertEquals(20, migrated?.pauseSeconds)
+            assertEquals(null, migrated?.swipeBreakAfter)
+
+            friction.upsertSettings(migrated!!.copy(swipeBreakAfter = 50))
+            assertEquals(50, friction.getSettings("com.instagram.android")?.swipeBreakAfter)
         } finally {
             database.close()
         }

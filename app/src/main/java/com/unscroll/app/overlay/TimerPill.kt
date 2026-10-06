@@ -38,6 +38,8 @@ data class TimerPillState(
     val size: PillSize,
     val opacity: Float,
     val collapsed: Boolean,
+    /** "86 swipes", already formatted, or null to hide (M7). */
+    val swipesText: String? = null,
 )
 
 /** Fixed traffic-light colors: they must read the same over any app, in light or dark mode. */
@@ -106,6 +108,15 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
                 fontFamily = FontFamily.Monospace,
                 maxLines = 1,
             )
+            state.swipesText?.let {
+                Text(
+                    text = it,
+                    color = content.copy(alpha = 0.85f),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontSize = if (small) 9.sp else 10.sp,
+                    maxLines = 1,
+                )
+            }
             state.todayText?.let {
                 Text(
                     text = it,

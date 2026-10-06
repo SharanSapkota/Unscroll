@@ -42,7 +42,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Cooldown: unblock/limit changes take effect after N minutes or require typing a phrase
 - **Done when**: blocked app can't be used without passing friction.
 
-## M6: Friction + nudges
+## M6: Friction + nudges ✅ Done
 - Pause screen with 10s breathing prompt before the app opens
 - "You've opened Instagram 14 times today" notifications
 - Break reminders at set intervals

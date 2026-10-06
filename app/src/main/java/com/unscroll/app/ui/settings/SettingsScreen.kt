@@ -57,6 +57,7 @@ import com.unscroll.app.domain.overlay.PillSize
 import com.unscroll.app.overlay.TimerPill
 import com.unscroll.app.overlay.TimerPillState
 import com.unscroll.app.ui.durationText
+import com.unscroll.app.ui.scroll.ScrollCountingSection
 import com.unscroll.app.ui.theme.UnscrollTheme
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -68,6 +69,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
+    onScrollCountingSetUp: () -> Unit = {},
+    onRestrictedSettingHelp: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val trackingEnabled by viewModel.trackingEnabled.collectAsStateWithLifecycle()
@@ -103,6 +106,7 @@ fun SettingsScreen(
             actions = OverlayActions(
                 onEnabledChange = viewModel::setOverlayEnabled,
                 onShowTodayTotalChange = viewModel::setShowTodayTotal,
+                onShowSwipesChange = viewModel::setShowSwipes,
                 onWarningMinutesChange = viewModel::setWarningMinutes,
                 onDangerMinutesChange = viewModel::setDangerMinutes,
                 onSizeChange = viewModel::setPillSize,
@@ -119,6 +123,11 @@ fun SettingsScreen(
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         QuietHoursSection(quietHours, viewModel::setQuietHours)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        ScrollCountingSection(
+            onSetUp = onScrollCountingSetUp,
+            onRestrictedHelp = onRestrictedSettingHelp,
+        )
         if (BuildConfig.DEBUG) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             DebugTools(
@@ -132,6 +141,7 @@ fun SettingsScreen(
 private class OverlayActions(
     val onEnabledChange: (Boolean) -> Unit,
     val onShowTodayTotalChange: (Boolean) -> Unit,
+    val onShowSwipesChange: (Boolean) -> Unit,
     val onWarningMinutesChange: (Int) -> Unit,
     val onDangerMinutesChange: (Int) -> Unit,
     val onSizeChange: (PillSize) -> Unit,
@@ -167,6 +177,12 @@ private fun OverlaySection(
         description = stringResource(R.string.settings_overlay_today_total_description),
         checked = settings.showTodayTotal,
         onCheckedChange = actions.onShowTodayTotalChange,
+    )
+    SwitchRow(
+        title = stringResource(R.string.settings_overlay_swipes),
+        description = stringResource(R.string.settings_overlay_swipes_description),
+        checked = settings.showSwipes,
+        onCheckedChange = actions.onShowSwipesChange,
     )
     MinutesSlider(
         label = R.plurals.settings_overlay_warning_after,
@@ -253,6 +269,11 @@ private fun PillPreview(settings: OverlaySettings) {
                         size = settings.size,
                         opacity = settings.opacity,
                         collapsed = false,
+                        swipesText = if (settings.showSwipes) {
+                            pluralStringResource(R.plurals.overlay_swipes, PREVIEW_SWIPES, PREVIEW_SWIPES)
+                        } else {
+                            null
+                        },
                     ),
                 )
             }
@@ -513,6 +534,7 @@ private fun DebugTools(sampleSessionsAdded: Int?, onInsertSampleData: () -> Unit
 
 private const val PREVIEW_STEP_MILLIS = 2_000L
 private const val PREVIEW_TODAY_EXTRA_MILLIS = 25 * 60_000L
+private const val PREVIEW_SWIPES = 86
 
 @Preview(showBackground = true, heightDp = 1400)
 @Composable
@@ -523,7 +545,7 @@ private fun OverlaySectionPreview() {
                 settings = OverlaySettings(showTodayTotal = true),
                 canDrawOverlays = false,
                 positionReset = true,
-                actions = OverlayActions({}, {}, {}, {}, {}, {}, {}),
+                actions = OverlayActions({}, {}, {}, {}, {}, {}, {}, {}),
             )
         }
     }

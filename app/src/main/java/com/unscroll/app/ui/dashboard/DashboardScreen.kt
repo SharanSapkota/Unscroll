@@ -52,8 +52,11 @@ import com.unscroll.app.domain.insights.TrendDirection
 import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.UsageSummary
 import com.unscroll.app.domain.insights.WeekComparison
+import com.unscroll.app.domain.scroll.AppScrollStats
+import com.unscroll.app.domain.scroll.ScrollStats
 import com.unscroll.app.domain.tracking.TrackedApps
 import com.unscroll.app.ui.durationText
+import com.unscroll.app.ui.scroll.ScrollCountingBanner
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.appLabel
 import java.time.LocalDate
@@ -69,6 +72,7 @@ fun DashboardScreen(
         uiState = uiState,
         onPeriodSelected = viewModel::selectPeriod,
         modifier = modifier,
+        banner = { ScrollCountingBanner() },
     )
 }
 
@@ -77,13 +81,14 @@ private fun DashboardContent(
     uiState: DashboardUiState,
     onPeriodSelected: (UsagePeriod) -> Unit,
     modifier: Modifier = Modifier,
+    banner: @Composable () -> Unit = {},
 ) {
     when {
         uiState.isLoading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         !uiState.hasAnyData -> EmptyState(uiState.trackingEnabled, modifier)
-        else -> DashboardList(uiState, onPeriodSelected, modifier)
+        else -> DashboardList(uiState, onPeriodSelected, modifier, banner)
     }
 }
 
@@ -92,6 +97,7 @@ private fun DashboardList(
     uiState: DashboardUiState,
     onPeriodSelected: (UsagePeriod) -> Unit,
     modifier: Modifier = Modifier,
+    banner: @Composable () -> Unit = {},
 ) {
     val periodUsage = uiState.periodUsage
     LazyColumn(
@@ -100,6 +106,8 @@ private fun DashboardList(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item { TodayHeader(uiState.todayTrend) }
+        // Only shows when the system switched scroll counting off after it had been working.
+        item { banner() }
         if (!uiState.trackingEnabled) {
             item {
                 Text(
@@ -136,6 +144,7 @@ private fun DashboardList(
             }
             item { HeatmapCard(periodUsage.hourly) }
         }
+        uiState.scrollStats?.let { stats -> item { SwipesCard(stats) } }
         if (uiState.pauseStats.isNotEmpty()) {
             item { PausesCard(uiState.pauseStats) }
         }
@@ -287,6 +296,64 @@ private fun HeatmapCard(hourly: List<Long>) {
                 description = stringResource(R.string.dashboard_heatmap_description, peakHour ?: 0),
             )
         }
+    }
+}
+
+/** Swipes today, and swipes per app for the selected period (M7). Hidden until counting was ever on. */
+@Composable
+private fun SwipesCard(stats: ScrollStats) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_swipes_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = pluralStringResource(R.plurals.dashboard_swipes_today, stats.swipesToday, stats.swipesToday),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            if (stats.apps.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.dashboard_swipes_none),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            stats.apps.forEach { app ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = rememberAppLabel(app.packageName),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    SwipeStatsRow(app)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwipeStatsRow(stats: AppScrollStats) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Stat(
+            label = stringResource(R.string.dashboard_swipes_total),
+            value = stats.swipes.toString(),
+            modifier = Modifier.weight(1f),
+        )
+        Stat(
+            label = stringResource(R.string.dashboard_swipes_per_session),
+            value = stringResource(R.string.dashboard_swipes_decimal, stats.averagePerSession),
+            modifier = Modifier.weight(1f),
+        )
+        Stat(
+            label = stringResource(R.string.dashboard_swipes_per_minute),
+            value = stringResource(R.string.dashboard_swipes_decimal, stats.perMinute),
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

@@ -14,8 +14,17 @@ data class AppSessionStatsRow(
     val longestMillis: Long,
 )
 
-/** Changes whenever a session is inserted or closed. */
+/** Result row: swipe statistics for one app, for sessions that started in a range. */
+data class AppScrollStatsRow(
+    val packageName: String,
+    val swipes: Int,
+    val sessions: Int,
+    val durationMillis: Long,
+)
+
+/** Changes whenever a session is inserted, closed or gets new swipes. */
 data class SessionsChangeToken(
     val count: Int,
     val endTimeSum: Long,
+    val scrollSum: Long = 0,
 )

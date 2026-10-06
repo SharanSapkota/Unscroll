@@ -24,6 +24,9 @@ object SystemSettings {
      */
     fun batteryOptimization(): Intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
 
+    /** The system Accessibility list, where the user switches on Unscroll's scroll counting. */
+    fun accessibility(): Intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+
     fun appDetails(context: Context): Intent =
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri(context))
 

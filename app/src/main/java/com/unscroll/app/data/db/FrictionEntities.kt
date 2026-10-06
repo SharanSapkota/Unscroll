@@ -17,6 +17,8 @@ data class AppFrictionEntity(
     val breakIntervalMinutes: Int,
     val limitWarningsEnabled: Boolean,
     val tintEnabled: Boolean,
+    /** Added in v4 (M7). Null = no swipe breaks. */
+    val swipeBreakAfter: Int? = null,
 )
 
 /** One pause screen and what the user did: "CONTINUED" or "ABANDONED". */

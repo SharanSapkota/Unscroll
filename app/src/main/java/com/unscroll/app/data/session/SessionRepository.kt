@@ -20,6 +20,8 @@ class SessionRepository @Inject constructor(
 
     override suspend fun closeSession(id: Long, endTime: Long) = dao.close(id, endTime)
 
+    override suspend fun updateScrollCount(id: Long, scrollCount: Int) = dao.updateScrollCount(id, scrollCount)
+
     override suspend fun closeOrphanedSessions(endTime: Long): Int = dao.closeAllOpen(endTime)
 
     fun observeRecentSessions(limit: Int): Flow<List<Session>> =
