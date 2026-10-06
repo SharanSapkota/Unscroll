@@ -158,8 +158,17 @@
     <string name="apps_status_blocked_until">Blocked until %1$s</string>
     <string name="apps_pending_countdown">Loosening change applies in %1$s</string>
     <string name="apps_pending_explanation">This change makes blocking weaker, so it waits a little in case it\'s just an urge.</string>
-    <string name="apps_pending_cancel">Cancel change</string>
-    <string name="apps_pending_unlock_now">Unlock now</string>
+    <string name="apps_pending_cancel">Cancel</string>
+    <string name="apps_pending_unlock_now">Type phrase to unlock now</string>
+    <string name="apps_pending_block_off">Block turns off in %1$s</string>
+    <string name="apps_pending_limit_removed">Daily limit is removed in %1$s</string>
+    <string name="apps_pending_limit_raised">Daily limit goes up to %1$d min in %2$s</string>
+    <string name="apps_pending_schedule_off">Schedule turns off in %1$s</string>
+    <string name="apps_pending_schedule_changed">Schedule loosens in %1$s</string>
+    <string name="apps_pending_switch_off">Turns off in %1$s · tap to keep it on</string>
+    <string name="apps_cooldown_note_debug">Stricter rules apply right away. Loosening a rule waits 10 seconds (debug cooldown).</string>
+    <string name="settings_debug_short_cooldown">10-second cooldown</string>
+    <string name="settings_debug_short_cooldown_description">Debug builds only. Every cooldown (loosening limits and friction) takes 10 seconds, for testing.</string>
 
     <!-- Unlock phrase -->
     <string name="unlock_phrase">I choose to waste my time</string>

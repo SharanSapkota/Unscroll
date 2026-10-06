@@ -88,6 +88,31 @@ class LimitRepositoryTest {
     }
 
     @Test
+    fun blockOff_isPending_thenApplied_evenAfterTheAppWasClosed() = runTest {
+        repository.requestChange(PKG, LimitSettings(blockedAlways = true), now = 0, delayMillis = delay)
+        repository.editLimit(PKG, { it.copy(blockedAlways = false) }, now = 1_000, delayMillis = delay)
+        assertEquals(1_000 + delay, database.blockingDao().getLimit(PKG)?.pendingChangeAppliesAt)
+
+        // The process dies; nothing runs while the cooldown passes. A new repository (as after a
+        // restart) sees the block off as soon as anything reads it, and saves that.
+        val afterRestart = LimitRepository(database.blockingDao())
+        assertEquals(AppLimit(PKG, LimitSettings(blockedAlways = false)), afterRestart.getLimit(PKG, now = 1_000 + delay))
+        assertEquals(false, database.blockingDao().getLimit(PKG)?.blockedAlways)
+        assertNull(database.blockingDao().getLimit(PKG)?.pendingChangeAppliesAt)
+    }
+
+    @Test
+    fun editLimit_otherChangeWhilePending_keepsThePendingBlockOff() = runTest {
+        repository.requestChange(PKG, LimitSettings(blockedAlways = true), now = 0, delayMillis = delay)
+        repository.editLimit(PKG, { it.copy(blockedAlways = false) }, now = 1_000, delayMillis = delay)
+        repository.editLimit(PKG, { it.copy(dailyLimitMinutes = 45) }, now = 2_000, delayMillis = delay)
+
+        val stored = repository.getLimit(PKG, now = 3_000)
+        assertEquals(LimitSettings(blockedAlways = true, dailyLimitMinutes = 45), stored.settings)
+        assertEquals(PendingChange(LimitSettings(dailyLimitMinutes = 45), appliesAt = 1_000 + delay), stored.pending)
+    }
+
+    @Test
     fun extension_activeForItsDuration() = runTest {
         repository.grantExtension(PKG, now = 1_000, durationMillis = 300_000, method = FrictionMode.TYPE_PHRASE)
         assertEquals(301_000L, repository.activeExtensionUntil(PKG, now = 2_000))

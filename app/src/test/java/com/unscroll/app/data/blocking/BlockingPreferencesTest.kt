@@ -49,4 +49,17 @@ class BlockingPreferencesTest {
         preferences.cancelPending(now = 2)
         assertEquals(BlockingSettings(FrictionMode.WAIT, 60, null), preferences.current(now = 10_000_000))
     }
+
+    @Test
+    fun debugShortCooldown_offByDefault_thenTenSeconds() = runTest {
+        val preferences = createPreferences()
+        assertEquals(false, preferences.current(now = 0).debugShortCooldown)
+
+        // Unit tests run the debug variant, where the switch is available.
+        preferences.setDebugShortCooldown(true)
+        assertEquals(10_000L, preferences.current(now = 0).cooldownMillis)
+
+        preferences.setDebugShortCooldown(false)
+        assertEquals(10 * 60_000L, preferences.current(now = 0).cooldownMillis)
+    }
 }

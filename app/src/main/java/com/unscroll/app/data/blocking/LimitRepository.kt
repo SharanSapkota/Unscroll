@@ -56,6 +56,21 @@ class LimitRepository @Inject constructor(
         return updated
     }
 
+    /**
+     * An edit from the Apps screen, applied to what the screen shows (the pending target, if any).
+     * See [LimitChangePolicy.edit]. Returns the stored result.
+     */
+    suspend fun editLimit(
+        packageName: String,
+        edit: (LimitSettings) -> LimitSettings,
+        now: Long,
+        delayMillis: Long,
+    ): AppLimit {
+        val updated = LimitChangePolicy.edit(getLimit(packageName, now), edit, now, delayMillis)
+        dao.upsertLimit(updated.toEntity())
+        return updated
+    }
+
     suspend fun cancelPendingChange(packageName: String, now: Long) {
         dao.upsertLimit(LimitChangePolicy.cancel(getLimit(packageName, now)).toEntity())
     }

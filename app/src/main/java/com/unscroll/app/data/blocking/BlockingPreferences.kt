@@ -2,12 +2,14 @@ package com.unscroll.app.data.blocking
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.unscroll.app.BuildConfig
 import com.unscroll.app.domain.blocking.BlockingSettings
 import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.blocking.FrictionPolicy
@@ -48,6 +50,12 @@ class BlockingPreferences @Inject constructor(
         save(current(now).copy(pending = null))
     }
 
+    /** Debug builds only: makes every cooldown 10 seconds, to test pending changes quickly. */
+    suspend fun setDebugShortCooldown(enabled: Boolean) {
+        if (!BuildConfig.DEBUG) return
+        dataStore.edit { it[DEBUG_SHORT_COOLDOWN] = enabled }
+    }
+
     private suspend fun save(settings: BlockingSettings) {
         dataStore.edit { prefs ->
             prefs[FRICTION_MODE] = settings.frictionMode.name
@@ -81,6 +89,8 @@ class BlockingPreferences @Inject constructor(
             } else {
                 null
             },
+            // Ignored in release builds, even if the key was somehow set.
+            debugShortCooldown = BuildConfig.DEBUG && this[DEBUG_SHORT_COOLDOWN] == true,
         )
     }
 
@@ -93,5 +103,6 @@ class BlockingPreferences @Inject constructor(
         val PENDING_MODE = stringPreferencesKey("blocking_pending_friction_mode")
         val PENDING_COOLDOWN = intPreferencesKey("blocking_pending_cooldown_minutes")
         val PENDING_APPLIES_AT = longPreferencesKey("blocking_pending_applies_at")
+        val DEBUG_SHORT_COOLDOWN = booleanPreferencesKey("debug_short_cooldown")
     }
 }
