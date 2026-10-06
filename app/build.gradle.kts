@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -49,9 +50,11 @@ android {
     }
 }
 
-ksp {
+room {
     // Room schema history, needed to write and test migrations later. Commit these files.
-    arg("room.schemaLocation", "$projectDir/schemas")
+    // The Room Gradle plugin gives each variant its own output and copies the result here, so
+    // parallel debug/release KSP tasks can't read each other's half-written schema files.
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
