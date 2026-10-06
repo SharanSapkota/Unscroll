@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -16,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.unscroll.app.MainActivity
 import com.unscroll.app.R
 import com.unscroll.app.data.tracking.TrackingPreferences
+import com.unscroll.app.overlay.OverlayTimerManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +30,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Foreground service (type specialUse) that keeps session tracking alive while the app is in the
- * background. It wires [AppDetector] to [SessionManager]; all the logic lives there.
+ * background. It wires [AppDetector] to [SessionManager] and owns the overlay timer's lifecycle
+ * ([OverlayTimerManager]); all the logic lives in those classes.
  *
  * START_STICKY: if the system kills the process, Android restarts the service with a null intent,
  * and [SessionManager.run] first closes the session the dead process left open.
@@ -41,6 +44,9 @@ class TrackingService : Service() {
 
     @Inject
     lateinit var trackingPreferences: TrackingPreferences
+
+    @Inject
+    lateinit var overlayTimerManager: OverlayTimerManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
@@ -58,6 +64,7 @@ class TrackingService : Service() {
                     stopTracking()
                     return@launch
                 }
+                launch { overlayTimerManager.run() }
                 sessionManager.run()
             }
         }
@@ -65,9 +72,16 @@ class TrackingService : Service() {
     }
 
     override fun onDestroy() {
+        // Remove the overlay synchronously so it can never outlive the service.
+        overlayTimerManager.hide()
         // Cancelling run() closes the open session.
         scope.cancel()
         super.onDestroy()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        overlayTimerManager.onConfigurationChanged()
     }
 
     private fun stopTracking() {

@@ -108,6 +108,33 @@
     <string name="duration_minutes">%1$dm</string>
     <string name="duration_seconds">%1$ds</string>
 
+    <!-- Overlay timer -->
+    <string name="overlay_today_total">Today %1$s</string>
+
+    <!-- Settings: overlay timer -->
+    <string name="settings_overlay_title">Floating timer</string>
+    <string name="settings_overlay_permission_missing">\"Display over other apps\" is off, so the timer can\'t appear. Turn it back on in Android settings.</string>
+    <string name="settings_overlay_enabled">Show floating timer</string>
+    <string name="settings_overlay_enabled_description">A small timer appears on top of Instagram, TikTok and Facebook while you use them. Drag it to move it; tap it to shrink it to a dot.</string>
+    <string name="settings_overlay_today_total">Show today\'s total</string>
+    <string name="settings_overlay_today_total_description">Adds your total for that app today under the session time.</string>
+    <plurals name="settings_overlay_warning_after">
+        <item quantity="one">Turn yellow after %d minute</item>
+        <item quantity="other">Turn yellow after %d minutes</item>
+    </plurals>
+    <plurals name="settings_overlay_danger_after">
+        <item quantity="one">Turn red after %d minute</item>
+        <item quantity="other">Turn red after %d minutes</item>
+    </plurals>
+    <string name="settings_overlay_size">Size</string>
+    <string name="settings_overlay_size_small">Small</string>
+    <string name="settings_overlay_size_medium">Medium</string>
+    <string name="settings_overlay_opacity">Opacity: %1$d%%</string>
+    <string name="settings_overlay_reset_position">Reset position</string>
+    <string name="settings_overlay_position_reset_done">The timer will appear at the top center next time.</string>
+    <string name="settings_overlay_preview">Preview</string>
+    <string name="settings_overlay_preview_app">Instagram</string>
+
     <!-- Settings: debug tools -->
     <string name="settings_debug_title">Debug tools</string>
     <string name="settings_debug_sample_data">Insert sample data</string>

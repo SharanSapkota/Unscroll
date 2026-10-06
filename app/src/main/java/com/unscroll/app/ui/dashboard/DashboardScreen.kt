@@ -51,6 +51,7 @@ import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.UsageSummary
 import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.appLabel
 import java.time.LocalDate

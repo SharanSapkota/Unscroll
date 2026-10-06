@@ -1,4 +1,4 @@
-package com.unscroll.app.ui.dashboard
+package com.unscroll.app.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
