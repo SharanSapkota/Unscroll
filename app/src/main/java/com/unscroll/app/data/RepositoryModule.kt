@@ -4,6 +4,10 @@ import com.unscroll.app.data.onboarding.DataStoreOnboardingRepository
 import com.unscroll.app.data.onboarding.OnboardingRepository
 import com.unscroll.app.data.permission.AndroidPermissionChecker
 import com.unscroll.app.data.permission.PermissionChecker
+import com.unscroll.app.data.session.SessionRepository
+import com.unscroll.app.data.tracking.TrackingPreferences
+import com.unscroll.app.domain.session.HeartbeatStore
+import com.unscroll.app.domain.session.SessionStore
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -22,4 +26,10 @@ abstract class RepositoryModule {
     abstract fun bindOnboardingRepository(
         impl: DataStoreOnboardingRepository,
     ): OnboardingRepository
+
+    @Binds
+    abstract fun bindSessionStore(impl: SessionRepository): SessionStore
+
+    @Binds
+    abstract fun bindHeartbeatStore(impl: TrackingPreferences): HeartbeatStore
 }

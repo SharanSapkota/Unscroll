@@ -5,9 +5,7 @@
     <string name="nav_apps">Apps</string>
     <string name="nav_settings">Settings</string>
 
-    <string name="dashboard_placeholder">Your time invested will show up here.</string>
     <string name="apps_placeholder">Tracked apps and limits will show up here.</string>
-    <string name="settings_placeholder">Settings will show up here.</string>
 
     <!-- Onboarding: shared -->
     <string name="onboarding_step_counter">Step %1$d of %2$d</string>
@@ -58,4 +56,23 @@
     <string name="onboarding_battery_hint_huawei">Huawei and Honor: go to Settings, then Battery, then App launch. Find Unscroll, switch it to \"Manage manually\" and turn on Auto-launch, Secondary launch and Run in background.</string>
     <string name="onboarding_battery_hint_oneplus">OnePlus: open App info, then Battery, and choose \"Allow background activity\" or \"Unrestricted\". Also lock Unscroll in the recent apps screen.</string>
     <string name="onboarding_battery_hint_other">Other phones can have their own battery savers. dontkillmyapp.com has steps for most brands.</string>
+
+    <!-- Tracking service -->
+    <string name="tracking_channel_name">Session tracking</string>
+    <string name="tracking_channel_description">Shows that Unscroll is timing your sessions.</string>
+    <string name="tracking_notification_title">Unscroll is tracking</string>
+    <string name="tracking_notification_text">Timing your sessions in Instagram, TikTok and Facebook.</string>
+
+    <!-- Settings -->
+    <string name="settings_tracking_title">Track sessions</string>
+    <string name="settings_tracking_description">Times your sessions in Instagram, TikTok and Facebook. Unscroll only sees app names and times, and keeps everything on this phone.</string>
+
+    <!-- Dashboard (temporary debug view until M3) -->
+    <string name="dashboard_debug_note">Debug view. The real dashboard arrives in M3.</string>
+    <string name="dashboard_tracking_off">Tracking is off. Turn it on in Settings.</string>
+    <string name="dashboard_current_title">Right now</string>
+    <string name="dashboard_no_current_session">No tracked app is open.</string>
+    <string name="dashboard_recent_title">Last 20 sessions</string>
+    <string name="dashboard_no_sessions">No sessions yet. Open Instagram, TikTok or Facebook to start one.</string>
+    <string name="dashboard_session_ongoing">ongoing</string>
 </resources>

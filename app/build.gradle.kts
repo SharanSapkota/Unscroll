@@ -39,10 +39,19 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     lint {
         abortOnError = true
         checkDependencies = true
     }
+}
+
+ksp {
+    // Room schema history, needed to write and test migrations later. Commit these files.
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 kotlin {
@@ -80,4 +89,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
 }

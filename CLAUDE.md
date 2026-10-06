@@ -3,19 +3,33 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated after M1. Keep this section in sync when a milestone lands.
+Last updated with M2. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI) and M1 (permissions onboarding). See ROADMAP.md.
+- **Done**: M0 (project setup, CI) and M1 (permissions onboarding). M2 (session logging) is implemented and awaiting device testing. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
-- **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings, all still placeholders.
+- **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
 - **Permissions**:
-  - `PermissionRepository` (`data/permission`) exposes a `StateFlow<PermissionState>` plus per-permission flows. `MainActivity.onResume` calls `refresh()`.
+  - `PermissionRepository` (`data/permission`) exposes a `StateFlow<PermissionState>` plus per-permission flows.
   - Usage Access and Overlay are required; Notifications and battery optimization are optional.
-  - Declared in the manifest: `PACKAGE_USAGE_STATS`, `SYSTEM_ALERT_WINDOW`, `POST_NOTIFICATIONS`.
-- **Storage**: one preferences DataStore (`user_preferences`, provided by `DataStoreModule`) holding the onboarding-completed flag. Room is a dependency, but there is no database yet.
-- **Not built yet**: tracking service, sessions/Room, overlay, blocking, real dashboard.
-- **Tests**: JVM unit tests only (`app/src/test`): pure domain logic, repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`. Shared fakes are in `testing/Fakes.kt`.
+- **Tracking** (`service/`):
+  - `TrackingService`: specialUse foreground service with a low-importance notification, `START_STICKY`.
+  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start).
+  - `AppDetector` polls `UsageStatsManager.queryEvents` every ~1 s, only while `ScreenStateMonitor` reports the screen on.
+  - `ForegroundTracker` (`domain/tracking`) turns usage events into the foreground package.
+  - `TrackingController` turns tracking on and off (Settings switch).
+  - `BootReceiver` restarts tracking after a reboot or app update.
+  - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
+- **Storage**:
+  - Room `UnscrollDatabase` (v1, schema exported to `app/schemas/`) with `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`).
+  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`).
+- **Dashboard**: a temporary debug view (current session ticking, last 20 sessions). Replaced in M3.
+- **Not built yet**: overlay, blocking, limits, real dashboard.
+- **Tests**: JVM unit tests only (`app/src/test`):
+  - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
+  - Repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`.
+  - Room DAO tests with an in-memory DB under Robolectric (`@Config(application = Application::class)`, SDK 34 via `robolectric.properties`).
+  - Shared fakes are in `testing/Fakes.kt`.
 - **Cloud sessions**: the Claude Code cloud environment can't reach `dl.google.com`/`maven.google.com`, so Android builds can't run there. CI is the source of truth for `lint test assembleDebug`.
 
 ## Principles
