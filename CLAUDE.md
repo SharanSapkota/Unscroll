@@ -2,6 +2,22 @@
 
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
+## Current state
+Last updated after M1. Keep this section in sync when a milestone lands.
+
+- **Done**: M0 (project setup, CI) and M1 (permissions onboarding). See ROADMAP.md.
+- **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
+- **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings, all still placeholders.
+- **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
+- **Permissions**:
+  - `PermissionRepository` (`data/permission`) exposes a `StateFlow<PermissionState>` plus per-permission flows. `MainActivity.onResume` calls `refresh()`.
+  - Usage Access and Overlay are required; Notifications and battery optimization are optional.
+  - Declared in the manifest: `PACKAGE_USAGE_STATS`, `SYSTEM_ALERT_WINDOW`, `POST_NOTIFICATIONS`.
+- **Storage**: one preferences DataStore (`user_preferences`, provided by `DataStoreModule`) holding the onboarding-completed flag. Room is a dependency, but there is no database yet.
+- **Not built yet**: tracking service, sessions/Room, overlay, blocking, real dashboard.
+- **Tests**: JVM unit tests only (`app/src/test`): pure domain logic, repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`. Shared fakes are in `testing/Fakes.kt`.
+- **Cloud sessions**: the Claude Code cloud environment can't reach `dl.google.com`/`maven.google.com`, so Android builds can't run there. CI is the source of truth for `lint test assembleDebug`.
+
 ## Principles
 - **Privacy first**: all data stays on-device. No analytics SDKs, no network calls, no accounts in v1. Never read or store screen content, only package names and timestamps (plus scroll counts later).
 - **Friction over hard blocks**: hard blocks get bypassed. Prefer pause screens, cooldowns, and nudges.

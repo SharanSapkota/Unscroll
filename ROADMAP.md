@@ -2,13 +2,13 @@
 
 Each milestone = one PR. Don't start the next until the previous is merged and tested on a real device.
 
-## M0: Project setup
+## M0: Project setup ✅ Done
 - Android project (Kotlin, Compose, Material 3, Hilt, Room, DataStore), package `com.unscroll.app`
 - CI: GitHub Actions running `./gradlew lint test assembleDebug`
 - Theme, navigation skeleton with 3 tabs: Dashboard, Apps, Settings
 - **Done when**: app launches, CI is green.
 
-## M1: Permissions onboarding
+## M1: Permissions onboarding ✅ Done
 - Welcome -> explanation screens -> deep link to Usage Access, Overlay, Notifications
 - Detect granted/not granted state, re-check on resume
 - Battery optimization guidance screen (with OEM-specific hints)
