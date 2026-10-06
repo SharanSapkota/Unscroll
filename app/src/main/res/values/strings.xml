@@ -5,7 +5,6 @@
     <string name="nav_apps">Apps</string>
     <string name="nav_settings">Settings</string>
 
-    <string name="apps_placeholder">Tracked apps and limits will show up here.</string>
 
     <!-- Onboarding: shared -->
     <string name="onboarding_step_counter">Step %1$d of %2$d</string>
@@ -134,6 +133,71 @@
     <string name="settings_overlay_position_reset_done">The timer will appear at the top center next time.</string>
     <string name="settings_overlay_preview">Preview</string>
     <string name="settings_overlay_preview_app">Instagram</string>
+
+    <!-- Common -->
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Apps tab: limits and blocking -->
+    <string name="apps_cooldown_note">Stricter rules apply right away. Loosening a rule waits %1$d minutes first.</string>
+    <string name="apps_daily_limit">Daily limit</string>
+    <string name="apps_limit_none">None</string>
+    <string name="apps_limit_minutes">%1$d min</string>
+    <string name="apps_block_completely">Block completely</string>
+    <string name="apps_block_schedule">Block on a schedule</string>
+    <string name="apps_schedule_from">From %1$s</string>
+    <string name="apps_schedule_to">To %1$s</string>
+    <string name="apps_schedule_overnight">Runs overnight, into the next morning.</string>
+    <string name="apps_status_no_limits">No limits</string>
+    <string name="apps_status_allowed_now">Allowed right now</string>
+    <plurals name="apps_status_minutes_left">
+        <item quantity="one">%d min left today</item>
+        <item quantity="other">%d min left today</item>
+    </plurals>
+    <string name="apps_status_blocked_always">Blocked</string>
+    <string name="apps_status_limit_reached">Daily limit reached. Blocked until tomorrow</string>
+    <string name="apps_status_blocked_until">Blocked until %1$s</string>
+    <string name="apps_pending_countdown">Loosening change applies in %1$s</string>
+    <string name="apps_pending_explanation">This change makes blocking weaker, so it waits a little in case it\'s just an urge.</string>
+    <string name="apps_pending_cancel">Cancel change</string>
+    <string name="apps_pending_unlock_now">Unlock now</string>
+
+    <!-- Unlock phrase -->
+    <string name="unlock_phrase">I choose to waste my time</string>
+    <string name="unlock_phrase_title">Type to unlock</string>
+    <string name="unlock_phrase_instruction">Type this sentence exactly to continue:</string>
+    <string name="unlock_phrase_field">Your answer</string>
+    <string name="unlock_phrase_confirm">Unlock</string>
+
+    <!-- Block screen -->
+    <string name="block_title">%1$s is blocked</string>
+    <string name="block_reason_always">You chose to block this app completely.</string>
+    <string name="block_reason_limit">You\'ve reached your daily limit for this app.</string>
+    <string name="block_reason_schedule">This app is blocked on your schedule right now.</string>
+    <string name="block_reason_schedule_until">This app is blocked on your schedule until %1$s.</string>
+    <string name="block_used_today">Used today: %1$s</string>
+    <string name="block_go_home">Go home</string>
+    <string name="block_need_access">I need access</string>
+    <string name="block_wait_countdown">Take a breath. You can continue in %1$d s.</string>
+    <string name="block_open_for_minutes">Open for %1$d minutes</string>
+    <string-array name="block_messages">
+        <item>The feed will still be there tomorrow. This moment won\'t.</item>
+        <item>You set this limit for a reason. Trust past you.</item>
+        <item>What were you hoping to find? Maybe it\'s somewhere else.</item>
+        <item>Five minutes of boredom beats an hour of scrolling.</item>
+        <item>Look up. Is there someone nearby you could talk to?</item>
+        <item>Drink some water, stretch, then decide.</item>
+        <item>Every time you close this, it gets a little easier.</item>
+        <item>You\'re in charge here, not the algorithm.</item>
+    </string-array>
+
+    <!-- Settings: blocking friction -->
+    <string name="settings_blocking_title">Blocking</string>
+    <string name="settings_blocking_description">Loosening a limit or block never happens instantly. Choose how you prove you really mean it.</string>
+    <string name="settings_blocking_mode">To loosen a rule</string>
+    <string name="settings_blocking_mode_wait">Wait it out</string>
+    <string name="settings_blocking_mode_phrase">Type a phrase</string>
+    <string name="settings_blocking_cooldown">Waiting time</string>
+    <string name="settings_blocking_pending">Your weaker setting takes effect at %1$s.</string>
 
     <!-- Settings: debug tools -->
     <string name="settings_debug_title">Debug tools</string>

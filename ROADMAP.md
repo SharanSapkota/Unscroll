@@ -29,7 +29,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Time-of-day heatmap, trend vs last week
 - **Done when**: numbers match a manual stopwatch test within a few seconds.
 
-## M4: Live overlay timer
+## M4: Live overlay timer ✅ Done
 - Small floating pill at top of screen via WindowManager `TYPE_APPLICATION_OVERLAY`
 - Shows current session time, optional today's total, updates every second
 - Color escalation: green -> yellow -> red (configurable thresholds)

@@ -3,9 +3,9 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated with M4. Keep this section in sync when a milestone lands.
+Last updated with M5. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging) and M3 (dashboard). M4 (overlay timer) is implemented and awaiting device testing. See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard) and M4 (overlay timer). M5 (limits and blocking) is implemented and awaiting device testing. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
 - **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
@@ -14,7 +14,7 @@ Last updated with M4. Keep this section in sync when a milestone lands.
   - Usage Access and Overlay are required; Notifications and battery optimization are optional.
 - **Tracking** (`service/`):
   - `TrackingService`: specialUse foreground service with a low-importance notification, `START_STICKY`.
-  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start) and `OverlayTimerManager.run()`.
+  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start), `OverlayTimerManager.run()` and `BlockEnforcer.run()`.
   - `SessionManager.currentSession` stays set during the debounce window. `foregroundSession` clears the moment the user leaves; the overlay uses that one.
   - `AppDetector` polls `UsageStatsManager.queryEvents` every ~1 s, only while `ScreenStateMonitor` reports the screen on.
   - `ForegroundTracker` (`domain/tracking`) turns usage events into the foreground package.
@@ -22,7 +22,9 @@ Last updated with M4. Keep this section in sync when a milestone lands.
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v1) with `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`). The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
+  - Room `UnscrollDatabase` (v2): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`).
+  - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
+  - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
   - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`).
 - **Dashboard** (`ui/dashboard`, `domain/insights`):
   - Today's total with a trend against yesterday at the same time of day.
@@ -41,8 +43,16 @@ Last updated with M4. Keep this section in sync when a milestone lands.
   - Pure rules: `PillRules` (mm:ss / h:mm:ss, green/yellow/red levels, `shouldShow`) and `PillPositioner` (clamping to screen minus status bar, cutout and nav bar; top-center default).
   - Settings live in `OverlayPreferences` (DataStore): on/off, today's total, thresholds (10/20 min), size, opacity, position per orientation.
   - Settings screen: a live preview and "Reset position". Tap the pill to collapse it to a dot.
+- **Limits and blocking** (`domain/blocking`, `data/blocking`, `service/BlockEnforcer`, `ui/apps`, `ui/block`):
+  - Per app: daily limit, "Block completely", and a schedule (days plus a start/end time, which may cross midnight).
+  - `BlockEvaluator` (pure, injectable `Clock`) returns `Allowed(remainingMillis)` or `Blocked(reason, until)`. Order of precedence: always, then schedule, then daily limit; an extension only lifts the daily limit.
+  - `LimitChangePolicy`: stronger changes apply at once; anything weaker becomes a pending change after the cooldown (default 10 min). Pending changes are applied on read by `LimitRepository.getLimit`/`applyDueChanges`.
+  - `FrictionPolicy` applies the same rule to the friction settings themselves (`BlockingPreferences`: wait vs typed phrase, cooldown length).
+  - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s). When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
+  - "I need access" is offered only for the daily limit. It needs the typed phrase or a 30 s wait, grants 5 min, and is logged in `block_overrides`.
+  - `BlockSafety` only allows tracked packages, and never Unscroll, launchers, Settings, the dialer or emergency apps.
 - **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`).
-- **Not built yet**: blocking, limits, friction screens.
+- **Not built yet**: pause screens and nudges (M6), Accessibility Service (M7).
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
   - Repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`.
@@ -90,7 +100,8 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 
 ## Core data model
 - `SessionEntity(id, packageName, startTime, endTime, scrollCount)`
-- `AppLimitEntity(packageName, dailyLimitMinutes, blocked, blockMode, scheduleJson, cooldownUntil)`
+- `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute, pendingChangeJson?, pendingChangeAppliesAt?)`
+- `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension
 - `DailyStat` is computed from sessions via queries, not stored
 Sessions are logged from day one because Android only keeps short usage history.
 
