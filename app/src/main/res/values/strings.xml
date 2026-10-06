@@ -199,6 +199,72 @@
     <string name="settings_blocking_cooldown">Waiting time</string>
     <string name="settings_blocking_pending">Your weaker setting takes effect at %1$s.</string>
 
+    <!-- Pause screen (mindful gate) -->
+    <string name="pause_title">About to open %1$s</string>
+    <string name="pause_countdown">Take a breath. %1$d s</string>
+    <string name="pause_breathe_in">Breathe in</string>
+    <string name="pause_breathe_out">Breathe out</string>
+    <string name="pause_never_mind">Never mind</string>
+    <string name="pause_continue">Continue to %1$s</string>
+    <string-array name="pause_prompts">
+        <item>What are you hoping to find?</item>
+        <item>Is this how you want to spend the next 10 minutes?</item>
+        <item>Did you open this on purpose, or out of habit?</item>
+        <item>How do you want to feel when you put the phone down?</item>
+        <item>Is there something you\'re avoiding right now?</item>
+        <item>What would future you want you to do instead?</item>
+        <item>Are you bored, tired, or actually curious?</item>
+        <item>Could a short walk or a glass of water help more?</item>
+    </string-array>
+
+    <!-- Pill messages and nudge notifications -->
+    <string name="overlay_break_message">%1$d min on %2$s. Time for a break?</string>
+    <string name="overlay_limit_warning">80%% of today\'s %1$s limit used.</string>
+    <string name="overlay_limit_reached">You\'ve reached today\'s %1$s limit.</string>
+    <string name="overlay_keep_going">Keep going</string>
+    <string name="overlay_leave">Leave</string>
+    <string name="overlay_ok">OK</string>
+    <string name="nudge_opens">You\'ve opened %1$s %2$d times today.</string>
+    <string name="nudge_channel_name">Nudges</string>
+    <string name="nudge_channel_description">How often you\'ve opened an app today, and limit warnings.</string>
+    <string name="break_channel_name">Break reminders</string>
+    <string name="break_channel_description">Reminders to take a break, when the floating timer is off.</string>
+
+    <!-- Apps tab: pauses and nudges -->
+    <string name="friction_title">Pauses and nudges</string>
+    <string name="friction_show">Show</string>
+    <string name="friction_hide">Hide</string>
+    <string name="friction_pause">Pause before opening</string>
+    <string name="friction_pause_description">A short breathing pause each time you open this app from somewhere else.</string>
+    <string name="friction_pause_seconds">Pause length: %1$d s</string>
+    <string name="friction_nudges">Open-count nudges</string>
+    <string name="friction_nudges_description">A notification when you\'ve opened this app this many times today.</string>
+    <string name="friction_opens_value">%1$d×</string>
+    <string name="friction_breaks">Break reminders</string>
+    <string name="friction_breaks_description">A gentle reminder on the timer while you scroll.</string>
+    <string name="friction_every_minutes">Every %1$d min</string>
+    <string name="friction_limit_warnings">Limit warnings</string>
+    <string name="friction_limit_warnings_description" formatted="false">A heads-up at 80% and 100% of your daily limit.</string>
+    <string name="friction_tint">Gray tint after the limit (experimental)</string>
+    <string name="friction_tint_description">Once you\'re over your daily limit and chose to keep going, the app is dimmed with a gray layer. It doesn\'t block touches.</string>
+    <string name="friction_reset">Reset to defaults</string>
+
+    <!-- Settings: quiet hours -->
+    <string name="settings_quiet_title">Quiet hours</string>
+    <string name="settings_quiet_enabled">Silence nudges</string>
+    <string name="settings_quiet_description">No open-count nudges, break reminders or limit warnings during these hours. Pauses and blocking still apply.</string>
+
+    <!-- Dashboard: pauses -->
+    <string name="dashboard_pauses_title">Pauses that saved you</string>
+    <plurals name="dashboard_pauses_total">
+        <item quantity="one">%1$d skip out of %2$d pauses today</item>
+        <item quantity="other">%1$d skips out of %2$d pauses today</item>
+    </plurals>
+    <plurals name="dashboard_pauses_skipped_app">
+        <item quantity="one">You skipped %1$s %2$d time today</item>
+        <item quantity="other">You skipped %1$s %2$d times today</item>
+    </plurals>
+
     <!-- Settings: debug tools -->
     <string name="settings_debug_title">Debug tools</string>
     <string name="settings_debug_sample_data">Insert sample data</string>

@@ -28,6 +28,7 @@ internal class OverlayWindow(
     private val now: () -> Long,
     private val onTap: () -> Unit,
     private val onMoved: (PillPosition) -> Unit,
+    private val onMessageAction: (PillAction) -> Unit,
 ) {
     private var state by mutableStateOf(initialState)
     private val owner = OverlayLifecycleOwner()
@@ -58,6 +59,7 @@ internal class OverlayWindow(
                 onTap = onTap,
                 onDrag = ::dragBy,
                 onDragEnd = ::dragEnded,
+                onMessageAction = onMessageAction,
             )
         }
         // The pill changes size (collapsed, today's total); keep it on screen when it does.

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.BlockingPreferences
 import com.unscroll.app.data.blocking.LimitRepository
+import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
@@ -12,6 +13,7 @@ import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.blocking.LimitChangePolicy
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.PendingChange
+import com.unscroll.app.domain.friction.FrictionSettings
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -38,6 +40,7 @@ data class AppCardState(
     val pending: PendingChange?,
     val decision: BlockDecision,
     val now: Long,
+    val friction: FrictionSettings = FrictionSettings.DEFAULT,
 )
 
 data class AppsUiState(
@@ -54,6 +57,7 @@ class AppsViewModel @Inject constructor(
     private val usage: UsageDataSource,
     private val evaluator: BlockEvaluator,
     private val blockingPreferences: BlockingPreferences,
+    private val friction: FrictionRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -67,10 +71,11 @@ class AppsViewModel @Inject constructor(
 
     val uiState: StateFlow<AppsUiState> = combine(
         limits.observeLimits(),
+        friction.observeSettings(),
         blockingPreferences.settings,
         ticks,
-    ) { stored, _, _ -> stored }
-        .mapLatest { stored -> build(stored) }
+    ) { stored, frictionSettings, _, _ -> stored to frictionSettings }
+        .mapLatest { (stored, frictionSettings) -> build(stored, frictionSettings) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppsUiState())
 
     fun setDailyLimit(packageName: String, minutes: Int?) =
@@ -117,7 +122,18 @@ class AppsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun build(stored: Map<String, AppLimit>): AppsUiState {
+    /** Pause screen, nudges, break reminders, warnings and tint apply immediately. */
+    fun updateFriction(packageName: String, transform: (FrictionSettings) -> FrictionSettings) {
+        viewModelScope.launch {
+            friction.saveSettings(packageName, transform(friction.getSettings(packageName)))
+        }
+    }
+
+    fun resetFriction(packageName: String) {
+        viewModelScope.launch { friction.resetToDefaults(packageName) }
+    }
+
+    private suspend fun build(stored: Map<String, AppLimit>, frictionSettings: Map<String, FrictionSettings>): AppsUiState {
         val now = clock.now()
         limits.applyDueChanges(now)
         val zone = ZoneId.systemDefault()
@@ -137,6 +153,7 @@ class AppsViewModel @Inject constructor(
                     zone = zone,
                 ),
                 now = now,
+                friction = frictionSettings[packageName] ?: FrictionSettings.DEFAULT,
             )
         }
         return AppsUiState(isLoading = false, apps = cards, blocking = blockingPreferences.current(now))

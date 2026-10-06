@@ -31,11 +31,14 @@ class MigrationTest {
         context.deleteDatabase(DB_NAME)
     }
 
-    private fun createVersion1() {
+    private fun createVersion1() = createDatabase(version = 1)
+
+    /** Builds the schema of [version] by hand: v1 tables, plus each migration up to it. */
+    private fun createDatabase(version: Int) {
         val config = SupportSQLiteOpenHelper.Configuration.builder(context)
             .name(DB_NAME)
             .callback(
-                object : SupportSQLiteOpenHelper.Callback(1) {
+                object : SupportSQLiteOpenHelper.Callback(version) {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         db.execSQL(
                             "CREATE TABLE IF NOT EXISTS `sessions` (" +
@@ -45,6 +48,7 @@ class MigrationTest {
                         )
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_sessions_startTime` ON `sessions` (`startTime`)")
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_sessions_endTime` ON `sessions` (`endTime`)")
+                        if (version >= 2) MIGRATION_1_2.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -91,6 +95,49 @@ class MigrationTest {
                 BlockOverrideEntity(packageName = "com.instagram.android", grantedAt = 1, expiresAt = 2, method = "WAIT"),
             )
             assertEquals(1, database.blockingDao().observeOverridesSince(0).first().size)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate2To3_keepsLimitsAndSessions_andAddsFrictionTables() = runTest {
+        createDatabase(version = 2)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(DB_NAME)
+            .callback(
+                object : SupportSQLiteOpenHelper.Callback(2) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            )
+            .build()
+        FrameworkSQLiteOpenHelperFactory().create(config).apply {
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits VALUES ('com.instagram.android', 45, 0, 1, 31, 1320, 420, NULL, NULL)",
+            )
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            assertEquals(2, database.sessionDao().observeRecent(10).first().size)
+            assertEquals(45, database.blockingDao().getLimit("com.instagram.android")?.dailyLimitMinutes)
+
+            val friction = database.frictionDao()
+            friction.upsertSettings(
+                AppFrictionEntity("com.instagram.android", true, 10, true, "5,10,20", true, 15, true, false),
+            )
+            assertEquals("5,10,20", friction.getSettings("com.instagram.android")?.nudgeThresholds)
+            friction.insertPauseOutcome(
+                PauseOutcomeEntity(packageName = "com.instagram.android", shownAt = 1, outcome = "ABANDONED"),
+            )
+            assertEquals(1, friction.observePauseStatsSince(0).first().single().abandoned)
+            friction.insertNudges(listOf(NudgeLogEntity("com.instagram.android", "2026-10-06", "OPENS", 5, 1)))
+            assertEquals(listOf(5), friction.sentNudges("com.instagram.android", "2026-10-06", "OPENS"))
         } finally {
             database.close()
         }

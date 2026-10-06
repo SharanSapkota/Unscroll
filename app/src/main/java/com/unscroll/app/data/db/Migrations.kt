@@ -30,4 +30,42 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+/** v2 → v3 (M6): per-app friction settings, pause outcomes and the once-a-day nudge log. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `app_friction` (" +
+                "`packageName` TEXT NOT NULL, " +
+                "`pauseEnabled` INTEGER NOT NULL, " +
+                "`pauseSeconds` INTEGER NOT NULL, " +
+                "`nudgesEnabled` INTEGER NOT NULL, " +
+                "`nudgeThresholds` TEXT NOT NULL, " +
+                "`breakRemindersEnabled` INTEGER NOT NULL, " +
+                "`breakIntervalMinutes` INTEGER NOT NULL, " +
+                "`limitWarningsEnabled` INTEGER NOT NULL, " +
+                "`tintEnabled` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`packageName`))",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `pause_outcomes` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`packageName` TEXT NOT NULL, " +
+                "`shownAt` INTEGER NOT NULL, " +
+                "`outcome` TEXT NOT NULL)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_pause_outcomes_shownAt` ON `pause_outcomes` (`shownAt`)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `nudge_log` (" +
+                "`packageName` TEXT NOT NULL, " +
+                "`day` TEXT NOT NULL, " +
+                "`kind` TEXT NOT NULL, " +
+                "`value` INTEGER NOT NULL, " +
+                "`sentAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`packageName`, `day`, `kind`, `value`))",
+        )
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
