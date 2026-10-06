@@ -22,7 +22,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Recover orphaned sessions after process death/reboot
 - **Done when**: opening Instagram/TikTok/Facebook creates a session; leaving closes it; survives service restart.
 
-## M3: Dashboard
+## M3: Dashboard ✅ Done
 - Today / Week / Month / All-time per app
 - Opens count, average session, longest session
 - "Hours invested" reframing (days spent, books read equivalent)

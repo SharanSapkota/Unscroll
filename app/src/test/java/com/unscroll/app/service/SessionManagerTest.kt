@@ -271,6 +271,54 @@ class SessionManagerTest {
         assertEquals(listOf(session(1, INSTAGRAM, 0, 45_000)), store.sessions)
     }
 
+    @Test
+    fun foregroundSession_clearsImmediatelyOnLeave_andReturnsWithinDebounce() = runTest {
+        startTracking()
+
+        foreground(INSTAGRAM, atMillis = 0)
+        assertEquals(INSTAGRAM, manager.foregroundSession.value?.packageName)
+
+        foreground(LAUNCHER, atMillis = 10_000)
+        // The session is still open (debounce), but nothing tracked is on screen.
+        assertNull(manager.foregroundSession.value)
+        assertEquals(1L, manager.currentSession.value?.id)
+
+        foreground(INSTAGRAM, atMillis = 11_000)
+        assertEquals(1L, manager.foregroundSession.value?.id)
+    }
+
+    @Test
+    fun foregroundSession_followsDirectSwitch_andClearsOnScreenOffAndStop() = runTest {
+        startTracking()
+
+        foreground(INSTAGRAM, atMillis = 0)
+        foreground(TIKTOK, atMillis = 5_000)
+        assertEquals(TIKTOK, manager.foregroundSession.value?.packageName)
+
+        screenOff(atMillis = 8_000)
+        assertNull(manager.foregroundSession.value)
+
+        screen.screenOn.value = true
+        foreground(FACEBOOK, atMillis = 9_000)
+        assertEquals(FACEBOOK, manager.foregroundSession.value?.packageName)
+
+        trackingJob.cancel()
+        runCurrent()
+        assertNull(manager.foregroundSession.value)
+    }
+
+    @Test
+    fun foregroundSession_staysNullAfterDebounceCloses() = runTest {
+        startTracking()
+
+        foreground(INSTAGRAM, atMillis = 0)
+        foreground(LAUNCHER, atMillis = 10_000)
+        advanceTo(20_000)
+
+        assertNull(manager.foregroundSession.value)
+        assertNull(manager.currentSession.value)
+    }
+
     private companion object {
         const val LAUNCHER = "com.android.launcher3"
         const val BROWSER = "com.android.chrome"

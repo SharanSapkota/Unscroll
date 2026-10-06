@@ -52,6 +52,15 @@ class SessionManager @Inject constructor(
     /** The session in progress, or null. Stays set during the debounce window after leaving. */
     val currentSession: StateFlow<ActiveSession?> = _currentSession.asStateFlow()
 
+    private val _foregroundSession = MutableStateFlow<ActiveSession?>(null)
+
+    /**
+     * The session whose app is on screen right now. Unlike [currentSession] it clears as soon as
+     * the user leaves, so the overlay can disappear immediately, and comes back if they return
+     * within the debounce window.
+     */
+    val foregroundSession: StateFlow<ActiveSession?> = _foregroundSession.asStateFlow()
+
     // All mutable state below is only touched while holding [mutex].
     private var leftAt: Long? = null
     private var pendingClose: Job? = null
@@ -114,7 +123,9 @@ class SessionManager @Inject constructor(
 
     private suspend fun open(packageName: String, now: Long) {
         val id = store.openSession(packageName, now)
-        _currentSession.value = ActiveSession(id, packageName, now)
+        val session = ActiveSession(id, packageName, now)
+        _currentSession.value = session
+        _foregroundSession.value = session
         heartbeat = scope.launch {
             while (isActive) {
                 heartbeatStore.saveHeartbeat(clock.now())
@@ -124,6 +135,7 @@ class SessionManager @Inject constructor(
     }
 
     private fun scheduleClose(session: ActiveSession, now: Long) {
+        _foregroundSession.value = null
         if (pendingClose != null) return // Keep the time the user first left.
         leftAt = now
         pendingClose = scope.launch {
@@ -140,6 +152,7 @@ class SessionManager @Inject constructor(
         pendingClose?.cancel()
         pendingClose = null
         leftAt = null
+        _foregroundSession.value = _currentSession.value
     }
 
     private suspend fun close(session: ActiveSession, endTime: Long) {
@@ -147,6 +160,7 @@ class SessionManager @Inject constructor(
         heartbeat?.cancel()
         heartbeat = null
         _currentSession.value = null
+        _foregroundSession.value = null
         store.closeSession(session.id, endTime)
     }
 
