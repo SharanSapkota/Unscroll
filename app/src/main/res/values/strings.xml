@@ -279,36 +279,36 @@
     <string name="accessibility_service_description">Counts how many times you swipe in Instagram, TikTok and Facebook, so Unscroll can show your swipe count and suggest a break. It does not read your screen, messages or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
 
     <string name="scroll_disclosure_title">Count your swipes (optional)</string>
-    <string name="scroll_disclosure_intro">Unscroll can count how many times you swipe in the apps you track. You'll see the count on the timer and the dashboard, and you can ask for a break after a number of swipes.</string>
+    <string name="scroll_disclosure_intro">Unscroll can count how many times you swipe in the apps you track. You\'ll see the count on the timer and the dashboard, and you can ask for a break after a number of swipes.</string>
     <string name="scroll_disclosure_does_title">What it does</string>
-    <string name="scroll_disclosure_does_body">It uses Android's Accessibility Service to notice that a scroll happened in Instagram, TikTok or Facebook, and in which of these apps. It only counts. It doesn't look at any other app.</string>
+    <string name="scroll_disclosure_does_body">It uses Android\'s Accessibility Service to notice that a scroll happened in Instagram, TikTok or Facebook, and in which of these apps. It only counts. It doesn\'t look at any other app.</string>
     <string name="scroll_disclosure_does_not_title">What it does not do</string>
     <string name="scroll_disclosure_does_not_body">It does not read your screen, posts, messages, usernames or anything you type. It does not control your phone or tap anything for you. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.</string>
-    <string name="scroll_disclosure_optional_title">It's optional</string>
-    <string name="scroll_disclosure_optional_body">Everything else in Unscroll works without it. You can turn it off at any time in Settings, or in your phone's Accessibility settings.</string>
-    <string name="scroll_disclosure_next">If you agree, Unscroll opens Accessibility settings. Find "Unscroll swipe counter" there and switch it on.</string>
+    <string name="scroll_disclosure_optional_title">It\'s optional</string>
+    <string name="scroll_disclosure_optional_body">Everything else in Unscroll works without it. You can turn it off at any time in Settings, or in your phone\'s Accessibility settings.</string>
+    <string name="scroll_disclosure_next">If you agree, Unscroll opens Accessibility settings. Find \"Unscroll swipe counter\" there and switch it on.</string>
     <string name="scroll_disclosure_agree">I agree</string>
     <string name="scroll_disclosure_decline">No thanks</string>
 
-    <string name="scroll_restricted_link">Seeing "Restricted setting"?</string>
+    <string name="scroll_restricted_link">Seeing \"Restricted setting\"?</string>
     <string name="scroll_restricted_title">Allow restricted settings</string>
-    <string name="scroll_restricted_intro">On Android 13 and later, apps that weren't installed from an app store can't switch on an accessibility service until you allow it. To allow it:</string>
+    <string name="scroll_restricted_intro">On Android 13 and later, apps that weren\'t installed from an app store can\'t switch on an accessibility service until you allow it. To allow it:</string>
     <string-array name="scroll_restricted_steps">
         <item>Open App info for Unscroll.</item>
         <item>Tap the three dots (⋮) at the top right.</item>
-        <item>Tap "Allow restricted settings" and confirm.</item>
-        <item>Go back to Accessibility settings and switch on "Unscroll swipe counter".</item>
+        <item>Tap \"Allow restricted settings\" and confirm.</item>
+        <item>Go back to Accessibility settings and switch on \"Unscroll swipe counter\".</item>
     </string-array>
     <string name="scroll_restricted_step">%1$d. %2$s</string>
-    <string name="scroll_restricted_note">If you don't see "Allow restricted settings", try to switch Unscroll on in Accessibility settings once first. The option appears after that. The wording can differ a little between phone makers.</string>
+    <string name="scroll_restricted_note">If you don\'t see \"Allow restricted settings\", try to switch Unscroll on in Accessibility settings once first. The option appears after that. The wording can differ a little between phone makers.</string>
     <string name="scroll_open_app_info">Open App info</string>
     <string name="scroll_open_accessibility">Open Accessibility settings</string>
     <string name="scroll_back">Back</string>
 
     <string name="scroll_settings_title">Scroll counting</string>
     <string name="scroll_status_off">Off. Optionally count your swipes in tracked apps.</string>
-    <string name="scroll_status_needs_consent">The swipe counter is switched on in Accessibility settings, but you haven't agreed in Unscroll, so nothing is counted. Review and agree, or switch it off there.</string>
-    <string name="scroll_status_needs_enabling">Almost there: switch on "Unscroll swipe counter" in Accessibility settings.</string>
+    <string name="scroll_status_needs_consent">The swipe counter is switched on in Accessibility settings, but you haven\'t agreed in Unscroll, so nothing is counted. Review and agree, or switch it off there.</string>
+    <string name="scroll_status_needs_enabling">Almost there: switch on \"Unscroll swipe counter\" in Accessibility settings.</string>
     <string name="scroll_status_active">On. Counting swipes in tracked apps. Nothing else is read.</string>
     <string name="scroll_status_needs_reenable">Swipe counting stopped. Your phone switched the service off.</string>
     <string name="scroll_set_up">Set up</string>
@@ -316,7 +316,7 @@
     <string name="scroll_turn_off">Turn off scroll counting</string>
 
     <string name="scroll_banner_title">Swipe counting stopped</string>
-    <string name="scroll_banner_body">Your phone switched off Unscroll's swipe counter, often to save battery. Switch it back on in Accessibility settings to keep counting.</string>
+    <string name="scroll_banner_body">Your phone switched off Unscroll\'s swipe counter, often to save battery. Switch it back on in Accessibility settings to keep counting.</string>
     <string name="scroll_banner_action">Switch it back on</string>
 
     <string name="settings_overlay_swipes">Show swipe count</string>
@@ -331,7 +331,7 @@
         <item quantity="one">%1$d swipe in %2$s over %3$s.</item>
         <item quantity="other">%1$d swipes in %2$s over %3$s.</item>
     </plurals>
-    <string name="break_done">I'm done</string>
+    <string name="break_done">I\'m done</string>
     <string name="break_keep_scrolling">Keep scrolling</string>
 
     <string name="friction_swipe_break">Take a break after swipes</string>
