@@ -22,6 +22,9 @@ interface UsageDataSource {
     /** Sessions that overlap [range], oldest first. */
     suspend fun sessionsOverlapping(range: TimeRange): List<Session>
 
+    /** Start of the first session ever logged, or null if there is none. */
+    suspend fun firstSessionStart(): Long?
+
     /** Emits whenever sessions are added, closed or get new swipes. */
     fun observeChanges(): Flow<Unit>
 }

@@ -229,6 +229,26 @@ class SessionDaoUsageQueriesTest {
         assertEquals(mapOf(first to 0, second to 5), sessions)
     }
 
+    @Test
+    fun getAll_oldestFirst_andFirstSessionStart() = runTest {
+        assertEquals(null, dao.firstSessionStart())
+        val later = insert(TIKTOK, midnight + 60 * MINUTE, null)
+        val earlier = insert(INSTAGRAM, yesterday, yesterday + MINUTE)
+
+        assertEquals(listOf(earlier, later), dao.getAll().map { it.id })
+        assertEquals(yesterday, dao.firstSessionStart())
+    }
+
+    @Test
+    fun deleteAll_removesEverySession_andReturnsTheCount() = runTest {
+        insert(INSTAGRAM, yesterday, yesterday + MINUTE)
+        insert(TIKTOK, midnight, null)
+
+        assertEquals(2, dao.deleteAll())
+        assertEquals(emptyList<SessionEntity>(), dao.getAll())
+        assertEquals(null, dao.firstSessionStart())
+    }
+
     /** Room may re-emit unchanged results, so skip items until the value changes. */
     private suspend fun app.cash.turbine.ReceiveTurbine<SessionsChangeToken>.awaitUntilChanged(
         previous: SessionsChangeToken,

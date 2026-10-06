@@ -348,4 +348,50 @@
     <string name="dashboard_swipes_per_session">Per session</string>
     <string name="dashboard_swipes_per_minute">Per minute</string>
     <string name="dashboard_swipes_decimal">%1$.1f</string>
+
+    <!-- M8: daily goal, streaks, weekly report, your data -->
+    <string name="goal_settings_title">Daily goal</string>
+    <string name="goal_settings_description">At most this much time a day across tracked apps. Days within it build your streak.</string>
+    <string name="goal_off">Off</string>
+    <string name="goal_card_title">Daily goal</string>
+    <string name="goal_today_of_goal">%1$s of %2$s</string>
+    <string name="goal_left_today">%1$s left today</string>
+    <string name="goal_over_today">%1$s over today\'s goal</string>
+    <string name="goal_current_streak">Current streak</string>
+    <string name="goal_best_streak">Best streak</string>
+    <plurals name="goal_days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+
+    <string name="report_title">Week of %1$s</string>
+    <string name="report_trend_more">%1$s more than the week before</string>
+    <string name="report_trend_less">%1$s less than the week before</string>
+    <string name="report_trend_same">About the same as the week before</string>
+    <string name="report_daily_average">%1$s a day on average</string>
+    <string name="report_busiest_day">Busiest day: %1$s (%2$s)</string>
+    <string name="report_top_app">Most time: %1$s (%2$s)</string>
+    <plurals name="report_opens">
+        <item quantity="one">%d open</item>
+        <item quantity="other">%d opens</item>
+    </plurals>
+    <string name="report_goal_days">Within your goal on %1$d of %2$d days</string>
+
+    <string name="data_title">Your data</string>
+    <string name="data_description">Everything Unscroll records stays on this phone. Export your sessions as a CSV file, or delete your usage history. Your settings and limits stay; to remove everything, uninstall Unscroll.</string>
+    <string name="data_export">Export sessions (CSV)</string>
+    <string name="data_export_failed">Export failed. Try another location.</string>
+    <plurals name="data_exported">
+        <item quantity="one">Exported %d session.</item>
+        <item quantity="other">Exported %d sessions.</item>
+    </plurals>
+    <string name="data_delete">Delete usage history</string>
+    <string name="data_delete_confirm_title">Delete usage history?</string>
+    <string name="data_delete_confirm_body">This deletes every session, swipe count, pause outcome and extension log, and today\'s usage starts again from zero. Your settings, limits and goal stay. This can\'t be undone.</string>
+    <string name="data_delete_confirm">Delete</string>
+    <string name="data_delete_cancel">Cancel</string>
+    <plurals name="data_deleted">
+        <item quantity="one">Deleted %d session.</item>
+        <item quantity="other">Deleted %d sessions.</item>
+    </plurals>
 </resources>

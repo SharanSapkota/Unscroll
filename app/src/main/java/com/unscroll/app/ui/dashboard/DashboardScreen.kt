@@ -108,6 +108,7 @@ private fun DashboardList(
         item { TodayHeader(uiState.todayTrend) }
         // Only shows when the system switched scroll counting off after it had been working.
         item { banner() }
+        uiState.goal?.let { goal -> item { GoalCard(goal) } }
         if (!uiState.trackingEnabled) {
             item {
                 Text(
@@ -148,6 +149,7 @@ private fun DashboardList(
         if (uiState.pauseStats.isNotEmpty()) {
             item { PausesCard(uiState.pauseStats) }
         }
+        uiState.weeklyReport?.let { report -> item { WeeklyReportCard(report) } }
         item { HoursInvestedCard(uiState.hoursInvested) }
         uiState.weekComparison?.let { comparison -> item { WeekCard(comparison) } }
     }

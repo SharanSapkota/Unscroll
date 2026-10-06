@@ -49,7 +49,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Optional grayscale/limit exceeded warning screen
 - **Done when**: each feature can be toggled per app.
 
-## M7: Accessibility Service (optional)
+## M7: Accessibility Service (optional) ✅ Done
 - Opt-in scroll counting (TYPE_VIEW_SCROLLED), "take a break" after N swipes
 - More reliable foreground detection
 - Separate explanation + Play Store disclosure text

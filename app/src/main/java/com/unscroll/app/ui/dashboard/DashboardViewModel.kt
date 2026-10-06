@@ -5,18 +5,26 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.friction.PauseStat
+import com.unscroll.app.data.goals.GoalPreferences
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
+import com.unscroll.app.domain.goals.DailyGoal
+import com.unscroll.app.domain.goals.GetStreakHistoryUseCase
+import com.unscroll.app.domain.goals.Streak
+import com.unscroll.app.domain.goals.StreakHistory
+import com.unscroll.app.domain.goals.StreakRules
 import com.unscroll.app.domain.insights.GetHoursInvestedUseCase
 import com.unscroll.app.domain.insights.GetPeriodUsageUseCase
 import com.unscroll.app.domain.insights.GetTodayTrendUseCase
 import com.unscroll.app.domain.insights.GetWeekComparisonUseCase
+import com.unscroll.app.domain.insights.GetWeeklyReportUseCase
 import com.unscroll.app.domain.insights.HoursInvested
 import com.unscroll.app.domain.insights.PeriodUsage
 import com.unscroll.app.domain.insights.Trend
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.WeekComparison
+import com.unscroll.app.domain.insights.WeeklyReport
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.scroll.GetScrollStatsUseCase
@@ -25,6 +33,8 @@ import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
+import java.time.temporal.WeekFields
+import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -52,10 +62,20 @@ data class DashboardUiState(
     val pauseStats: List<PauseStat> = emptyList(),
     /** Swipe stats for the period, or null if scroll counting was never switched on (cards hidden). */
     val scrollStats: ScrollStats? = null,
+    /** Today against the daily goal, with the streak; null without a goal. */
+    val goal: GoalProgress? = null,
+    /** Last complete week, or null if nothing was tracked in it. */
+    val weeklyReport: WeeklyReport? = null,
 ) {
     /** False until the first session has been logged. */
     val hasAnyData: Boolean get() = hoursInvested.totalMillis > 0
 }
+
+data class GoalProgress(
+    val goalMinutes: Int,
+    val todayMillis: Long,
+    val streak: Streak,
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -69,6 +89,9 @@ class DashboardViewModel @Inject constructor(
     sessionManager: SessionManager,
     trackingPreferences: TrackingPreferences,
     private val friction: FrictionRepository,
+    goalPreferences: GoalPreferences,
+    private val getStreakHistory: GetStreakHistoryUseCase,
+    private val getWeeklyReport: GetWeeklyReportUseCase,
     private val getScrollStats: GetScrollStatsUseCase,
     scrollCounting: ScrollCountingRepository,
     private val clock: Clock,
@@ -89,7 +112,27 @@ class DashboardViewModel @Inject constructor(
             ticker(if (sessionOpen) LIVE_REFRESH_MILLIS else IDLE_REFRESH_MILLIS)
         }
 
-    val uiState: StateFlow<DashboardUiState> = combine(
+    /**
+     * Goal history and the weekly report only change with the data or the date, so they reload on
+     * DB changes and once a minute, not every second. Today's total for the goal comes from the
+     * live state below.
+     */
+    private val slowState: Flow<SlowState> = combine(
+        goalPreferences.dailyGoalMinutes,
+        usageDataSource.observeChanges(),
+        ticker(IDLE_REFRESH_MILLIS),
+    ) { goal, _, _ -> goal }
+        .mapLatest { goal ->
+            val now = clock.now()
+            val zone = ZoneId.systemDefault()
+            SlowState(
+                goalMinutes = goal,
+                streakHistory = goal?.let { getStreakHistory(it, now, zone) },
+                weeklyReport = getWeeklyReport(now, zone, WeekFields.of(Locale.getDefault()).firstDayOfWeek, goal),
+            )
+        }
+
+    private val liveState: Flow<DashboardUiState> = combine(
         selectedPeriod,
         trackingPreferences.trackingEnabled,
         usageDataSource.observeChanges(),
@@ -97,7 +140,20 @@ class DashboardViewModel @Inject constructor(
         scrollCounting.countingSince,
     ) { period, trackingEnabled, _, _, countingSince -> LoadRequest(period, trackingEnabled, countingSince) }
         .mapLatest { load(it.period, it.trackingEnabled, it.countingSince) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
+
+    val uiState: StateFlow<DashboardUiState> = combine(liveState, slowState) { state, slow ->
+        val goal = slow.goalMinutes
+        val history = slow.streakHistory
+        state.copy(
+            goal = if (goal != null && history != null) {
+                val today = state.todayTrend.currentMillis
+                GoalProgress(goal, today, StreakRules.withToday(history, today, DailyGoal.millis(goal)))
+            } else {
+                null
+            },
+            weeklyReport = slow.weeklyReport,
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
 
     fun selectPeriod(period: UsagePeriod) {
         savedStateHandle[KEY_PERIOD] = period.name
@@ -118,6 +174,12 @@ class DashboardViewModel @Inject constructor(
             scrollStats = countingSince?.let { getScrollStats(period, it, now, zone) },
         )
     }
+
+    private data class SlowState(
+        val goalMinutes: Int?,
+        val streakHistory: StreakHistory?,
+        val weeklyReport: WeeklyReport?,
+    )
 
     private data class LoadRequest(val period: UsagePeriod, val trackingEnabled: Boolean, val countingSince: Long?)
 

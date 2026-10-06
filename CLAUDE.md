@@ -3,9 +3,9 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated with M7. Keep this section in sync when a milestone lands.
+Last updated with M8. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking) and M6 (friction and nudges). M7 (opt-in accessibility scroll counting) is implemented and awaiting device testing. See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking), M6 (friction and nudges) and M7 (opt-in accessibility scroll counting). M8 (goals, streaks, weekly report, data export/delete and release docs) is implemented and awaiting device testing; the Play release steps themselves are manual (docs/RELEASE.md). See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
 - **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and the accessibility-service state, and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
@@ -26,7 +26,7 @@ Last updated with M7. Keep this section in sync when a milestone lands.
   - Room `UnscrollDatabase` (v4): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`), `pause_outcomes` and `nudge_log` (`FrictionDao`/`FrictionRepository`).
   - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
   - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
-  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, blocking, quiet-hours and scroll-counting preferences.
+  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, blocking, quiet-hours, goal and scroll-counting preferences.
 - **Dashboard** (`ui/dashboard`, `domain/insights`):
   - Today's total with a trend against yesterday at the same time of day.
   - A period selector (Today, Week = last 7 days, Month = last 30 days, All time) driving per-app cards (time, opens, average, longest), plus an "All apps" summary.
@@ -37,7 +37,9 @@ Last updated with M7. Keep this section in sync when a milestone lands.
     - Use cases (`GetPeriodUsageUseCase`, `GetTodayTrendUseCase`, `GetWeekComparisonUseCase`, `GetHoursInvestedUseCase`) sit on `UsageDataSource` (implemented by `UsageRepository`).
     - Conversion constants live in `Equivalents`.
   - A "Swipes" card (swipes today; per app: total, per session, per minute, via `GetScrollStatsUseCase` and `SessionDao.appScrollStats`). It only shows once scroll counting was ever on, and only counts sessions since then. A banner asks to re-enable the service when the system switched it off.
-  - `DashboardViewModel` exposes one `StateFlow<DashboardUiState>`. It refreshes on DB changes, every second while a session is open, and every minute otherwise, only while collected.
+  - Daily goal and streaks (`domain/goals`): `GoalPreferences` (global minutes per day, off by default). `GetStreakHistoryUseCase` builds complete days from the first tracked day (max 365) with the linear `UsageMath.totalsByDay`; `StreakRules` (pure) gives the streak ending yesterday and the best, and `withToday` adds today while it is within the goal. A goal card shows today against the goal and both streaks.
+  - Weekly report (`GetWeeklyReportUseCase`): the last complete calendar week (locale's first day of week) against the week before: total, trend, daily average, busiest day, top app, opens and goal days. Shown as a "Week of …" card.
+  - `DashboardViewModel` exposes one `StateFlow<DashboardUiState>`. The live part refreshes on DB changes, every second while a session is open, and every minute otherwise; goal history and the weekly report reload only on DB changes and once a minute. Only while collected.
 - **Overlay timer** (`overlay/`, `domain/overlay`):
   - The pill lives in a `TYPE_APPLICATION_OVERLAY` window (`OverlayWindow`: `FLAG_NOT_FOCUSABLE | FLAG_LAYOUT_IN_SCREEN`, wrap content, so touches outside it pass through).
   - Compose runs in a `ComposeView` with its own `OverlayLifecycleOwner` (lifecycle, ViewModelStore and SavedStateRegistry).
@@ -69,8 +71,10 @@ Last updated with M7. Keep this section in sync when a milestone lands.
   - `ScrollCountingPreferences` (consent, first connection) and `ScrollCountingRepository` (enabled in `Settings.Secure`, re-checked on resume; connected, as reported by the service). `ScrollCountingRules.status` (pure) gives OFF / NEEDS_CONSENT / NEEDS_ENABLING / ACTIVE / NEEDS_REENABLE. "Turn off" withdraws consent and the service calls `disableSelf()`.
   - Take a break: per-app `FrictionSettings.swipeBreakAfter` (off by default; 25/50/100/200). `SwipeBreakTracker` (pure) decides when; `FrictionCoordinator` opens `BreakActivity` (swipes, time, 15 s breathing countdown, "Keep scrolling" / "I'm done", Back disabled, Home always works). A blocked app gets the block screen instead.
   - Play docs: `docs/ACCESSIBILITY_DECLARATION.md` and the disclosure wording in `STORE_LISTING.md`.
+- **Your data** (`data/history`, `domain/export`, Settings): "Export sessions (CSV)" writes `SessionCsv` (RFC 4180, ISO times with offset) to a file the user picks (`CreateDocument`, no storage permission). "Delete usage history" (`HistoryRepository`) ends the open session, then deletes sessions, pause outcomes, the nudge log and the extension log in one transaction, and resets the swipe-stats start. Settings, limits, goal and consent stay on purpose.
+- **Release docs** (`docs/`): `PRIVACY_POLICY.md`, `DATA_SAFETY.md` (no data collected or shared; no `INTERNET` permission), `ACCESSIBILITY_DECLARATION.md`, `RELEASE.md` (signing, testing tracks, per-release checks).
 - **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`).
-- **Not built yet**: accessibility events for foreground detection (still `UsageStatsManager` only); streaks, goals, weekly report, data export and release tasks (M8).
+- **Not built yet**: accessibility events for foreground detection (still `UsageStatsManager` only); a weekly report notification (would need WorkManager); per-app goals; R8/minify for release; the manual Play steps (signing, screenshots, testing tracks).
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
   - Repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`.

@@ -34,6 +34,8 @@ class UsageRepository @Inject constructor(
     override suspend fun sessionsOverlapping(range: TimeRange): List<Session> =
         dao.sessionsOverlapping(range.from, range.to).map { it.toSession() }
 
+    override suspend fun firstSessionStart(): Long? = dao.firstSessionStart()
+
     override fun observeChanges(): Flow<Unit> =
         dao.observeChangeToken().distinctUntilChanged().map { }
 }
