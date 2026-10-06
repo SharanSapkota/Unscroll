@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.Unscroll" parent="android:Theme.Material.NoActionBar" />
+</resources>
