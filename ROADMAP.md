@@ -14,7 +14,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Battery optimization guidance screen (with OEM-specific hints)
 - **Done when**: user can't reach the dashboard until required permissions are granted (with a skip for optional ones).
 
-## M2: Foreground detection + session logging
+## M2: Foreground detection + session logging ✅ Done
 - `TrackingService` (foreground, notification channel)
 - `AppDetector` polls UsageStatsManager events (~1s) only while the screen is on
 - `SessionManager` opens/closes sessions with debounce (short app switches under ~3s don't split a session)
