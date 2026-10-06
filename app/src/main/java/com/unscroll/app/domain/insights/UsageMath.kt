@@ -32,6 +32,25 @@ object UsageMath {
         DayUsage(date, sessions.sumOf { overlap(it, range, now) })
     }
 
+    /**
+     * Total time per local day in [range], in one pass over [sessions] (linear, unlike
+     * [dailyTotals]), for long histories such as streaks. Days without usage are absent.
+     */
+    fun totalsByDay(sessions: List<Session>, range: TimeRange, zone: ZoneId, now: Long): Map<LocalDate, Long> {
+        val totals = HashMap<LocalDate, Long>()
+        for (session in sessions) {
+            var cursor = maxOf(session.startTime, range.from)
+            val end = minOf(session.endTime ?: now, range.to)
+            while (cursor < end) {
+                val day = localDate(cursor, zone)
+                val segmentEnd = minOf(end, startOfDay(day.plusDays(1), zone))
+                totals[day] = (totals[day] ?: 0L) + (segmentEnd - cursor)
+                cursor = segmentEnd
+            }
+        }
+        return totals
+    }
+
     /** Time per local hour of day (24 buckets) for the parts of sessions inside [range]. */
     fun hourlyTotals(sessions: List<Session>, range: TimeRange, zone: ZoneId, now: Long): List<Long> {
         val buckets = LongArray(HOURS_PER_DAY)

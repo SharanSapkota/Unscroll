@@ -124,10 +124,14 @@ fun SettingsScreen(
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         QuietHoursSection(quietHours, viewModel::setQuietHours)
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        DailyGoalSection()
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         ScrollCountingSection(
             onSetUp = onScrollCountingSetUp,
             onRestrictedHelp = onRestrictedSettingHelp,
         )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        YourDataSection()
         if (BuildConfig.DEBUG) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             DebugTools(

@@ -92,6 +92,17 @@ interface SessionDao {
     )
     suspend fun appScrollStats(rangeStart: Long, rangeEnd: Long, now: Long): List<AppScrollStatsRow>
 
+    /** Every session, oldest first, for the CSV export. */
+    @Query("SELECT * FROM sessions ORDER BY startTime, id")
+    suspend fun getAll(): List<SessionEntity>
+
+    @Query("SELECT MIN(startTime) FROM sessions")
+    suspend fun firstSessionStart(): Long?
+
+    /** "Delete usage history". Returns how many sessions were deleted. */
+    @Query("DELETE FROM sessions")
+    suspend fun deleteAll(): Int
+
     /** Sets the swipe count of a session. Only SessionManager writes it. */
     @Query("UPDATE sessions SET scrollCount = :scrollCount WHERE id = :id")
     suspend fun updateScrollCount(id: Long, scrollCount: Int)

@@ -88,6 +88,21 @@ class FrictionDaoTest {
     }
 
     @Test
+    fun deletingHistory_clearsPauseOutcomesAndNudges_butKeepsSettings() = runTest {
+        val today = LocalDate.of(2026, 10, 6)
+        repository.saveSettings(INSTAGRAM, FrictionSettings(pauseSeconds = 20))
+        repository.logPauseOutcome(INSTAGRAM, shownAt = 150, outcome = PauseOutcome.ABANDONED)
+        repository.recordNudges(INSTAGRAM, today, NudgeKind.OPENS, listOf(5), now = 1)
+
+        database.frictionDao().deleteAllPauseOutcomes()
+        database.frictionDao().deleteAllNudges()
+
+        assertEquals(emptyList<PauseStat>(), repository.observePauseStatsSince(0).first())
+        assertEquals(emptySet<Int>(), repository.sentNudges(INSTAGRAM, today, NudgeKind.OPENS))
+        assertEquals(20, repository.getSettings(INSTAGRAM).pauseSeconds)
+    }
+
+    @Test
     fun nudgeLog_perAppDayAndKind_neverDuplicated() = runTest {
         val today = LocalDate.of(2026, 10, 6)
         repository.recordNudges(INSTAGRAM, today, NudgeKind.OPENS, listOf(5, 10), now = 1)

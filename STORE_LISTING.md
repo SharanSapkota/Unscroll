@@ -37,8 +37,8 @@ Store listing sentence (for the full description, near the feature list):
 > Unscroll's optional swipe counter uses the Accessibility Service API to count scroll gestures in the apps you choose to track. It never reads your screen content or messages, and no data leaves your phone.
 
 ## Checklist
-- Privacy policy URL (required)
-- Data Safety form: no data collected or shared
+- Privacy policy URL (required): draft in docs/PRIVACY_POLICY.md
+- Data Safety form: no data collected or shared (answers in docs/DATA_SAFETY.md)
 - Accessibility API declaration form (draft in docs/ACCESSIBILITY_DECLARATION.md, plus a short video of the disclosure and the feature)
 - 4-8 screenshots, 512x512 icon, 1024x500 feature graphic
 - Do not use "Instagram", "TikTok", or "Facebook" in the title

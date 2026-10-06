@@ -122,5 +122,7 @@ class FakeUsageDataSource(val sessions: MutableList<Session> = mutableListOf()) 
         sessions.filter { it.startTime < range.to && (it.endTime ?: Long.MAX_VALUE) > range.from }
             .sortedBy { it.startTime }
 
+    override suspend fun firstSessionStart(): Long? = sessions.minOfOrNull { it.startTime }
+
     override fun observeChanges(): Flow<Unit> = changes.map { }
 }

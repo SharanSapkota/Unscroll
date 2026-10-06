@@ -29,6 +29,9 @@ interface BlockingDao {
     @Query("SELECT MAX(expiresAt) FROM block_overrides WHERE packageName = :packageName AND expiresAt > :now")
     suspend fun activeOverrideUntil(packageName: String, now: Long): Long?
 
+    @Query("DELETE FROM block_overrides")
+    suspend fun deleteAllOverrides()
+
     @Query("SELECT * FROM block_overrides WHERE grantedAt >= :since ORDER BY grantedAt DESC")
     fun observeOverridesSince(since: Long): Flow<List<BlockOverrideEntity>>
 }

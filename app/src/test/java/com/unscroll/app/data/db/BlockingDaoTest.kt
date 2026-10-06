@@ -90,6 +90,17 @@ class BlockingDaoTest {
     }
 
     @Test
+    fun deleteAllOverrides_endsTheLog_butKeepsLimits() = runTest {
+        dao.upsertLimit(AppLimitEntity(INSTAGRAM, 30, false, false, 127, 0, 0, null, null))
+        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "WAIT"))
+
+        dao.deleteAllOverrides()
+
+        assertEquals(null, dao.activeOverrideUntil(INSTAGRAM, now = 200))
+        assertEquals(30, dao.getLimit(INSTAGRAM)?.dailyLimitMinutes)
+    }
+
+    @Test
     fun overrides_areLoggedForTheDashboard() = runTest {
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "WAIT"))
         dao.insertOverride(BlockOverrideEntity(packageName = TIKTOK, grantedAt = 500, expiresAt = 800, method = "PHRASE"))

@@ -63,6 +63,16 @@ class ScrollCountingPreferences @Inject constructor(
         }
     }
 
+    /**
+     * "Delete usage history": swipe stats start again from [now] if the service is counting right
+     * now, otherwise they are hidden until it connects again.
+     */
+    suspend fun resetHistory(now: Long, countingNow: Boolean) {
+        dataStore.edit {
+            if (countingNow) it[COUNTING_SINCE] = now else it.remove(COUNTING_SINCE)
+        }
+    }
+
     private companion object {
         val CONSENT = stringPreferencesKey("scroll_consent")
         val CONSENT_AT = longPreferencesKey("scroll_consent_at")

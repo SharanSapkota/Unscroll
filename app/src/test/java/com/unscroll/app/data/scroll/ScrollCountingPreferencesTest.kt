@@ -80,4 +80,18 @@ class ScrollCountingPreferencesTest {
         preferences.setConsent(ScrollConsent.AGREED, now = 7_000)
         assertFalse(preferences.record.first().connectedSinceConsent)
     }
+
+    @Test
+    fun resetHistory_restartsOrHidesSwipeStats() = runTest {
+        val preferences = createPreferences()
+        preferences.setConsent(ScrollConsent.AGREED, now = 1_000)
+        preferences.onServiceConnected(now = 5_000)
+
+        preferences.resetHistory(now = 9_000, countingNow = true)
+        assertEquals(9_000L, preferences.record.first().countingSince)
+
+        preferences.resetHistory(now = 10_000, countingNow = false)
+        assertNull(preferences.record.first().countingSince)
+        assertEquals(ScrollConsent.AGREED, preferences.record.first().consent)
+    }
 }

@@ -38,6 +38,12 @@ interface FrictionDao {
     )
     fun observePauseStatsSince(since: Long): Flow<List<PauseStatRow>>
 
+    @Query("DELETE FROM pause_outcomes")
+    suspend fun deleteAllPauseOutcomes()
+
+    @Query("DELETE FROM nudge_log")
+    suspend fun deleteAllNudges()
+
     @Query("SELECT value FROM nudge_log WHERE packageName = :packageName AND day = :day AND kind = :kind")
     suspend fun sentNudges(packageName: String, day: String, kind: String): List<Int>
 
