@@ -8,4 +8,54 @@
     <string name="dashboard_placeholder">Your time invested will show up here.</string>
     <string name="apps_placeholder">Tracked apps and limits will show up here.</string>
     <string name="settings_placeholder">Settings will show up here.</string>
+
+    <!-- Onboarding: shared -->
+    <string name="onboarding_step_counter">Step %1$d of %2$d</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_get_started">Get started</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_skip">Skip for now</string>
+    <string name="onboarding_finish">Finish</string>
+    <string name="onboarding_open_settings">Open settings</string>
+    <string name="onboarding_status_allowed">Allowed</string>
+    <string name="onboarding_status_not_allowed">Not allowed yet</string>
+    <string name="onboarding_optional">Optional. You can skip this and turn it on later.</string>
+    <string name="onboarding_required">Required. Unscroll can\'t work without it.</string>
+
+    <!-- Onboarding: welcome -->
+    <string name="onboarding_welcome_title">Take back your time</string>
+    <string name="onboarding_welcome_body">Unscroll shows you how long you spend in Instagram, TikTok and Facebook, while you\'re spending it. You choose limits, and it adds a little friction to help you stop.</string>
+    <string name="onboarding_welcome_privacy">Private by design: everything stays on this phone. No account, no ads, no tracking.</string>
+    <string name="onboarding_welcome_next">Next, we\'ll ask for a few permissions and explain why each one is needed.</string>
+
+    <!-- Onboarding: usage access -->
+    <string name="onboarding_usage_title">See which app is open</string>
+    <string name="onboarding_usage_body">Usage Access lets Unscroll notice when Instagram, TikTok or Facebook is on your screen, so it can time your sessions.</string>
+    <string name="onboarding_usage_privacy">Unscroll only sees app names and times. It never sees what you look at, type or watch, and nothing leaves your phone.</string>
+    <string name="onboarding_usage_how_to">Tap Open settings, find Unscroll in the list, turn on \"Permit usage access\", then come back here.</string>
+
+    <!-- Onboarding: overlay -->
+    <string name="onboarding_overlay_title">Show a timer on top</string>
+    <string name="onboarding_overlay_body">Display over other apps lets Unscroll show a small timer while you scroll, and a pause screen when you reach a limit you set.</string>
+    <string name="onboarding_overlay_privacy">This only lets Unscroll draw on the screen. It can\'t read anything that other apps show.</string>
+    <string name="onboarding_overlay_how_to">Tap Open settings, turn on \"Allow display over other apps\", then come back here.</string>
+
+    <!-- Onboarding: notifications -->
+    <string name="onboarding_notifications_title">Gentle reminders</string>
+    <string name="onboarding_notifications_body">Notifications let Unscroll show that it\'s running, and send nudges like break reminders.</string>
+    <string name="onboarding_notifications_how_to">Tap Allow notifications. If nothing pops up, Unscroll opens its notification settings so you can turn them on there.</string>
+    <string name="onboarding_notifications_action">Allow notifications</string>
+
+    <!-- Onboarding: battery -->
+    <string name="onboarding_battery_title">Keep Unscroll running</string>
+    <string name="onboarding_battery_body">Some phones close apps in the background to save battery. When that happens, Unscroll stops timing your sessions without telling you.</string>
+    <string name="onboarding_battery_cost">Unscroll only does work while a tracked app is open and the screen is on, so turning off battery optimization costs very little battery.</string>
+    <string name="onboarding_battery_how_to">Tap Open settings, switch the list to \"All apps\", choose Unscroll and pick \"Don\'t optimize\" (or \"Unrestricted\").</string>
+    <string name="onboarding_battery_app_info">Open app info</string>
+    <string name="onboarding_battery_oem_title">Extra steps for your phone</string>
+    <string name="onboarding_battery_hint_xiaomi">Xiaomi, Redmi and POCO: open App info, turn on Autostart, then set Battery saver to \"No restrictions\". Also lock Unscroll in the recent apps screen (pull its card down or long-press it).</string>
+    <string name="onboarding_battery_hint_samsung">Samsung: go to Settings, then Battery, then Background usage limits. Remove Unscroll from \"Sleeping apps\" and \"Deep sleeping apps\", and add it to \"Never sleeping apps\".</string>
+    <string name="onboarding_battery_hint_huawei">Huawei and Honor: go to Settings, then Battery, then App launch. Find Unscroll, switch it to \"Manage manually\" and turn on Auto-launch, Secondary launch and Run in background.</string>
+    <string name="onboarding_battery_hint_oneplus">OnePlus: open App info, then Battery, and choose \"Allow background activity\" or \"Unrestricted\". Also lock Unscroll in the recent apps screen.</string>
+    <string name="onboarding_battery_hint_other">Other phones can have their own battery savers. dontkillmyapp.com has steps for most brands.</string>
 </resources>
