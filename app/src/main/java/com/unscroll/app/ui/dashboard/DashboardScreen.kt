@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,6 +41,7 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.data.friction.PauseStat
 import com.unscroll.app.domain.insights.AppUsage
 import com.unscroll.app.domain.insights.DayUsage
 import com.unscroll.app.domain.insights.GetHoursInvestedUseCase
@@ -133,6 +135,9 @@ private fun DashboardList(
                 )
             }
             item { HeatmapCard(periodUsage.hourly) }
+        }
+        if (uiState.pauseStats.isNotEmpty()) {
+            item { PausesCard(uiState.pauseStats) }
         }
         item { HoursInvestedCard(uiState.hoursInvested) }
         uiState.weekComparison?.let { comparison -> item { WeekCard(comparison) } }
@@ -281,6 +286,39 @@ private fun HeatmapCard(hourly: List<Long>) {
                 hourly = hourly,
                 description = stringResource(R.string.dashboard_heatmap_description, peakHour ?: 0),
             )
+        }
+    }
+}
+
+/** "Pauses that saved you": how often the pause screen talked the user out of an app today. */
+@Composable
+private fun PausesCard(stats: List<PauseStat>) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.dashboard_pauses_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            val skipped = stats.sumOf { it.abandoned }
+            Text(
+                text = pluralStringResource(R.plurals.dashboard_pauses_total, skipped, skipped, stats.sumOf { it.shown }),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            stats.filter { it.abandoned > 0 }.forEach { stat ->
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.dashboard_pauses_skipped_app,
+                        stat.abandoned,
+                        rememberAppLabel(stat.packageName),
+                        stat.abandoned,
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
         }
     }
 }

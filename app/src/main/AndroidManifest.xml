@@ -58,6 +58,15 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Unscroll" />
 
+        <!-- Pause screen: same task setup as the block screen. -->
+        <activity
+            android:name=".ui.pause.PauseActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Unscroll" />
+
         <service
             android:name=".service.TrackingService"
             android:exported="false"

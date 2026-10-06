@@ -36,7 +36,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Draggable, user can hide/show, hides when the tracked app leaves foreground
 - **Done when**: timer ticks smoothly in all 3 apps and disappears immediately on exit.
 
-## M5: Limits + block screen
+## M5: Limits + block screen ✅ Done
 - Per-app daily limit, block always, block on schedule
 - `BlockActivity` shown when a blocked app opens (send user to home on dismiss)
 - Cooldown: unblock/limit changes take effect after N minutes or require typing a phrase

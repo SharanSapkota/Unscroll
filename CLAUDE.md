@@ -3,9 +3,9 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated with M5. Keep this section in sync when a milestone lands.
+Last updated with M6. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard) and M4 (overlay timer). M5 (limits and blocking) is implemented and awaiting device testing. See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer) and M5 (limits and blocking). M6 (friction and nudges) is implemented and awaiting device testing. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
 - **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
@@ -14,7 +14,7 @@ Last updated with M5. Keep this section in sync when a milestone lands.
   - Usage Access and Overlay are required; Notifications and battery optimization are optional.
 - **Tracking** (`service/`):
   - `TrackingService`: specialUse foreground service with a low-importance notification, `START_STICKY`.
-  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start), `OverlayTimerManager.run()` and `BlockEnforcer.run()`.
+  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start), `OverlayTimerManager.run()`, `BlockEnforcer.run()` and `FrictionCoordinator.run()`.
   - `SessionManager.currentSession` stays set during the debounce window. `foregroundSession` clears the moment the user leaves; the overlay uses that one.
   - `AppDetector` polls `UsageStatsManager.queryEvents` every ~1 s, only while `ScreenStateMonitor` reports the screen on.
   - `ForegroundTracker` (`domain/tracking`) turns usage events into the foreground package.
@@ -22,7 +22,7 @@ Last updated with M5. Keep this section in sync when a milestone lands.
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v2): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`).
+  - Room `UnscrollDatabase` (v3): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction`, `pause_outcomes` and `nudge_log` (`FrictionDao`/`FrictionRepository`).
   - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
   - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
   - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`).
@@ -51,8 +51,16 @@ Last updated with M5. Keep this section in sync when a milestone lands.
   - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s). When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
   - "I need access" is offered only for the daily limit. It needs the typed phrase or a 30 s wait, grants 5 min, and is logged in `block_overrides`.
   - `BlockSafety` only allows tracked packages, and never Unscroll, launchers, Settings, the dialer or emergency apps.
+- **Friction and nudges** (`domain/friction`, `data/friction`, `service/FrictionCoordinator`, `ui/pause`):
+  - Per-app settings (`FrictionSettings` in `app_friction`; defaults until changed; "Reset to defaults") cover: the pause screen (seconds), open-count nudges (thresholds), break reminders (interval), limit warnings, and an experimental tint. They live under each Apps card.
+  - `PauseGate` (pure) shows `PauseActivity` when a tracked app is opened from outside. It skips a return within 30 s of last use, a blocked app (the block screen wins), the first 5 s after tracking starts, and the reopen right after "Continue".
+  - `PauseActivity`: breathing circle, countdown, rotating prompt. Back is disabled; leaving counts as "Never mind". Outcomes go to `pause_outcomes`, and the Dashboard shows "Pauses that saved you".
+  - `NudgeRules` (pure): open-count thresholds and 80/100 % limit warnings, each once per day via `nudge_log`. `BreakReminders`: every interval of a session.
+  - Break reminders and limit warnings expand the pill (`OverlayMessages`, Keep going / Leave). Without the overlay they become notifications (`NudgeNotifier`; "nudges" and high-importance "breaks" channels).
+  - `TintOverlay`: a gray, non-touchable overlay with alpha 0.45, shown while over the limit with an extension running.
+  - `QuietHours` (global, DataStore, may cross midnight) silences nudges, break reminders and limit warnings, but never pauses or blocking. Everything goes through `BlockSafety`.
 - **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`).
-- **Not built yet**: pause screens and nudges (M6), Accessibility Service (M7).
+- **Not built yet**: Accessibility Service and scroll counting (M7), streaks and goals (M8).
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
   - Repositories with fakes or a temp-file DataStore, and ViewModels via `MainDispatcherRule`.
@@ -102,6 +110,8 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 - `SessionEntity(id, packageName, startTime, endTime, scrollCount)`
 - `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute, pendingChangeJson?, pendingChangeAppliesAt?)`
 - `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension
+- `AppFrictionEntity(packageName, pauseEnabled, pauseSeconds, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled)`
+- `PauseOutcomeEntity(id, packageName, shownAt, outcome)` and `NudgeLogEntity(packageName, day, kind, value, sentAt)`
 - `DailyStat` is computed from sessions via queries, not stored
 Sessions are logged from day one because Android only keeps short usage history.
 

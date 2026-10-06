@@ -1,6 +1,7 @@
 package com.unscroll.app.overlay
 
 import android.content.Context
+import android.content.Intent
 import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
@@ -9,6 +10,7 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.session.ActiveSession
@@ -26,6 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,6 +48,7 @@ class OverlayTimerManager @Inject constructor(
     private val sessionManager: SessionManager,
     private val preferences: OverlayPreferences,
     private val usage: UsageDataSource,
+    private val messages: OverlayMessages,
     private val clock: Clock,
 ) {
     private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
@@ -62,8 +66,13 @@ class OverlayTimerManager @Inject constructor(
                     sessionManager.foregroundSession,
                     preferences.settings,
                     collapsed,
-                ) { session, settings, isCollapsed -> Triple(session, settings, isCollapsed) }
-                    .collectLatest { (session, settings, isCollapsed) ->
+                    messages.message,
+                ) { session, settings, isCollapsed, message ->
+                    // Only show a message for the app that is actually on screen.
+                    val forThisApp = message?.takeIf { it.packageName == session?.packageName }
+                    OverlayInputs(session, settings, isCollapsed, forThisApp)
+                }
+                    .collectLatest { (session, settings, isCollapsed, message) ->
                         val show = PillRules.shouldShow(
                             trackedAppInForeground = session != null,
                             settings = settings,
@@ -82,6 +91,7 @@ class OverlayTimerManager @Inject constructor(
                                 todayBaseMillis = if (settings.showTodayTotal) todayTotal(session, now) else null,
                                 todayBaseTime = now,
                                 collapsed = isCollapsed,
+                                message = message,
                             ),
                         )
                         // Android sends no callback when the permission is revoked, so check.
@@ -96,6 +106,9 @@ class OverlayTimerManager @Inject constructor(
             hide()
         }
     }
+
+    /** True if messages can be shown on the pill (overlay on and permitted); else use notifications. */
+    suspend fun canShowMessages(): Boolean = preferences.settings.first().enabled && canDrawOverlays()
 
     /** Removes the pill right away. Main thread. Safe to call when nothing is shown. */
     fun hide() {
@@ -122,6 +135,7 @@ class OverlayTimerManager @Inject constructor(
             now = clock::now,
             onTap = { collapsed.update { !it } },
             onMoved = ::savePosition,
+            onMessageAction = ::onMessageAction,
         )
         try {
             newWindow.attach(preferences.position(context.screenOrientation()))
@@ -132,6 +146,19 @@ class OverlayTimerManager @Inject constructor(
         } catch (e: SecurityException) {
             Log.w(TAG, "Overlay not shown: permission missing", e)
             newWindow.detach()
+        }
+    }
+
+    private fun onMessageAction(action: PillAction) {
+        messages.dismiss()
+        if (action == PillAction.LEAVE) {
+            // "Leave": straight to the home screen. Allowed from the background because our overlay
+            // window is visible.
+            context.startActivity(
+                Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_HOME)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
         }
     }
 
@@ -153,3 +180,10 @@ class OverlayTimerManager @Inject constructor(
         const val PERMISSION_CHECK_MILLIS = 2_000L
     }
 }
+
+private data class OverlayInputs(
+    val session: ActiveSession?,
+    val settings: OverlaySettings,
+    val collapsed: Boolean,
+    val message: PillMessage?,
+)

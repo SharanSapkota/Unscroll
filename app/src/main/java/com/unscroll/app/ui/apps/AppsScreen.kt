@@ -56,6 +56,7 @@ import com.unscroll.app.domain.blocking.BlockSchedule
 import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.PendingChange
+import com.unscroll.app.domain.friction.FrictionSettings
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.ui.block.PhraseDialog
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -112,6 +113,8 @@ fun AppsScreen(
                     onScheduleEnd = { viewModel.setScheduleEnd(app.packageName, it) },
                     onCancelPending = { viewModel.cancelPendingChange(app.packageName) },
                     onUnlockPending = { viewModel.applyPendingChangeNow(app.packageName) },
+                    onFriction = { transform -> viewModel.updateFriction(app.packageName, transform) },
+                    onResetFriction = { viewModel.resetFriction(app.packageName) },
                 ),
             )
         }
@@ -127,6 +130,8 @@ private class AppCardActions(
     val onScheduleEnd: (Int) -> Unit,
     val onCancelPending: () -> Unit,
     val onUnlockPending: () -> Unit,
+    val onFriction: ((FrictionSettings) -> FrictionSettings) -> Unit = {},
+    val onResetFriction: () -> Unit = {},
 )
 
 @Composable
@@ -172,6 +177,11 @@ private fun AppLimitCard(state: AppCardState, frictionMode: FrictionMode, action
                 onCheckedChange = actions.onScheduleEnabled,
             )
             if (settings.schedule.enabled) ScheduleEditor(settings.schedule, actions)
+            FrictionSection(
+                settings = state.friction,
+                onChange = actions.onFriction,
+                onReset = actions.onResetFriction,
+            )
         }
     }
 }

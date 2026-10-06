@@ -3,11 +3,13 @@ package com.unscroll.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.BlockingPreferences
+import com.unscroll.app.data.friction.QuietHoursPreferences
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.sample.SampleDataSeeder
 import com.unscroll.app.domain.blocking.BlockingSettings
 import com.unscroll.app.domain.blocking.FrictionMode
+import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillSize
@@ -31,8 +33,16 @@ class SettingsViewModel @Inject constructor(
     private val sampleDataSeeder: SampleDataSeeder,
     private val blockingPreferences: BlockingPreferences,
     private val clock: Clock,
+    private val quietHoursPreferences: QuietHoursPreferences,
     permissionRepository: PermissionRepository,
 ) : ViewModel() {
+
+    val quietHours: StateFlow<QuietHours> = quietHoursPreferences.quietHours
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), QuietHours())
+
+    fun setQuietHours(transform: (QuietHours) -> QuietHours) {
+        viewModelScope.launch { quietHoursPreferences.save(transform(quietHoursPreferences.current())) }
+    }
 
     /** Friction settings, with a due pending change applied first. */
     val blockingSettings: StateFlow<BlockingSettings> = blockingPreferences.settings

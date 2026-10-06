@@ -1,5 +1,7 @@
 package com.unscroll.app.ui.settings
 
+import android.app.TimePickerDialog
+import android.content.Context
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import com.unscroll.app.BuildConfig
 import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.BlockingSettings
 import com.unscroll.app.domain.blocking.FrictionMode
+import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillRules
@@ -55,6 +58,9 @@ import com.unscroll.app.overlay.TimerPill
 import com.unscroll.app.overlay.TimerPillState
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -70,6 +76,7 @@ fun SettingsScreen(
     val positionReset by viewModel.positionReset.collectAsStateWithLifecycle()
     val sampleSessionsAdded by viewModel.sampleSessionsAdded.collectAsStateWithLifecycle()
     val blockingSettings by viewModel.blockingSettings.collectAsStateWithLifecycle()
+    val quietHours by viewModel.quietHours.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier
@@ -110,6 +117,8 @@ fun SettingsScreen(
             onCooldownMinutes = viewModel::setCooldownMinutes,
             onCancelPending = viewModel::cancelPendingFriction,
         )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+        QuietHoursSection(quietHours, viewModel::setQuietHours)
         if (BuildConfig.DEBUG) {
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             DebugTools(
@@ -433,6 +442,50 @@ private fun BlockingSection(
         }
     }
 }
+
+/** Quiet hours: nudges, break reminders and limit warnings stay silent. */
+@Composable
+private fun QuietHoursSection(quietHours: QuietHours, onChange: ((QuietHours) -> QuietHours) -> Unit) {
+    val context = LocalContext.current
+    SectionTitle(stringResource(R.string.settings_quiet_title))
+    SwitchRow(
+        title = stringResource(R.string.settings_quiet_enabled),
+        description = stringResource(R.string.settings_quiet_description),
+        checked = quietHours.enabled,
+        onCheckedChange = { on -> onChange { it.copy(enabled = on) } },
+    )
+    if (quietHours.enabled) {
+        Row(
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedButton(onClick = {
+                pickTime(context, quietHours.startMinute) { minute -> onChange { it.copy(startMinute = minute) } }
+            }) {
+                Text(stringResource(R.string.apps_schedule_from, formatMinuteOfDay(quietHours.startMinute)))
+            }
+            OutlinedButton(onClick = {
+                pickTime(context, quietHours.endMinute) { minute -> onChange { it.copy(endMinute = minute) } }
+            }) {
+                Text(stringResource(R.string.apps_schedule_to, formatMinuteOfDay(quietHours.endMinute)))
+            }
+        }
+    }
+}
+
+private fun pickTime(context: Context, minuteOfDay: Int, onPicked: (Int) -> Unit) {
+    TimePickerDialog(
+        context,
+        { _, hour, minute -> onPicked(hour * 60 + minute) },
+        minuteOfDay / 60,
+        minuteOfDay % 60,
+        DateFormat.is24HourFormat(context),
+    ).show()
+}
+
+private fun formatMinuteOfDay(minuteOfDay: Int): String =
+    LocalTime.of(minuteOfDay / 60, minuteOfDay % 60)
+        .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
 
 @Composable
 private fun DebugTools(sampleSessionsAdded: Int?, onInsertSampleData: () -> Unit) {
