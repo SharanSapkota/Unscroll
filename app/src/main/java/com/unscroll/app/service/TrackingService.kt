@@ -31,7 +31,7 @@ import kotlinx.coroutines.launch
 /**
  * Foreground service (type specialUse) that keeps session tracking alive while the app is in the
  * background. It wires [AppDetector] to [SessionManager] and owns the overlay timer's lifecycle
- * ([OverlayTimerManager]); all the logic lives in those classes.
+ * ([OverlayTimerManager]) and blocking ([BlockEnforcer]); all the logic lives in those classes.
  *
  * START_STICKY: if the system kills the process, Android restarts the service with a null intent,
  * and [SessionManager.run] first closes the session the dead process left open.
@@ -47,6 +47,9 @@ class TrackingService : Service() {
 
     @Inject
     lateinit var overlayTimerManager: OverlayTimerManager
+
+    @Inject
+    lateinit var blockEnforcer: BlockEnforcer
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
@@ -65,6 +68,7 @@ class TrackingService : Service() {
                     return@launch
                 }
                 launch { overlayTimerManager.run() }
+                launch { blockEnforcer.run() }
                 sessionManager.run()
             }
         }

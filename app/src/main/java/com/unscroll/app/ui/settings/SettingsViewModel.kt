@@ -2,13 +2,17 @@ package com.unscroll.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unscroll.app.data.blocking.BlockingPreferences
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.sample.SampleDataSeeder
+import com.unscroll.app.domain.blocking.BlockingSettings
+import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillSize
 import com.unscroll.app.domain.permission.AppPermission
+import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.TrackingController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -16,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -24,8 +29,34 @@ class SettingsViewModel @Inject constructor(
     private val trackingController: TrackingController,
     private val overlayPreferences: OverlayPreferences,
     private val sampleDataSeeder: SampleDataSeeder,
+    private val blockingPreferences: BlockingPreferences,
+    private val clock: Clock,
     permissionRepository: PermissionRepository,
 ) : ViewModel() {
+
+    /** Friction settings, with a due pending change applied first. */
+    val blockingSettings: StateFlow<BlockingSettings> = blockingPreferences.settings
+        .map { blockingPreferences.current(clock.now()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BlockingSettings())
+
+    /** Weaker friction waits out the current cooldown (see FrictionPolicy). */
+    fun setFrictionMode(mode: FrictionMode) {
+        viewModelScope.launch {
+            val now = clock.now()
+            blockingPreferences.request(mode, blockingPreferences.current(now).cooldownMinutes, now)
+        }
+    }
+
+    fun setCooldownMinutes(minutes: Int) {
+        viewModelScope.launch {
+            val now = clock.now()
+            blockingPreferences.request(blockingPreferences.current(now).frictionMode, minutes, now)
+        }
+    }
+
+    fun cancelPendingFriction() {
+        viewModelScope.launch { blockingPreferences.cancelPending(clock.now()) }
+    }
 
     val trackingEnabled: StateFlow<Boolean> = trackingController.trackingEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)

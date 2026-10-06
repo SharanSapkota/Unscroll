@@ -22,6 +22,11 @@
         <package android:name="com.zhiliaoapp.musically" />
         <package android:name="com.ss.android.ugc.trill" />
         <package android:name="com.facebook.katana" />
+        <!-- Home screens, so they can never be blocked. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
     </queries>
 
     <application
@@ -43,6 +48,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Block screen: its own task over the home screen, never in Recents. -->
+        <activity
+            android:name=".ui.block.BlockActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Unscroll" />
 
         <service
             android:name=".service.TrackingService"
