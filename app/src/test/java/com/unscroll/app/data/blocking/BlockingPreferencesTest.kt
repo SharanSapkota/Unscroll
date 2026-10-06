@@ -1,6 +1,7 @@
 package com.unscroll.app.data.blocking
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import com.unscroll.app.BuildConfig
 import com.unscroll.app.domain.blocking.BlockingSettings
 import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.blocking.PendingFriction
@@ -48,5 +49,19 @@ class BlockingPreferencesTest {
         preferences.request(FrictionMode.WAIT, 5, now = 1)
         preferences.cancelPending(now = 2)
         assertEquals(BlockingSettings(FrictionMode.WAIT, 60, null), preferences.current(now = 10_000_000))
+    }
+
+    @Test
+    fun debugShortCooldown_offByDefault_tenSecondsInDebug_ignoredInRelease() = runTest {
+        val preferences = createPreferences()
+        assertEquals(false, preferences.current(now = 0).debugShortCooldown)
+
+        // `./gradlew test` runs both variants: the switch works in debug and does nothing in release.
+        preferences.setDebugShortCooldown(true)
+        val expected = if (BuildConfig.DEBUG) 10_000L else 10 * 60_000L
+        assertEquals(expected, preferences.current(now = 0).cooldownMillis)
+
+        preferences.setDebugShortCooldown(false)
+        assertEquals(10 * 60_000L, preferences.current(now = 0).cooldownMillis)
     }
 }

@@ -51,7 +51,8 @@ Last updated with M8. Keep this section in sync when a milestone lands.
 - **Limits and blocking** (`domain/blocking`, `data/blocking`, `service/BlockEnforcer`, `ui/apps`, `ui/block`):
   - Per app: daily limit, "Block completely", and a schedule (days plus a start/end time, which may cross midnight).
   - `BlockEvaluator` (pure, injectable `Clock`) returns `Allowed(remainingMillis)` or `Blocked(reason, until)`. Order of precedence: always, then schedule, then daily limit; an extension only lifts the daily limit.
-  - `LimitChangePolicy`: stronger changes apply at once; anything weaker becomes a pending change after the cooldown (default 10 min). Pending changes are applied on read by `LimitRepository.getLimit`/`applyDueChanges`.
+  - `LimitChangePolicy`: stronger changes apply at once; anything weaker becomes a pending change after the cooldown (default 10 min). Pending changes are applied on read by `LimitRepository.getLimit`/`applyDueChanges`, so they take effect on time even if the app was closed.
+  - The Apps cards show the pending *target* (a switch being turned off already shows off, dimmed, with "Turns off in 9:42"), plus a box per change ("Block turns off in 9:42", from `LimitChangePolicy.describe`) with a live countdown, Cancel and "Type phrase to unlock now" (in both friction modes). Edits go through `LimitChangePolicy.edit` (`LimitRepository.editLimit`): they apply to the target, keep the countdown unless they loosen it further, apply their stronger parts at once, and tapping a pending switch again undoes it.
   - `FrictionPolicy` applies the same rule to the friction settings themselves (`BlockingPreferences`: wait vs typed phrase, cooldown length).
   - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s). When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
   - "I need access" is offered only for the daily limit. It needs the typed phrase or a 30 s wait, grants 5 min, and is logged in `block_overrides`.
@@ -73,7 +74,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - Play docs: `docs/ACCESSIBILITY_DECLARATION.md` and the disclosure wording in `STORE_LISTING.md`.
 - **Your data** (`data/history`, `domain/export`, Settings): "Export sessions (CSV)" writes `SessionCsv` (RFC 4180, ISO times with offset) to a file the user picks (`CreateDocument`, no storage permission). "Delete usage history" (`HistoryRepository`) ends the open session, then deletes sessions, pause outcomes, the nudge log and the extension log in one transaction, and resets the swipe-stats start. Settings, limits, goal and consent stay on purpose.
 - **Release docs** (`docs/`): `PRIVACY_POLICY.md`, `DATA_SAFETY.md` (no data collected or shared; no `INTERNET` permission), `ACCESSIBILITY_DECLARATION.md`, `RELEASE.md` (signing, testing tracks, per-release checks).
-- **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`).
+- **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`), and a "10-second cooldown" switch (`BlockingSettings.debugShortCooldown`, ignored in release builds) for testing pending changes.
 - **Not built yet**: accessibility events for foreground detection (still `UsageStatsManager` only); a weekly report notification (would need WorkManager); per-app goals; R8/minify for release; the manual Play steps (signing, screenshots, testing tracks).
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.

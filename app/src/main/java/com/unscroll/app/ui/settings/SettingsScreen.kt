@@ -138,6 +138,12 @@ fun SettingsScreen(
                 sampleSessionsAdded = sampleSessionsAdded,
                 onInsertSampleData = viewModel::insertSampleData,
             )
+            SwitchRow(
+                title = stringResource(R.string.settings_debug_short_cooldown),
+                description = stringResource(R.string.settings_debug_short_cooldown_description),
+                checked = blockingSettings.debugShortCooldown,
+                onCheckedChange = viewModel::setDebugShortCooldown,
+            )
         }
     }
 }

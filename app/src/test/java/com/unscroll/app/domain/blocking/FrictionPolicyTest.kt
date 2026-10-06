@@ -37,4 +37,17 @@ class FrictionPolicyTest {
             FrictionPolicy.resolve(requested, now + 10 * 60_000L),
         )
     }
+
+    @Test
+    fun debugShortCooldown_isTenSeconds_andSurvivesFrictionChanges() {
+        val debug = BlockingSettings(debugShortCooldown = true)
+        assertEquals(10_000L, debug.cooldownMillis)
+        assertEquals(10 * 60_000L, BlockingSettings().cooldownMillis)
+
+        val changed = FrictionPolicy.request(debug, FrictionMode.WAIT, cooldownMinutes = 30, now = 0)
+        assertEquals(true, changed.debugShortCooldown)
+        val weaker = FrictionPolicy.request(changed, FrictionMode.TYPE_PHRASE, cooldownMinutes = 30, now = 0)
+        assertEquals(10_000L, weaker.pending?.appliesAt)
+        assertEquals(true, FrictionPolicy.resolve(weaker, now = 10_000).debugShortCooldown)
+    }
 }

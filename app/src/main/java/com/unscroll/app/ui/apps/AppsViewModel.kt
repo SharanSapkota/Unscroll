@@ -9,7 +9,6 @@ import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
 import com.unscroll.app.domain.blocking.BlockingSettings
-import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.blocking.LimitChangePolicy
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.PendingChange
@@ -102,23 +101,20 @@ class AppsViewModel @Inject constructor(
         viewModelScope.launch { limits.cancelPendingChange(packageName, clock.now()) }
     }
 
-    /** Only reachable after typing the unlock phrase, and only in phrase mode. */
+    /** Only reachable after typing the unlock phrase in the dialog, in either friction mode. */
     fun applyPendingChangeNow(packageName: String) {
-        viewModelScope.launch {
-            val now = clock.now()
-            if (blockingPreferences.current(now).frictionMode == FrictionMode.TYPE_PHRASE) {
-                limits.applyPendingChangeNow(packageName, now)
-            }
-        }
+        viewModelScope.launch { limits.applyPendingChangeNow(packageName, clock.now()) }
     }
 
-    /** Stronger changes apply now; weaker ones become a pending change (see LimitChangePolicy). */
+    /**
+     * The card's controls show the pending target, so edits apply to it (LimitChangePolicy.edit):
+     * stronger changes apply now, weaker ones wait, and undoing a pending change cancels it.
+     */
     private fun change(packageName: String, transform: (LimitSettings) -> LimitSettings) {
         viewModelScope.launch {
             val now = clock.now()
-            val current = limits.getLimit(packageName, now)
             val cooldown = blockingPreferences.current(now).cooldownMillis
-            limits.requestChange(packageName, transform(current.settings), now, cooldown)
+            limits.editLimit(packageName, transform, now, cooldown)
         }
     }
 

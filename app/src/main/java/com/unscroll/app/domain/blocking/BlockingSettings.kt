@@ -6,8 +6,10 @@ data class BlockingSettings(
     val cooldownMinutes: Int = DEFAULT_COOLDOWN_MINUTES,
     /** A weaker friction setting waiting out the current cooldown. */
     val pending: PendingFriction? = null,
+    /** Debug builds only: every cooldown is [DEBUG_COOLDOWN_MILLIS], for testing. */
+    val debugShortCooldown: Boolean = false,
 ) {
-    val cooldownMillis: Long get() = cooldownMinutes * MINUTE
+    val cooldownMillis: Long get() = if (debugShortCooldown) DEBUG_COOLDOWN_MILLIS else cooldownMinutes * MINUTE
 
     companion object {
         const val DEFAULT_COOLDOWN_MINUTES = 10
@@ -18,6 +20,9 @@ data class BlockingSettings(
 
         /** How long "Wait" mode makes the user wait on the block screen. */
         const val BLOCK_SCREEN_WAIT_SECONDS = 30
+
+        /** The debug-only short cooldown. */
+        const val DEBUG_COOLDOWN_MILLIS = 10_000L
 
         private const val MINUTE = 60_000L
     }
@@ -44,13 +49,13 @@ object FrictionPolicy {
         if (isWeaker(current, mode, cooldownMinutes)) {
             current.copy(pending = PendingFriction(mode, cooldownMinutes, now + current.cooldownMillis))
         } else {
-            BlockingSettings(mode, cooldownMinutes, pending = null)
+            current.copy(frictionMode = mode, cooldownMinutes = cooldownMinutes, pending = null)
         }
 
     fun resolve(current: BlockingSettings, now: Long): BlockingSettings {
         val pending = current.pending ?: return current
         return if (now >= pending.appliesAt) {
-            BlockingSettings(pending.frictionMode, pending.cooldownMinutes, pending = null)
+            current.copy(frictionMode = pending.frictionMode, cooldownMinutes = pending.cooldownMinutes, pending = null)
         } else {
             current
         }

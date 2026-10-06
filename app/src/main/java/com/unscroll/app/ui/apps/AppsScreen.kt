@@ -37,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -53,9 +54,10 @@ import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockReason
 import com.unscroll.app.domain.blocking.BlockSchedule
-import com.unscroll.app.domain.blocking.FrictionMode
+import com.unscroll.app.domain.blocking.LimitChangePolicy
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.PendingChange
+import com.unscroll.app.domain.blocking.PendingPart
 import com.unscroll.app.domain.friction.FrictionSettings
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.ui.block.PhraseDialog
@@ -94,7 +96,11 @@ fun AppsScreen(
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 Text(
-                    text = stringResource(R.string.apps_cooldown_note, uiState.blocking.cooldownMinutes),
+                    text = if (uiState.blocking.debugShortCooldown) {
+                        stringResource(R.string.apps_cooldown_note_debug)
+                    } else {
+                        stringResource(R.string.apps_cooldown_note, uiState.blocking.cooldownMinutes)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -103,7 +109,6 @@ fun AppsScreen(
         items(uiState.apps, key = { it.packageName }) { app ->
             AppLimitCard(
                 state = app,
-                frictionMode = uiState.blocking.frictionMode,
                 actions = AppCardActions(
                     onDailyLimit = { viewModel.setDailyLimit(app.packageName, it) },
                     onBlockedAlways = { viewModel.setBlockedAlways(app.packageName, it) },
@@ -135,15 +140,21 @@ private class AppCardActions(
 )
 
 @Composable
-private fun AppLimitCard(state: AppCardState, frictionMode: FrictionMode, actions: AppCardActions) {
-    val settings = state.settings
+private fun AppLimitCard(state: AppCardState, actions: AppCardActions) {
+    // The controls show what the user asked for. While a loosening change waits, that is the
+    // pending target, marked as pending, with the countdown right next to it.
+    val settings = state.pending?.settings ?: state.settings
+    val pending = state.pending
+    val countdown = pending?.let { PillRules.formatTime((it.appliesAt - state.now).coerceAtLeast(0)) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             AppHeader(state)
-            state.pending?.let { PendingChangeRow(it, state.now, frictionMode, actions) }
+            if (pending != null && countdown != null) {
+                PendingChangeRow(LimitChangePolicy.describe(state.settings, pending.settings), countdown, actions)
+            }
             HorizontalDivider()
             Text(
                 text = stringResource(R.string.apps_daily_limit),
@@ -170,11 +181,21 @@ private fun AppLimitCard(state: AppCardState, frictionMode: FrictionMode, action
                 title = stringResource(R.string.apps_block_completely),
                 checked = settings.blockedAlways,
                 onCheckedChange = actions.onBlockedAlways,
+                pendingText = if (countdown != null && settings.blockedAlways != state.settings.blockedAlways) {
+                    stringResource(R.string.apps_pending_switch_off, countdown)
+                } else {
+                    null
+                },
             )
             SwitchRow(
                 title = stringResource(R.string.apps_block_schedule),
                 checked = settings.schedule.enabled,
                 onCheckedChange = actions.onScheduleEnabled,
+                pendingText = if (countdown != null && settings.schedule.enabled != state.settings.schedule.enabled) {
+                    stringResource(R.string.apps_pending_switch_off, countdown)
+                } else {
+                    null
+                },
             )
             if (settings.schedule.enabled) ScheduleEditor(settings.schedule, actions)
             FrictionSection(
@@ -245,27 +266,40 @@ private fun statusText(decision: BlockDecision, settings: LimitSettings): String
     }
 }
 
+/** "Block turns off in 9:42", with Cancel and the typed-phrase shortcut. Ticks every second. */
 @Composable
 private fun PendingChangeRow(
-    pending: PendingChange,
-    now: Long,
-    frictionMode: FrictionMode,
+    parts: List<PendingPart>,
+    countdown: String,
     actions: AppCardActions,
 ) {
     var showPhrase by rememberSaveable { mutableStateOf(false) }
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        ),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(
-                    R.string.apps_pending_countdown,
-                    PillRules.formatTime(pending.appliesAt - now),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
+            // A pending change can only exist because something got weaker; fall back to a
+            // generic line in case the difference isn't one we describe.
+            val lines = parts.ifEmpty { listOf(null) }
+            lines.forEach { part ->
+                Text(
+                    text = when (part) {
+                        PendingPart.BlockOff -> stringResource(R.string.apps_pending_block_off, countdown)
+                        PendingPart.LimitRemoved -> stringResource(R.string.apps_pending_limit_removed, countdown)
+                        is PendingPart.LimitRaised ->
+                            stringResource(R.string.apps_pending_limit_raised, part.minutes, countdown)
+                        PendingPart.ScheduleOff -> stringResource(R.string.apps_pending_schedule_off, countdown)
+                        PendingPart.ScheduleLoosened -> stringResource(R.string.apps_pending_schedule_changed, countdown)
+                        null -> stringResource(R.string.apps_pending_countdown, countdown)
+                    },
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
             Text(
                 text = stringResource(R.string.apps_pending_explanation),
                 style = MaterialTheme.typography.bodySmall,
@@ -274,10 +308,8 @@ private fun PendingChangeRow(
                 TextButton(onClick = actions.onCancelPending) {
                     Text(stringResource(R.string.apps_pending_cancel))
                 }
-                if (frictionMode == FrictionMode.TYPE_PHRASE) {
-                    TextButton(onClick = { showPhrase = true }) {
-                        Text(stringResource(R.string.apps_pending_unlock_now))
-                    }
+                TextButton(onClick = { showPhrase = true }) {
+                    Text(stringResource(R.string.apps_pending_unlock_now))
                 }
             }
         }
@@ -340,8 +372,17 @@ private fun formatMinuteOfDay(minuteOfDay: Int): String =
     LocalTime.of(minuteOfDay / 60, minuteOfDay % 60)
         .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
 
+/**
+ * A switch row. With [pendingText] the switch already shows the requested value, dimmed, with the
+ * countdown under the title; tapping it again undoes the pending change.
+ */
 @Composable
-private fun SwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    pendingText: String? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -349,10 +390,26 @@ private fun SwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = null)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, style = MaterialTheme.typography.bodyLarge)
+            pendingText?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            modifier = if (pendingText != null) Modifier.alpha(PENDING_ALPHA) else Modifier,
+        )
     }
 }
+
+private const val PENDING_ALPHA = 0.6f
 
 @Preview(showBackground = true)
 @Composable
@@ -361,12 +418,11 @@ private fun AppLimitCardPreview() {
         AppLimitCard(
             state = AppCardState(
                 packageName = "com.instagram.android",
-                settings = LimitSettings(dailyLimitMinutes = 30, schedule = BlockSchedule(enabled = true)),
-                pending = PendingChange(LimitSettings(), appliesAt = 9 * 60_000L + 42_000L),
+                settings = LimitSettings(blockedAlways = true, dailyLimitMinutes = 30),
+                pending = PendingChange(LimitSettings(dailyLimitMinutes = 30), appliesAt = 9 * 60_000L + 42_000L),
                 decision = BlockDecision.Allowed(remainingMillis = 12 * 60_000L),
                 now = 0L,
             ),
-            frictionMode = FrictionMode.TYPE_PHRASE,
             actions = AppCardActions({}, {}, {}, {}, {}, {}, {}, {}),
         )
     }

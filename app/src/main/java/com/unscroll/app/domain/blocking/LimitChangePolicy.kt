@@ -33,6 +33,49 @@ object LimitChangePolicy {
             current.copy(settings = requested, pending = null)
         }
 
+    /** What the user is working towards: the pending change if there is one, else the current settings. */
+    fun target(limit: AppLimit): LimitSettings = limit.pending?.settings ?: limit.settings
+
+    /**
+     * An edit from the Apps screen, where the controls show [target]. [edit] is applied to the target:
+     * - If the result isn't weaker than the current settings, it applies now and any pending change
+     *   is dropped. Undoing a pending change (switching "Block completely" back on) is this case.
+     * - Otherwise the result becomes the pending change. The parts of [edit] that make the current
+     *   settings stronger still apply now. The countdown keeps running unless the edit loosens the
+     *   pending change further; then it starts again.
+     *
+     * Unlike calling [request] with an edited copy of the current settings, this never drops or
+     * restarts a pending change by accident.
+     */
+    fun edit(limit: AppLimit, edit: (LimitSettings) -> LimitSettings, now: Long, delayMillis: Long): AppLimit {
+        val current = limit.settings
+        val target = edit(target(limit))
+        if (!isWeaker(current, target)) return limit.copy(settings = target, pending = null)
+        val editedCurrent = edit(current)
+        val newCurrent = if (isWeaker(current, editedCurrent)) current else editedCurrent
+        val previous = limit.pending
+        val appliesAt = if (previous != null && !isWeaker(previous.settings, target)) {
+            previous.appliesAt
+        } else {
+            now + delayMillis
+        }
+        return limit.copy(settings = newCurrent, pending = PendingChange(target, appliesAt))
+    }
+
+    /** What a pending change will loosen, for the Apps screen. */
+    fun describe(current: LimitSettings, pending: LimitSettings): List<PendingPart> = buildList {
+        if (current.blockedAlways && !pending.blockedAlways) add(PendingPart.BlockOff)
+        val oldLimit = current.dailyLimitMinutes
+        val newLimit = pending.dailyLimitMinutes
+        if (oldLimit != null && newLimit == null) add(PendingPart.LimitRemoved)
+        if (oldLimit != null && newLimit != null && newLimit > oldLimit) add(PendingPart.LimitRaised(newLimit))
+        if (current.schedule.enabled && !pending.schedule.enabled) {
+            add(PendingPart.ScheduleOff)
+        } else if (isWeaker(LimitSettings(schedule = current.schedule), LimitSettings(schedule = pending.schedule))) {
+            add(PendingPart.ScheduleLoosened)
+        }
+    }
+
     /** Applies the pending change if its cooldown is over. */
     fun resolve(limit: AppLimit, now: Long): AppLimit {
         val pending = limit.pending ?: return limit
@@ -63,4 +106,13 @@ object LimitChangePolicy {
         }
         return bits
     }
+}
+
+/** One way a pending change loosens blocking. */
+sealed interface PendingPart {
+    data object BlockOff : PendingPart
+    data object LimitRemoved : PendingPart
+    data class LimitRaised(val minutes: Int) : PendingPart
+    data object ScheduleOff : PendingPart
+    data object ScheduleLoosened : PendingPart
 }

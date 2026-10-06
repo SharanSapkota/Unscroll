@@ -64,6 +64,11 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Debug builds only (the preference ignores it otherwise). */
+    fun setDebugShortCooldown(enabled: Boolean) {
+        viewModelScope.launch { blockingPreferences.setDebugShortCooldown(enabled) }
+    }
+
     fun cancelPendingFriction() {
         viewModelScope.launch { blockingPreferences.cancelPending(clock.now()) }
     }
