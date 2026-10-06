@@ -67,12 +67,53 @@
     <string name="settings_tracking_title">Track sessions</string>
     <string name="settings_tracking_description">Times your sessions in Instagram, TikTok and Facebook. Unscroll only sees app names and times, and keeps everything on this phone.</string>
 
-    <!-- Dashboard (temporary debug view until M3) -->
-    <string name="dashboard_debug_note">Debug view. The real dashboard arrives in M3.</string>
-    <string name="dashboard_tracking_off">Tracking is off. Turn it on in Settings.</string>
-    <string name="dashboard_current_title">Right now</string>
-    <string name="dashboard_no_current_session">No tracked app is open.</string>
-    <string name="dashboard_recent_title">Last 20 sessions</string>
-    <string name="dashboard_no_sessions">No sessions yet. Open Instagram, TikTok or Facebook to start one.</string>
-    <string name="dashboard_session_ongoing">ongoing</string>
+    <!-- Dashboard -->
+    <string name="dashboard_today_label">Today</string>
+    <string name="dashboard_trend_more_than_yesterday">▲ %1$s more than this time yesterday</string>
+    <string name="dashboard_trend_less_than_yesterday">▼ %1$s less than this time yesterday</string>
+    <string name="dashboard_trend_same_as_yesterday">About the same as this time yesterday</string>
+    <string name="dashboard_tracking_off">Tracking is off. Turn it on in Settings to keep logging sessions.</string>
+    <string name="dashboard_period_today">Today</string>
+    <string name="dashboard_period_week">Week</string>
+    <string name="dashboard_period_month">Month</string>
+    <string name="dashboard_period_all_time">All time</string>
+    <string name="dashboard_all_apps">All apps</string>
+    <string name="dashboard_stat_opens">Opens</string>
+    <string name="dashboard_stat_average">Avg session</string>
+    <string name="dashboard_stat_longest">Longest</string>
+    <string name="dashboard_no_usage_in_period">No time in tracked apps in this period.</string>
+    <string name="dashboard_hours_invested_title">Hours invested</string>
+    <string name="dashboard_hours_invested_total">%1$.1f hours in total</string>
+    <string name="dashboard_hours_invested_days">That\'s %1$.1f full days of your life</string>
+    <string name="dashboard_hours_invested_books">or about %1$.1f books read</string>
+    <string name="dashboard_hours_invested_flights">or %1$.1f flights to Tokyo</string>
+    <string name="dashboard_heatmap_title">When you scroll</string>
+    <string name="dashboard_heatmap_peak">Busiest hour: %1$02d:00 to %2$02d:00</string>
+    <string name="dashboard_heatmap_hour">%1$02d:00</string>
+    <string name="dashboard_heatmap_description">Time in tracked apps for each hour of the day. Busiest hour starts at %1$02d:00.</string>
+    <string name="dashboard_week_title">Last 7 days vs the 7 before</string>
+    <string name="dashboard_week_this">Last 7 days</string>
+    <string name="dashboard_week_last">7 days before</string>
+    <string name="dashboard_week_totals">%1$s vs %2$s</string>
+    <string name="dashboard_week_more">▲ %1$s more than the week before</string>
+    <string name="dashboard_week_less">▼ %1$s less than the week before</string>
+    <string name="dashboard_week_same">About the same as the week before</string>
+    <string name="dashboard_week_description">Bar chart of daily time in tracked apps: last 7 days %1$s, the 7 days before %2$s.</string>
+    <string name="dashboard_empty_title">No sessions yet</string>
+    <string name="dashboard_empty_body">Open Instagram, TikTok or Facebook and your time will show up here.</string>
+    <string name="dashboard_empty_tracking_off">Tracking is off. Turn it on in Settings first.</string>
+
+    <!-- Durations -->
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes">%1$dm</string>
+    <string name="duration_seconds">%1$ds</string>
+
+    <!-- Settings: debug tools -->
+    <string name="settings_debug_title">Debug tools</string>
+    <string name="settings_debug_sample_data">Insert sample data</string>
+    <string name="settings_debug_sample_data_description">Adds 30 days of fake sessions so you can try the dashboard.</string>
+    <plurals name="settings_debug_sample_data_added">
+        <item quantity="one">Added %d sample session.</item>
+        <item quantity="other">Added %d sample sessions.</item>
+    </plurals>
 </resources>

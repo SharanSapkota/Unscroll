@@ -6,6 +6,8 @@ import com.unscroll.app.data.permission.AndroidPermissionChecker
 import com.unscroll.app.data.permission.PermissionChecker
 import com.unscroll.app.data.session.SessionRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
+import com.unscroll.app.data.usage.UsageRepository
+import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.SessionStore
 import dagger.Binds
@@ -32,4 +34,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindHeartbeatStore(impl: TrackingPreferences): HeartbeatStore
+
+    @Binds
+    abstract fun bindUsageDataSource(impl: UsageRepository): UsageDataSource
 }
