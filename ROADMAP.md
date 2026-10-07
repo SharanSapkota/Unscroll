@@ -118,3 +118,10 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - White fox-face notification icon for the tracking notification
 - The in-app fox (`FoxMascot`) now matches the icon's fox: same head shape and colors, all four moods kept; the collapsed pill shows it inside the level-colored dot
 - **Done when**: the icon reads clearly at 48 and 72 dp under circle, squircle, rounded-square and square masks, on light, dark and wallpaper backgrounds and as a themed icon.
+
+## Trust message ✅ Done (awaiting device testing)
+- Presentation only: tracking, blocking, overlay and accessibility logic unchanged
+- Onboarding permissions page: the privacy promise with the happy fox, one plain-language reason per permission, and a footer with "How we protect your data" (3 bullets in a sheet)
+- Settings › Data & privacy: the same promise as a row, plus "Delete all my data" (confirmation; wipes Room and DataStore and returns to onboarding)
+- Verified before shipping: no INTERNET permission, no network/analytics/crash SDKs, no accounts, backups off
+- **Done when**: a new user sees why each permission is needed and that their data stays on the phone, and can delete everything from Settings.

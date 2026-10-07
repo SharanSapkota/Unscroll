@@ -60,6 +60,11 @@ class YourDataViewModel @Inject constructor(
         launchOnce { _result.value = DataActionResult.Deleted(history.deleteUsageHistory()) }
     }
 
+    /** Wipes everything; the app then returns to onboarding on its own (the flag is gone). */
+    fun deleteAllData() {
+        launchOnce { history.deleteAllData() }
+    }
+
     private fun launchOnce(block: suspend () -> Unit) {
         if (_busy.value) return
         _busy.value = true
