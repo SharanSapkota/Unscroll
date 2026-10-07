@@ -68,4 +68,19 @@ class PillRulesTest {
         assertFalse(PillRules.shouldShow(true, enabled, canDrawOverlays = false))
         assertFalse(PillRules.shouldShow(true, OverlaySettings(enabled = false), canDrawOverlays = true))
     }
+
+    @Test
+    fun levelForSwipes_greenYellowRed() {
+        val thresholds = SwipeColorThresholds(warningAfterSwipes = 50, dangerAfterSwipes = 100)
+        assertEquals(PillLevel.CALM, PillRules.levelForSwipes(49, thresholds))
+        assertEquals(PillLevel.WARNING, PillRules.levelForSwipes(50, thresholds))
+        assertEquals(PillLevel.DANGER, PillRules.levelForSwipes(100, thresholds))
+    }
+
+    @Test
+    fun combinedLevel_isTheMoreUrgentOne() {
+        assertEquals(PillLevel.DANGER, PillRules.combinedLevel(PillLevel.CALM, PillLevel.DANGER))
+        assertEquals(PillLevel.WARNING, PillRules.combinedLevel(PillLevel.WARNING, PillLevel.CALM))
+        assertEquals(PillLevel.WARNING, PillRules.combinedLevel(PillLevel.WARNING, null))
+    }
 }

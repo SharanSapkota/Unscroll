@@ -10,6 +10,7 @@ import com.unscroll.app.domain.blocking.LimitChangePolicy
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.LimitSettingsCodec
 import com.unscroll.app.domain.blocking.PendingChange
+import com.unscroll.app.domain.blocking.SwipeLimitScope
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -94,9 +95,20 @@ class LimitRepository @Inject constructor(
     suspend fun activeExtensionUntil(packageName: String, now: Long): Long? =
         dao.activeOverrideUntil(packageName, now)
 
+    /** "I need access" on the swipe-limit cover: logged like time extensions, worth 20 swipes. */
+    suspend fun grantSwipeExtension(packageName: String, now: Long) {
+        dao.insertOverride(
+            BlockOverrideEntity(packageName = packageName, grantedAt = now, expiresAt = now, method = METHOD_SWIPES),
+        )
+    }
+
+    suspend fun swipeExtensionsSince(packageName: String, since: Long): Int =
+        dao.swipeExtensionsSince(packageName, since)
+
     private companion object {
         const val METHOD_PHRASE = "PHRASE"
         const val METHOD_WAIT = "WAIT"
+        const val METHOD_SWIPES = "SWIPES"
     }
 }
 
@@ -113,6 +125,10 @@ internal fun AppLimitEntity.toDomain(): AppLimit {
                 startMinute = scheduleStartMinute,
                 endMinute = scheduleEndMinute,
             ),
+            swipeLimit = swipeLimit,
+            swipeLimitScope = SwipeLimitScope.entries.firstOrNull { it.name == swipeLimitScope } ?: SwipeLimitScope.DAY,
+            swipeSessionGapMinutes = swipeSessionGapMinutes,
+            swipeAccessAllowed = swipeAccessAllowed,
         ),
         pending = if (pendingSettings != null && pendingChangeAppliesAt != null) {
             PendingChange(pendingSettings, pendingChangeAppliesAt)
@@ -132,4 +148,8 @@ internal fun AppLimit.toEntity() = AppLimitEntity(
     scheduleEndMinute = settings.schedule.endMinute,
     pendingChangeJson = pending?.let { LimitSettingsCodec.encode(it.settings) },
     pendingChangeAppliesAt = pending?.appliesAt,
+    swipeLimit = settings.swipeLimit,
+    swipeLimitScope = settings.swipeLimitScope.name,
+    swipeSessionGapMinutes = settings.swipeSessionGapMinutes,
+    swipeAccessAllowed = settings.swipeAccessAllowed,
 )

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.BlockingPreferences
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
+import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
@@ -12,6 +13,8 @@ import com.unscroll.app.domain.blocking.BlockingSettings
 import com.unscroll.app.domain.blocking.LimitChangePolicy
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.PendingChange
+import com.unscroll.app.domain.blocking.SwipeLimitRules
+import com.unscroll.app.domain.blocking.SwipeLimitScope
 import com.unscroll.app.domain.friction.FrictionSettings
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
@@ -46,6 +49,8 @@ data class AppsUiState(
     val isLoading: Boolean = true,
     val apps: List<AppCardState> = emptyList(),
     val blocking: BlockingSettings = BlockingSettings(),
+    /** Swipe limits only work while the opt-in scroll counting runs. */
+    val scrollCountingActive: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,6 +62,7 @@ class AppsViewModel @Inject constructor(
     private val evaluator: BlockEvaluator,
     private val blockingPreferences: BlockingPreferences,
     private val friction: FrictionRepository,
+    private val scrollCounting: ScrollCountingRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -73,8 +79,11 @@ class AppsViewModel @Inject constructor(
         friction.observeSettings(),
         blockingPreferences.settings,
         ticks,
-    ) { stored, frictionSettings, _, _ -> stored to frictionSettings }
-        .mapLatest { (stored, frictionSettings) -> build(stored, frictionSettings) }
+        scrollCounting.isCounting,
+    ) { stored, frictionSettings, _, _, counting -> Triple(stored, frictionSettings, counting) }
+        .mapLatest { (stored, frictionSettings, counting) ->
+            build(stored, frictionSettings).copy(scrollCountingActive = counting)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppsUiState())
 
     fun setDailyLimit(packageName: String, minutes: Int?) =
@@ -96,6 +105,20 @@ class AppsViewModel @Inject constructor(
 
     fun setScheduleEnd(packageName: String, minuteOfDay: Int) =
         change(packageName) { it.copy(schedule = it.schedule.copy(endMinute = minuteOfDay)) }
+
+    /** Off (null), a preset, or a custom number. Raising or removing it waits out the cooldown. */
+    fun setSwipeLimit(packageName: String, swipes: Int?) = change(packageName) {
+        it.copy(swipeLimit = swipes?.coerceIn(SwipeLimitRules.MIN_LIMIT, SwipeLimitRules.MAX_LIMIT))
+    }
+
+    fun setSwipeLimitScope(packageName: String, scope: SwipeLimitScope) =
+        change(packageName) { it.copy(swipeLimitScope = scope) }
+
+    fun setSwipeSessionGap(packageName: String, minutes: Int) =
+        change(packageName) { it.copy(swipeSessionGapMinutes = minutes.coerceIn(1, 24 * 60)) }
+
+    fun setSwipeAccessAllowed(packageName: String, allowed: Boolean) =
+        change(packageName) { it.copy(swipeAccessAllowed = allowed) }
 
     fun cancelPendingChange(packageName: String) {
         viewModelScope.launch { limits.cancelPendingChange(packageName, clock.now()) }

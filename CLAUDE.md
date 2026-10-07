@@ -3,9 +3,9 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated with M8. Keep this section in sync when a milestone lands.
+Last updated with M9. Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking), M6 (friction and nudges) and M7 (opt-in accessibility scroll counting). M8 (goals, streaks, weekly report, data export/delete and release docs) is implemented and awaiting device testing; the Play release steps themselves are manual (docs/RELEASE.md). See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking), M6 (friction and nudges), M7 (opt-in accessibility scroll counting) and M8 (goals, streaks, weekly report, data export/delete and release docs; the Play release steps themselves are manual, docs/RELEASE.md). M9 (hard swipe limit) is implemented and awaiting device testing. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
 - **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and the accessibility-service state, and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
@@ -14,7 +14,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - Usage Access and Overlay are required; Notifications and battery optimization are optional.
 - **Tracking** (`service/`):
   - `TrackingService`: specialUse foreground service with a low-importance notification, `START_STICKY`.
-  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start), `OverlayTimerManager.run()`, `BlockEnforcer.run()` and `FrictionCoordinator.run()`.
+  - It runs `SessionManager.run()` (pure Kotlin, injectable `Clock`, 3 s debounce, 5 s heartbeat, orphan recovery on start), `OverlayTimerManager.run()`, `BlockEnforcer.run()`, `FrictionCoordinator.run()` and `SwipeLimitEnforcer.run()`.
   - `SessionManager.currentSession` stays set during the debounce window. `foregroundSession` clears the moment the user leaves; the overlay uses that one.
   - `SessionManager` is the only writer of sessions, `scrollCount` included: `onSwipe(pkg)` adds a swipe to the foreground session and saves it; `swipes` exposes the running count.
   - `AppDetector` polls `UsageStatsManager.queryEvents` every ~1 s, only while `ScreenStateMonitor` reports the screen on.
@@ -23,7 +23,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v5): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`; v5 drops the pause columns) and `nudge_log` (`FrictionDao`/`FrictionRepository`). v5 also drops the old `pause_outcomes` table (`MIGRATION_4_5`).
+  - Room `UnscrollDatabase` (v6): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` (v6 adds the swipe-limit columns, `MIGRATION_5_6`) and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`; v5 drops the pause columns) and `nudge_log` (`FrictionDao`/`FrictionRepository`). v5 also drops the old `pause_outcomes` table (`MIGRATION_4_5`).
   - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
   - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
   - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, blocking, quiet-hours, goal and scroll-counting preferences.
@@ -45,8 +45,8 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - Compose runs in a `ComposeView` with its own `OverlayLifecycleOwner` (lifecycle, ViewModelStore and SavedStateRegistry).
   - `OverlayTimerManager` (owned by `TrackingService`) shows it while `foregroundSession` is set, the overlay is enabled, and `Settings.canDrawOverlays` holds (re-checked every 2 s). It hides it on leave, screen off, tracking stop and service destroy.
   - Pure rules: `PillRules` (mm:ss / h:mm:ss, green/yellow/red levels, `shouldShow`) and `PillPositioner` (clamping to screen minus status bar, cutout and nav bar; top-center default).
-  - Settings live in `OverlayPreferences` (DataStore): on/off, today's total, swipe count, thresholds (10/20 min), size, opacity, position per orientation.
-  - The swipe count ("86 swipes") shows under the timer while scroll counting is on; `OverlayWindow.updateSwipes` updates it without rebuilding the pill.
+  - Settings live in `OverlayPreferences` (DataStore): on/off, today's total, swipe count, time thresholds (10/20 min), swipe thresholds (50/100), size, opacity, position per orientation.
+  - While scroll counting is on, the pill shows "12:41 · 86 swipes" (toggle in Settings), turns yellow/red by swipes too (`PillRules.levelForSwipes`/`combinedLevel`: whichever is further along), and shows "N swipes left" from 80 % of a swipe limit. `OverlayWindow.updateSwipes(PillSwipes)` updates it on every swipe without rebuilding the pill.
   - Settings screen: a live preview and "Reset position". Tap the pill to collapse it to a dot.
 - **Limits and blocking** (`domain/blocking`, `data/blocking`, `service/BlockEnforcer`, `ui/apps`, `ui/block`):
   - Per app: daily limit, "Block completely", and a schedule (days plus a start/end time, which may cross midnight).
@@ -57,6 +57,10 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s). When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
   - "I need access" is offered only for the daily limit. It needs the typed phrase or a 30 s wait, grants 5 min, and is logged in `block_overrides`.
   - `BlockSafety` only allows tracked packages, and never Unscroll, launchers, Settings, the dialer or emergency apps.
+- **Swipe limit (hard stop, M9)** (`domain/blocking/SwipeLimitRules`, `data/blocking/SwipeLimitRepository`, `service/SwipeLimitEnforcer`, `overlay/SwipeLimitCover`, `ui/apps/SwipeLimitSection`):
+  - Per app, in `LimitSettings`/`app_limits`: `swipeLimit` (off by default; 25/50/100/200/300 or custom), `swipeLimitScope` (DAY default, or SESSION with `swipeSessionGapMinutes`, default 30) and `swipeAccessAllowed`. It goes through `LimitChangePolicy` like the time limit: lowering applies at once; raising, removing, day→session, a shorter gap or allowing "I need access" wait out the cooldown (or the typed phrase).
+  - `SwipeLimitRules` (pure): the window (local midnight, or the latest run of sessions with gaps shorter than the reset gap; back after the gap means a fresh window), `status` (used, +20 per extension, remaining, reached, 80 % warning).
+  - `SwipeLimitEnforcer` evaluates on foreground changes, every swipe, limit changes and the accessibility window event (faster than usage stats). When reached, `SwipeLimitCover` covers the app: a full-screen `TYPE_APPLICATION_OVERLAY` that is touchable and focusable (consumes every touch and Back), with swipes, time today, "Go home", and "I need access" (typed phrase, +20 swipes, logged in `block_overrides` with method `SWIPES`) only if the user enabled it. It is shown again every time the app comes back until the window resets, and removed when the user leaves. Without the overlay permission: `GLOBAL_ACTION_HOME` via the service plus `BlockActivity` (`BlockReason.SWIPE_LIMIT_REACHED`). Without scroll counting nothing is enforced.
 - **Friction and nudges** (`domain/friction`, `data/friction`, `service/FrictionCoordinator`):
   - **Design decision: no pause screen.** Apps open instantly; the live overlay timer is the stopper. The only screen that ever comes up when opening a tracked app is the block screen, for a blocked app or an exceeded limit. (A "mindful gate" pause screen existed in M6 and was removed.)
   - Per-app settings (`FrictionSettings` in `app_friction`; defaults until changed; "Reset to defaults") cover: open-count nudges (thresholds), break reminders (interval), limit warnings, an experimental tint and swipe breaks. They live under each Apps card ("Nudges and breaks").
@@ -65,7 +69,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - `TintOverlay`: a gray, non-touchable overlay with alpha 0.45, shown while over the limit with an extension running.
   - `QuietHours` (global, DataStore, may cross midnight) silences nudges, break reminders and limit warnings, but never blocking or swipe breaks. Everything goes through `BlockSafety`.
 - **Scroll counting (optional)** (`domain/scroll`, `data/scroll`, `service/ScrollAccessibilityService`, `ui/scroll`):
-  - `ScrollAccessibilityService`: opt-in, `canRetrieveWindowContent="false"`, only `typeViewScrolled`/`typeWindowStateChanged`, only tracked packages (`res/xml/accessibility_service_config.xml`, kept equal to `TrackedApps` by `AccessibilityConfigTest` and set from `TrackedApps` on connect), `isAccessibilityTool="false"`. Reads only the event type and package name, and ignores everything without in-app consent.
+  - `ScrollAccessibilityService`: opt-in, `canRetrieveWindowContent="false"`, only `typeViewScrolled`/`typeWindowStateChanged`, only tracked packages (`res/xml/accessibility_service_config.xml`, kept equal to `TrackedApps` by `AccessibilityConfigTest` and set from `TrackedApps` on connect), `isAccessibilityTool="false"`. Reads only the event type and package name, and ignores everything without in-app consent. Window events go to `SwipeLimitEnforcer.onAppWindow`; its only action is `GLOBAL_ACTION_HOME`, the swipe limit's fallback.
   - `SwipeDetector` (pure, injectable `Clock`): scroll events within `SWIPE_BURST_GAP_MILLIS` (300 ms) of each other are one swipe; screen off, untracked apps and window changes end a burst. Each swipe goes to `SessionManager.onSwipe`.
   - Consent: `AccessibilityDisclosureScreen` (Settings › Scroll counting › Set up) must be accepted ("I agree") before the user is sent to Accessibility settings; "No thanks" keeps everything else working. `RestrictedSettingHelpScreen` explains the Android 13+ "Restricted setting".
   - `ScrollCountingPreferences` (consent, first connection) and `ScrollCountingRepository` (enabled in `Settings.Secure`, re-checked on resume; connected, as reported by the service). `ScrollCountingRules.status` (pure) gives OFF / NEEDS_CONSENT / NEEDS_ENABLING / ACTIVE / NEEDS_REENABLE. "Turn off" withdraws consent and the service calls `disableSelf()`.
@@ -115,7 +119,7 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 
 ## Permissions
 - `PACKAGE_USAGE_STATS` (special access, user grants in Settings)
-- `SYSTEM_ALERT_WINDOW` (overlay timer + block screen)
+- `SYSTEM_ALERT_WINDOW` (overlay timer, swipe-limit cover + block screen)
 - `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE`, `POST_NOTIFICATIONS`
 - `RECEIVE_BOOT_COMPLETED` (restart tracking after reboot)
 - Optional: AccessibilityService for scroll counting (`BIND_ACCESSIBILITY_SERVICE`, M7). Opt-in, behind its own disclosure screen and in-app consent.
@@ -123,7 +127,8 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 ## Core data model
 - `SessionEntity(id, packageName, startTime, endTime, scrollCount)`; `scrollCount` is filled only while the optional accessibility service runs
 - `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute, pendingChangeJson?, pendingChangeAppliesAt?)`
-- `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension
+- `AppLimitEntity` v6 adds `swipeLimit?`, `swipeLimitScope` ("DAY"/"SESSION"), `swipeSessionGapMinutes`, `swipeAccessAllowed`
+- `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension: "PHRASE"/"WAIT" (time, until `expiresAt`) or "SWIPES" (+20 swipes for the current swipe window)
 - `AppFrictionEntity(packageName, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter?)`
 - `NudgeLogEntity(packageName, day, kind, value, sentAt)`
 - `DailyStat` is computed from sessions via queries, not stored

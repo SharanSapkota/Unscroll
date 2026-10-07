@@ -14,6 +14,7 @@ import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillSize
 import com.unscroll.app.domain.overlay.ScreenOrientation
+import com.unscroll.app.domain.overlay.SwipeColorThresholds
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -41,6 +42,14 @@ class OverlayPreferences @Inject constructor(
     suspend fun setShowTodayTotal(show: Boolean) = edit { it[SHOW_TODAY_TOTAL] = show }
 
     suspend fun setShowSwipes(show: Boolean) = edit { it[SHOW_SWIPES] = show }
+
+    suspend fun setSwipeThresholds(thresholds: SwipeColorThresholds) {
+        val safe = thresholds.normalized()
+        edit {
+            it[SWIPE_WARNING] = safe.warningAfterSwipes
+            it[SWIPE_DANGER] = safe.dangerAfterSwipes
+        }
+    }
 
     suspend fun setThresholds(thresholds: ColorThresholds) {
         val safe = thresholds.normalized()
@@ -89,6 +98,10 @@ class OverlayPreferences @Inject constructor(
             ?: PillSize.MEDIUM,
         opacity = OverlaySettings.clampOpacity(this[OPACITY] ?: OverlaySettings.DEFAULT_OPACITY),
         showSwipes = this[SHOW_SWIPES] ?: true,
+        swipeThresholds = SwipeColorThresholds(
+            warningAfterSwipes = this[SWIPE_WARNING] ?: SwipeColorThresholds.DEFAULT_WARNING_SWIPES,
+            dangerAfterSwipes = this[SWIPE_DANGER] ?: SwipeColorThresholds.DEFAULT_DANGER_SWIPES,
+        ).normalized(),
     )
 
     private companion object {
@@ -99,6 +112,8 @@ class OverlayPreferences @Inject constructor(
         val SIZE = stringPreferencesKey("overlay_size")
         val OPACITY = floatPreferencesKey("overlay_opacity")
         val SHOW_SWIPES = booleanPreferencesKey("overlay_show_swipes")
+        val SWIPE_WARNING = intPreferencesKey("overlay_swipe_warning")
+        val SWIPE_DANGER = intPreferencesKey("overlay_swipe_danger")
 
         fun xKey(orientation: ScreenOrientation) =
             intPreferencesKey("overlay_x_${orientation.name.lowercase()}")

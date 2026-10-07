@@ -103,6 +103,17 @@ interface SessionDao {
     @Query("DELETE FROM sessions")
     suspend fun deleteAll(): Int
 
+    /** Swipes in the app's sessions that started at or after [since] (the swipe limit's window). */
+    @Query("SELECT COALESCE(SUM(scrollCount), 0) FROM sessions WHERE packageName = :packageName AND startTime >= :since")
+    suspend fun swipesSince(packageName: String, since: Long): Int
+
+    /** The app's sessions that started at or after [since], newest first (for per-session swipe windows). */
+    @Query(
+        "SELECT startTime, endTime FROM sessions WHERE packageName = :packageName AND startTime >= :since " +
+            "ORDER BY startTime DESC",
+    )
+    suspend fun sessionSpansSince(packageName: String, since: Long): List<SessionSpanRow>
+
     /** Sets the swipe count of a session. Only SessionManager writes it. */
     @Query("UPDATE sessions SET scrollCount = :scrollCount WHERE id = :id")
     suspend fun updateScrollCount(id: Long, scrollCount: Int)

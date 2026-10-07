@@ -1,5 +1,6 @@
 package com.unscroll.app.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -18,6 +19,12 @@ data class AppLimitEntity(
     /** A weaker change waiting out its cooldown, encoded by LimitSettingsCodec. */
     val pendingChangeJson: String?,
     val pendingChangeAppliesAt: Long?,
+    /** v6: hard swipe limit, or null for none. */
+    val swipeLimit: Int? = null,
+    /** v6: "DAY" or "SESSION". */
+    @ColumnInfo(defaultValue = "'DAY'") val swipeLimitScope: String = "DAY",
+    @ColumnInfo(defaultValue = "30") val swipeSessionGapMinutes: Int = 30,
+    @ColumnInfo(defaultValue = "0") val swipeAccessAllowed: Boolean = false,
 )
 
 /** One "I need access" extension granted from the block screen. */
@@ -27,6 +34,10 @@ data class BlockOverrideEntity(
     val packageName: String,
     val grantedAt: Long,
     val expiresAt: Long,
-    /** "PHRASE" or "WAIT": which friction the user passed. */
+    /**
+     * "PHRASE" or "WAIT": a time extension from the block screen (expiresAt is when it ends).
+     * "SWIPES": +20 swipes from the swipe-limit cover (expiresAt equals grantedAt; it lasts until
+     * the swipe window ends).
+     */
     val method: String,
 )

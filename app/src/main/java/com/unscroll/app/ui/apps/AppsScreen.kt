@@ -109,6 +109,7 @@ fun AppsScreen(
         items(uiState.apps, key = { it.packageName }) { app ->
             AppLimitCard(
                 state = app,
+                scrollCountingActive = uiState.scrollCountingActive,
                 actions = AppCardActions(
                     onDailyLimit = { viewModel.setDailyLimit(app.packageName, it) },
                     onBlockedAlways = { viewModel.setBlockedAlways(app.packageName, it) },
@@ -120,6 +121,12 @@ fun AppsScreen(
                     onUnlockPending = { viewModel.applyPendingChangeNow(app.packageName) },
                     onFriction = { transform -> viewModel.updateFriction(app.packageName, transform) },
                     onResetFriction = { viewModel.resetFriction(app.packageName) },
+                    swipeLimit = SwipeLimitActions(
+                        onLimit = { viewModel.setSwipeLimit(app.packageName, it) },
+                        onScope = { viewModel.setSwipeLimitScope(app.packageName, it) },
+                        onSessionGap = { viewModel.setSwipeSessionGap(app.packageName, it) },
+                        onAccessAllowed = { viewModel.setSwipeAccessAllowed(app.packageName, it) },
+                    ),
                 ),
             )
         }
@@ -137,10 +144,11 @@ private class AppCardActions(
     val onUnlockPending: () -> Unit,
     val onFriction: ((FrictionSettings) -> FrictionSettings) -> Unit = {},
     val onResetFriction: () -> Unit = {},
+    val swipeLimit: SwipeLimitActions = SwipeLimitActions(),
 )
 
 @Composable
-private fun AppLimitCard(state: AppCardState, actions: AppCardActions) {
+private fun AppLimitCard(state: AppCardState, actions: AppCardActions, scrollCountingActive: Boolean = false) {
     // The controls show what the user asked for. While a loosening change waits, that is the
     // pending target, marked as pending, with the countdown right next to it.
     val settings = state.pending?.settings ?: state.settings
@@ -198,6 +206,7 @@ private fun AppLimitCard(state: AppCardState, actions: AppCardActions) {
                 },
             )
             if (settings.schedule.enabled) ScheduleEditor(settings.schedule, actions)
+            SwipeLimitSection(settings, scrollCountingActive, actions.swipeLimit)
             FrictionSection(
                 settings = state.friction,
                 onChange = actions.onFriction,
@@ -250,7 +259,8 @@ private fun statusText(decision: BlockDecision, settings: LimitSettings): String
         }
         is BlockDecision.Blocked -> when (decision.reason) {
             BlockReason.BLOCKED_ALWAYS -> stringResource(R.string.apps_status_blocked_always)
-            BlockReason.DAILY_LIMIT_REACHED -> stringResource(R.string.apps_status_limit_reached)
+            BlockReason.DAILY_LIMIT_REACHED, BlockReason.SWIPE_LIMIT_REACHED ->
+                stringResource(R.string.apps_status_limit_reached)
             BlockReason.INSIDE_SCHEDULE -> {
                 val until = decision.until
                 if (until == null) {
@@ -294,6 +304,10 @@ private fun PendingChangeRow(
                             stringResource(R.string.apps_pending_limit_raised, part.minutes, countdown)
                         PendingPart.ScheduleOff -> stringResource(R.string.apps_pending_schedule_off, countdown)
                         PendingPart.ScheduleLoosened -> stringResource(R.string.apps_pending_schedule_changed, countdown)
+                        PendingPart.SwipeLimitRemoved -> stringResource(R.string.apps_pending_swipes_removed, countdown)
+                        is PendingPart.SwipeLimitRaised ->
+                            stringResource(R.string.apps_pending_swipes_raised, part.swipes, countdown)
+                        PendingPart.SwipeLimitLoosened -> stringResource(R.string.apps_pending_swipes_loosened, countdown)
                         null -> stringResource(R.string.apps_pending_countdown, countdown)
                     },
                     style = MaterialTheme.typography.titleSmall,

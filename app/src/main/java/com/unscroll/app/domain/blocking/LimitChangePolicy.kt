@@ -17,6 +17,7 @@ object LimitChangePolicy {
         val oldLimit = old.dailyLimitMinutes
         val newLimit = new.dailyLimitMinutes
         if (oldLimit != null && (newLimit == null || newLimit > oldLimit)) return true
+        if (isSwipeLimitWeaker(old, new)) return true
         // Weaker if any minute of the week blocked before is no longer blocked.
         val oldBlocked = blockedMinutesOfWeek(old.schedule)
         val newBlocked = blockedMinutesOfWeek(new.schedule)
@@ -62,6 +63,24 @@ object LimitChangePolicy {
         return limit.copy(settings = newCurrent, pending = PendingChange(target, appliesAt))
     }
 
+    /**
+     * A swipe limit gets weaker if it is removed or raised, moves from per day to per session,
+     * resets sooner (shorter gap, per session), or starts offering "I need access".
+     */
+    private fun isSwipeLimitWeaker(old: LimitSettings, new: LimitSettings): Boolean {
+        val oldSwipes = old.swipeLimit ?: return false
+        val newSwipes = new.swipeLimit ?: return true
+        return newSwipes > oldSwipes || isSwipeRuleLoosened(old, new)
+    }
+
+    private fun isSwipeRuleLoosened(old: LimitSettings, new: LimitSettings): Boolean =
+        (old.swipeLimitScope == SwipeLimitScope.DAY && new.swipeLimitScope == SwipeLimitScope.SESSION) ||
+            (
+                old.swipeLimitScope == SwipeLimitScope.SESSION && new.swipeLimitScope == SwipeLimitScope.SESSION &&
+                    new.swipeSessionGapMinutes < old.swipeSessionGapMinutes
+                ) ||
+            (!old.swipeAccessAllowed && new.swipeAccessAllowed)
+
     /** What a pending change will loosen, for the Apps screen. */
     fun describe(current: LimitSettings, pending: LimitSettings): List<PendingPart> = buildList {
         if (current.blockedAlways && !pending.blockedAlways) add(PendingPart.BlockOff)
@@ -73,6 +92,14 @@ object LimitChangePolicy {
             add(PendingPart.ScheduleOff)
         } else if (isWeaker(LimitSettings(schedule = current.schedule), LimitSettings(schedule = pending.schedule))) {
             add(PendingPart.ScheduleLoosened)
+        }
+        val oldSwipes = current.swipeLimit
+        val newSwipes = pending.swipeLimit
+        when {
+            oldSwipes == null -> Unit
+            newSwipes == null -> add(PendingPart.SwipeLimitRemoved)
+            newSwipes > oldSwipes -> add(PendingPart.SwipeLimitRaised(newSwipes))
+            isSwipeRuleLoosened(current, pending) -> add(PendingPart.SwipeLimitLoosened)
         }
     }
 
@@ -115,4 +142,8 @@ sealed interface PendingPart {
     data class LimitRaised(val minutes: Int) : PendingPart
     data object ScheduleOff : PendingPart
     data object ScheduleLoosened : PendingPart
+    data object SwipeLimitRemoved : PendingPart
+    data class SwipeLimitRaised(val swipes: Int) : PendingPart
+    /** Per session instead of per day, a shorter reset gap, or "I need access" allowed. */
+    data object SwipeLimitLoosened : PendingPart
 }

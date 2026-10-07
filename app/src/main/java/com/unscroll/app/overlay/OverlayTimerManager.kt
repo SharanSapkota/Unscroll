@@ -17,6 +17,7 @@ import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.SessionManager
+import com.unscroll.app.service.SwipeLimitEnforcer
 import com.unscroll.app.util.appLabel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.ZoneId
@@ -51,6 +52,7 @@ class OverlayTimerManager @Inject constructor(
     private val usage: UsageDataSource,
     private val messages: OverlayMessages,
     private val scrollCounting: ScrollCountingRepository,
+    private val swipeLimitEnforcer: SwipeLimitEnforcer,
     private val clock: Clock,
 ) {
     private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
@@ -59,7 +61,7 @@ class OverlayTimerManager @Inject constructor(
     // Main-thread only.
     private var window: OverlayWindow? = null
     private var scope: CoroutineScope? = null
-    private var swipesShown: Int? = null
+    private var swipesShown: PillSwipes? = null
 
     suspend fun run() = withContext(Dispatchers.Main.immediate) {
         try {
@@ -111,17 +113,27 @@ class OverlayTimerManager @Inject constructor(
         }
     }
 
-    /** Keeps the swipe count on the pill current, if scroll counting is on and the user shows it. */
+    /**
+     * Keeps the pill's swipe info current on every swipe: the count (shown if the user wants it,
+     * always used for the color) and, near a swipe limit, the swipes left.
+     */
     private suspend fun watchSwipes() {
         combine(
             sessionManager.swipes,
             preferences.settings,
             scrollCounting.isCounting,
-        ) { swipes, settings, counting ->
-            swipes?.count?.takeIf { counting && settings.showSwipes }
-        }.collect { count ->
-            swipesShown = count
-            window?.updateSwipes(count)
+            swipeLimitEnforcer.foreground,
+        ) { swipes, settings, counting, limit ->
+            if (!counting || swipes == null) return@combine null
+            PillSwipes(
+                count = swipes.count,
+                showCount = settings.showSwipes,
+                remaining = limit?.takeIf { it.packageName == swipes.packageName && it.status.showRemaining }
+                    ?.status?.remaining,
+            )
+        }.collect { info ->
+            swipesShown = info
+            window?.updateSwipes(info)
         }
     }
 

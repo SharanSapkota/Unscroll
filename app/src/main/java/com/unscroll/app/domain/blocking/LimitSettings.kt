@@ -26,13 +26,24 @@ data class BlockSchedule(
     }
 }
 
+/** Whether a swipe limit counts swipes per day or per (swipe) session. */
+enum class SwipeLimitScope { DAY, SESSION }
+
 /** What the user has configured for one app. */
 data class LimitSettings(
     /** Null means no daily limit. */
     val dailyLimitMinutes: Int? = null,
     val blockedAlways: Boolean = false,
     val schedule: BlockSchedule = BlockSchedule(),
+    /** Hard swipe limit (needs the opt-in scroll counting), or null for none. */
+    val swipeLimit: Int? = null,
+    val swipeLimitScope: SwipeLimitScope = SwipeLimitScope.DAY,
+    /** Per-session scope: the count starts again after the user stayed away this long. */
+    val swipeSessionGapMinutes: Int = SwipeLimitRules.DEFAULT_SESSION_GAP_MINUTES,
+    /** Offer "I need access" (typed phrase, +20 swipes) on the swipe-limit cover. */
+    val swipeAccessAllowed: Boolean = false,
 ) {
+    /** Time-based rules, enforced by BlockEnforcer. The swipe limit has its own enforcer. */
     val hasAnyRule: Boolean
         get() = dailyLimitMinutes != null || blockedAlways || schedule.enabled
 

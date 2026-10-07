@@ -29,6 +29,14 @@ import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.ui.durationText
 import kotlinx.coroutines.delay
 
+/** Swipe info for the pill: the session count (for color, and text if shown) and swipes left near a limit. */
+data class PillSwipes(
+    val count: Int,
+    val showCount: Boolean,
+    /** Swipes left under the app's swipe limit, once within the last 20 %; else null. */
+    val remaining: Int? = null,
+)
+
 /** What the overlay window shows. Produced by [OverlayTimerManager]. */
 data class OverlayUiState(
     val appName: String,
@@ -55,8 +63,8 @@ fun OverlayContent(
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
     onMessageAction: (PillAction) -> Unit = {},
-    /** Swipes in this session, or null when scroll counting is off or hidden (M7). */
-    swipes: Int? = null,
+    /** Swipes for the pill, or null when scroll counting is off. */
+    swipes: PillSwipes? = null,
 ) {
     val currentTime by produceState(now(), state.sessionStart) {
         while (true) {
@@ -72,19 +80,27 @@ fun OverlayContent(
             durationText(base + (currentTime - state.todayBaseTime).coerceAtLeast(0)),
         )
     }
-    val swipesText = swipes?.let { pluralStringResource(R.plurals.overlay_swipes, it, it) }
+    val swipesText = swipes?.takeIf { it.showCount }?.let {
+        pluralStringResource(R.plurals.overlay_swipes, it.count, it.count)
+    }
+    val remainingText = swipes?.remaining?.let { pluralStringResource(R.plurals.overlay_swipes_left, it, it) }
+    val level = PillRules.combinedLevel(
+        timeLevel = PillRules.levelFor(elapsed, state.settings.thresholds),
+        swipeLevel = swipes?.let { PillRules.levelForSwipes(it.count, state.settings.swipeThresholds) },
+    )
     val pill = @Composable {
         TimerPill(
             state = TimerPillState(
                 appName = state.appName,
                 elapsedText = PillRules.formatTime(elapsed),
                 todayText = todayText,
-                level = PillRules.levelFor(elapsed, state.settings.thresholds),
+                level = level,
                 size = state.settings.size,
                 opacity = state.settings.opacity,
                 // A message always expands a collapsed pill.
                 collapsed = state.collapsed && state.message == null,
                 swipesText = swipesText,
+                remainingText = remainingText,
             ),
             modifier = Modifier
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }

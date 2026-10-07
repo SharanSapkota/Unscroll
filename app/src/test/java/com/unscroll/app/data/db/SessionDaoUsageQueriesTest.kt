@@ -249,6 +249,38 @@ class SessionDaoUsageQueriesTest {
         assertEquals(null, dao.firstSessionStart())
     }
 
+    @Test
+    fun swipesSince_sumsThatAppsSessionsStartedSince() = runTest {
+        val before = insert(INSTAGRAM, yesterday, yesterday + MINUTE)
+        val first = insert(INSTAGRAM, midnight + 60 * MINUTE, midnight + 70 * MINUTE)
+        val open = insert(INSTAGRAM, midnight + 90 * MINUTE, null)
+        val other = insert(TIKTOK, midnight + 65 * MINUTE, midnight + 66 * MINUTE)
+        dao.updateScrollCount(before, 99)
+        dao.updateScrollCount(first, 30)
+        dao.updateScrollCount(open, 12)
+        dao.updateScrollCount(other, 7)
+
+        assertEquals(42, dao.swipesSince(INSTAGRAM, midnight))
+        assertEquals(12, dao.swipesSince(INSTAGRAM, midnight + 80 * MINUTE))
+        assertEquals(0, dao.swipesSince(FACEBOOK, midnight))
+    }
+
+    @Test
+    fun sessionSpansSince_newestFirst_forThatAppOnly() = runTest {
+        insert(INSTAGRAM, yesterday, yesterday + MINUTE)
+        insert(INSTAGRAM, midnight + 60 * MINUTE, midnight + 70 * MINUTE)
+        insert(INSTAGRAM, midnight + 90 * MINUTE, null)
+        insert(TIKTOK, midnight + 65 * MINUTE, null)
+
+        assertEquals(
+            listOf(
+                SessionSpanRow(midnight + 90 * MINUTE, null),
+                SessionSpanRow(midnight + 60 * MINUTE, midnight + 70 * MINUTE),
+            ),
+            dao.sessionSpansSince(INSTAGRAM, midnight),
+        )
+    }
+
     /** Room may re-emit unchanged results, so skip items until the value changes. */
     private suspend fun app.cash.turbine.ReceiveTurbine<SessionsChangeToken>.awaitUntilChanged(
         previous: SessionsChangeToken,

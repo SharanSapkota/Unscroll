@@ -25,9 +25,16 @@ interface BlockingDao {
     @Insert
     suspend fun insertOverride(override: BlockOverrideEntity): Long
 
-    /** When the latest still-running extension for the app ends, or null. */
-    @Query("SELECT MAX(expiresAt) FROM block_overrides WHERE packageName = :packageName AND expiresAt > :now")
+    /** When the latest still-running time extension for the app ends, or null. Swipe extensions don't count. */
+    @Query(
+        "SELECT MAX(expiresAt) FROM block_overrides " +
+            "WHERE packageName = :packageName AND expiresAt > :now AND method != 'SWIPES'",
+    )
     suspend fun activeOverrideUntil(packageName: String, now: Long): Long?
+
+    /** "I need access" swipe extensions for the app since [since]. */
+    @Query("SELECT COUNT(*) FROM block_overrides WHERE packageName = :packageName AND method = 'SWIPES' AND grantedAt >= :since")
+    suspend fun swipeExtensionsSince(packageName: String, since: Long): Int
 
     @Query("DELETE FROM block_overrides")
     suspend fun deleteAllOverrides()

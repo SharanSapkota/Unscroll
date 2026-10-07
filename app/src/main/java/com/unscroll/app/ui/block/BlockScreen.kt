@@ -71,6 +71,7 @@ fun BlockScreen(
                 text = when (state.reason) {
                     BlockReason.BLOCKED_ALWAYS -> stringResource(R.string.block_reason_always)
                     BlockReason.DAILY_LIMIT_REACHED -> stringResource(R.string.block_reason_limit)
+                    BlockReason.SWIPE_LIMIT_REACHED -> stringResource(R.string.block_reason_swipes)
                     BlockReason.INSIDE_SCHEDULE -> if (untilText != null) {
                         stringResource(R.string.block_reason_schedule_until, untilText)
                     } else {
