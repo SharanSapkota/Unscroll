@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -62,9 +63,19 @@ class TrackingService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        isRunning = true
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Must be called promptly after startForegroundService(), even if we stop right away.
-        startInForeground()
+        // If the system refuses (e.g. a sticky restart from the background on Android 12+), stop
+        // quietly: the app starts tracking again the next time it opens.
+        if (!startInForeground()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         if (trackingJob?.isActive != true) {
             trackingJob = scope.launch {
@@ -84,6 +95,7 @@ class TrackingService : Service() {
     }
 
     override fun onDestroy() {
+        isRunning = false
         // Remove the overlay synchronously so it can never outlive the service.
         overlayTimerManager.hide()
         frictionCoordinator.hideNow()
@@ -103,14 +115,24 @@ class TrackingService : Service() {
         stopSelf()
     }
 
-    private fun startInForeground() {
+    private fun startInForeground(): Boolean {
         createNotificationChannel(this)
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
         } else {
             0
         }
-        ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+        return try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), type)
+            true
+        } catch (e: IllegalStateException) {
+            // ForegroundServiceStartNotAllowedException (Android 12+) is an IllegalStateException.
+            Log.w(TAG, "Not allowed to run in the foreground right now", e)
+            false
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Not allowed to run in the foreground", e)
+            false
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -136,14 +158,34 @@ class TrackingService : Service() {
     }
 
     companion object {
+        private const val TAG = "TrackingService"
         private const val CHANNEL_ID = "tracking"
         private const val NOTIFICATION_ID = 1
 
-        fun start(context: Context) {
+        /** True between onCreate and onDestroy in this process. A dead process reads false. */
+        @Volatile
+        var isRunning: Boolean = false
+            private set
+
+        /**
+         * Starts the service. Call it only from a context Android allows (a visible activity, the
+         * boot or package-replaced broadcast). Never throws: returns false when Android refuses
+         * (ForegroundServiceStartNotAllowedException and friends), and the caller tries again the
+         * next time the app opens.
+         */
+        fun start(context: Context): Boolean = try {
             ContextCompat.startForegroundService(
                 context,
                 Intent(context, TrackingService::class.java),
             )
+            true
+        } catch (e: IllegalStateException) {
+            // Includes ForegroundServiceStartNotAllowedException (Android 12+).
+            Log.w(TAG, "Tracking not started: not allowed from here", e)
+            false
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Tracking not started", e)
+            false
         }
 
         fun stop(context: Context) {

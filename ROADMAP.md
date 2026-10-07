@@ -12,7 +12,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Welcome -> explanation screens -> deep link to Usage Access, Overlay, Notifications
 - Detect granted/not granted state, re-check on resume
 - Battery optimization guidance screen (with OEM-specific hints)
-- **Done when**: user can't reach the dashboard until required permissions are granted (with a skip for optional ones).
+- **Done when**: user can't reach the dashboard until required permissions are granted (with a skip for optional ones). (Since "Tracking on by default": a permission revoked after onboarding shows a "Tracking paused" banner on Home instead of sending the user back to onboarding.)
 
 ## M2: Foreground detection + session logging ✅ Done
 - `TrackingService` (foreground, notification channel)
@@ -103,3 +103,11 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Settings › Appearance: "Show fox" and "Fox messages", on by default, applied at once; idle animation stops with "Remove animations" and when the screen isn't visible
 - Fox adaptive app icon (foreground, background, themed monochrome) and notification icon
 - **Done when**: the fox shows the right mood on Home as usage crosses 80 % and 100 % of a limit, and switching it off hides it everywhere.
+
+## Tracking on by default ✅ Done (awaiting device testing)
+- Tracking defaults to on: a fresh install (never set) tracks; an explicit "off" from the user is kept
+- The service starts by itself: when onboarding finishes with the required permissions, every time the app opens and it isn't running, when a missing permission (Usage access, Overlay) is granted later, and after a reboot or an app update
+- Only from contexts Android allows (visible activity, boot/update broadcasts); a refused start is logged, never a crash, and retried the next time the app opens
+- Missing permissions are never silent: Home shows "Tracking paused: fix permissions" with a one-tap button, and the Settings checklist shows green checks for what is done (Accessibility only once scroll counting is on)
+- The Settings switch stays for turning it off on purpose; Home's pill says "Tracking off" with a tap to turn it back on. The overlay timer is on by default too
+- **Done when**: a fresh install tracks right after onboarding without touching any switch, and comes back after a reboot.

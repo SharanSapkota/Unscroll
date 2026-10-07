@@ -186,6 +186,12 @@
     <!-- Home -->
     <string name="home_tracking_on">Tracking on</string>
     <string name="home_tracking_off">Tracking off</string>
+    <string name="home_tracking_paused">Tracking paused</string>
+    <string name="home_tracking_paused_title">Tracking paused: fix permissions</string>
+    <string name="home_tracking_paused_usage">Usage access is off, so Unscroll can\'t see which app is open.</string>
+    <string name="home_tracking_paused_overlay">Display over apps is off, so the timer and limits can\'t show.</string>
+    <string name="home_tracking_fix_usage">Turn on Usage access</string>
+    <string name="home_tracking_fix_overlay">Turn on Display over apps</string>
     <string name="home_empty">Nothing tracked yet</string>
     <string name="home_empty_off">Tracking is off</string>
     <string name="home_hero_today">Today</string>

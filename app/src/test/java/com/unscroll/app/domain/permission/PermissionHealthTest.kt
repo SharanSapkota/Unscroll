@@ -38,7 +38,29 @@ class PermissionHealthTest {
     }
 
     @Test
-    fun checklist_alwaysHasFiveLines() {
-        assertEquals(5, PermissionHealth.checklist(PermissionState.NONE, ScrollCountingStatus.OFF).size)
+    fun checklist_listsAccessibilityOnlyWhenScrollCountingIsOn() {
+        fun items(scroll: ScrollCountingStatus) = PermissionHealth.checklist(PermissionState.NONE, scroll).map { it.first }
+        val base = listOf(HealthItem.USAGE_ACCESS, HealthItem.OVERLAY, HealthItem.NOTIFICATIONS, HealthItem.BATTERY)
+
+        assertEquals(base, items(ScrollCountingStatus.OFF))
+        assertEquals(base, items(ScrollCountingStatus.NEEDS_CONSENT))
+        assertEquals(base + HealthItem.ACCESSIBILITY, items(ScrollCountingStatus.ACTIVE))
+        assertEquals(base + HealthItem.ACCESSIBILITY, items(ScrollCountingStatus.NEEDS_ENABLING))
+        assertEquals(base + HealthItem.ACCESSIBILITY, items(ScrollCountingStatus.NEEDS_REENABLE))
+    }
+
+    @Test
+    fun checklist_marksGrantedLinesAsDone() {
+        val state = PermissionState(setOf(AppPermission.USAGE_ACCESS, AppPermission.NOTIFICATIONS))
+        assertEquals(
+            listOf(
+                HealthItem.USAGE_ACCESS to true,
+                HealthItem.OVERLAY to false,
+                HealthItem.NOTIFICATIONS to true,
+                HealthItem.BATTERY to false,
+                HealthItem.ACCESSIBILITY to true,
+            ),
+            PermissionHealth.checklist(state, ScrollCountingStatus.ACTIVE),
+        )
     }
 }

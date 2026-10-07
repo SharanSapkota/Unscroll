@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import com.unscroll.app.domain.session.HeartbeatStore
+import com.unscroll.app.domain.tracking.TrackingStartRules
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,10 +27,15 @@ class TrackingPreferences @Inject constructor(
         if (error is IOException) emit(emptyPreferences()) else throw error
     }
 
+    /**
+     * On by default: only a stored `false` (the user turned it off on purpose) keeps it off. The
+     * key is written only when the user flips the switch, so "never set" and "off" stay apart.
+     */
     val trackingEnabled: Flow<Boolean> = preferences
-        .map { it[TRACKING_ENABLED] ?: false }
+        .map { TrackingStartRules.enabled(it[TRACKING_ENABLED]) }
         .distinctUntilChanged()
 
+    /** Saves the user's explicit choice. */
     suspend fun setTrackingEnabled(enabled: Boolean) {
         dataStore.edit { it[TRACKING_ENABLED] = enabled }
     }
