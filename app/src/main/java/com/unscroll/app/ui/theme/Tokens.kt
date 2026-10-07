@@ -74,6 +74,7 @@ object Dimens {
     val foxSmall = 44.dp
     val foxHome = 76.dp
     val foxLarge = 120.dp
+    val foxWelcome = 200.dp
     val foxBubbleMaxWidth = 220.dp
 
     /** The breathing circle on the break screen. */
