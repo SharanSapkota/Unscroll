@@ -32,8 +32,8 @@ data class SwipeCoverState(
 /**
  * The hard stop when a swipe limit is reached: a full-screen TYPE_APPLICATION_OVERLAY window over
  * the tracked app. It is touchable (no FLAG_NOT_TOUCHABLE) and fills the screen, so it consumes
- * every touch; nothing reaches the app underneath. It is focusable so Back is swallowed and the
- * "I need access" phrase can be typed. The system Home and Recents buttons still work, and "Go home"
+ * every touch; nothing reaches the app underneath. It is focusable so Back is swallowed. The
+ * system Home and Recents buttons still work, and "Go home"
  * always does: the user is never trapped. Main thread only; thin on purpose, the decisions live in
  * SwipeLimitEnforcer.
  */
@@ -86,9 +86,7 @@ class SwipeLimitCover @Inject constructor(
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.OPAQUE,
-        ).apply {
-            softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-        }
+        )
         lifecycleOwner.onCreate()
         try {
             manager.addView(frame, params)

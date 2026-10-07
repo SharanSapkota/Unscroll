@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -27,7 +26,6 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,8 +45,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.BuildConfig
 import com.unscroll.app.R
-import com.unscroll.app.domain.blocking.BlockingSettings
-import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
@@ -63,7 +59,6 @@ import com.unscroll.app.ui.theme.UnscrollTheme
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 
@@ -79,7 +74,6 @@ fun SettingsScreen(
     val canDrawOverlays by viewModel.canDrawOverlays.collectAsStateWithLifecycle()
     val positionReset by viewModel.positionReset.collectAsStateWithLifecycle()
     val sampleSessionsAdded by viewModel.sampleSessionsAdded.collectAsStateWithLifecycle()
-    val blockingSettings by viewModel.blockingSettings.collectAsStateWithLifecycle()
     val quietHours by viewModel.quietHours.collectAsStateWithLifecycle()
 
     Column(
@@ -118,13 +112,6 @@ fun SettingsScreen(
             ),
         )
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-        BlockingSection(
-            settings = blockingSettings,
-            onFrictionMode = viewModel::setFrictionMode,
-            onCooldownMinutes = viewModel::setCooldownMinutes,
-            onCancelPending = viewModel::cancelPendingFriction,
-        )
-        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         QuietHoursSection(quietHours, viewModel::setQuietHours)
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         DailyGoalSection()
@@ -140,12 +127,6 @@ fun SettingsScreen(
             DebugTools(
                 sampleSessionsAdded = sampleSessionsAdded,
                 onInsertSampleData = viewModel::insertSampleData,
-            )
-            SwitchRow(
-                title = stringResource(R.string.settings_debug_short_cooldown),
-                description = stringResource(R.string.settings_debug_short_cooldown_description),
-                checked = blockingSettings.debugShortCooldown,
-                onCheckedChange = viewModel::setDebugShortCooldown,
             )
         }
     }
@@ -441,77 +422,6 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun BlockingSection(
-    settings: BlockingSettings,
-    onFrictionMode: (FrictionMode) -> Unit,
-    onCooldownMinutes: (Int) -> Unit,
-    onCancelPending: () -> Unit,
-) {
-    val context = LocalContext.current
-    SectionTitle(stringResource(R.string.settings_blocking_title))
-    Column(
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.settings_blocking_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = stringResource(R.string.settings_blocking_mode),
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        val modes = FrictionMode.entries
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            modes.forEachIndexed { index, mode ->
-                SegmentedButton(
-                    selected = mode == settings.frictionMode,
-                    onClick = { onFrictionMode(mode) },
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
-                ) {
-                    Text(
-                        stringResource(
-                            when (mode) {
-                                FrictionMode.WAIT -> R.string.settings_blocking_mode_wait
-                                FrictionMode.TYPE_PHRASE -> R.string.settings_blocking_mode_phrase
-                            },
-                        ),
-                    )
-                }
-            }
-        }
-        Text(
-            text = stringResource(R.string.settings_blocking_cooldown),
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BlockingSettings.COOLDOWN_PRESETS.forEach { minutes ->
-                FilterChip(
-                    selected = settings.cooldownMinutes == minutes,
-                    onClick = { onCooldownMinutes(minutes) },
-                    label = { Text(stringResource(R.string.apps_limit_minutes, minutes)) },
-                )
-            }
-        }
-        settings.pending?.let { pending ->
-            Text(
-                text = stringResource(
-                    R.string.settings_blocking_pending,
-                    DateFormat.getTimeFormat(context).format(Date(pending.appliesAt)),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.tertiary,
-            )
-            TextButton(onClick = onCancelPending) {
-                Text(stringResource(R.string.apps_pending_cancel))
-            }
-        }
-    }
 }
 
 /** Quiet hours: nudges, break reminders and limit warnings stay silent. */

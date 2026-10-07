@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         AppFrictionEntity::class,
         NudgeLogEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class UnscrollDatabase : RoomDatabase() {

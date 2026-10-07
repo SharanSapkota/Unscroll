@@ -38,8 +38,6 @@ class BlockingDaoTest {
     private fun limit(
         packageName: String = INSTAGRAM,
         dailyLimitMinutes: Int? = 30,
-        pendingJson: String? = null,
-        pendingAt: Long? = null,
     ) = AppLimitEntity(
         packageName = packageName,
         dailyLimitMinutes = dailyLimitMinutes,
@@ -48,8 +46,6 @@ class BlockingDaoTest {
         scheduleDays = 0b0011111,
         scheduleStartMinute = 22 * 60,
         scheduleEndMinute = 7 * 60,
-        pendingChangeJson = pendingJson,
-        pendingChangeAppliesAt = pendingAt,
     )
 
     @Test
@@ -65,22 +61,11 @@ class BlockingDaoTest {
     }
 
     @Test
-    fun duePendingChanges_onlyThoseWhoseTimeHasCome() = runTest {
-        dao.upsertLimit(limit(INSTAGRAM, pendingJson = "{}", pendingAt = 1_000))
-        dao.upsertLimit(limit(TIKTOK, pendingJson = "{}", pendingAt = 5_000))
-        dao.upsertLimit(limit(FACEBOOK))
-
-        assertEquals(emptyList<String>(), dao.getDuePendingChanges(999).map { it.packageName })
-        assertEquals(listOf(INSTAGRAM), dao.getDuePendingChanges(1_000).map { it.packageName })
-        assertEquals(setOf(INSTAGRAM, TIKTOK), dao.getDuePendingChanges(9_000).map { it.packageName }.toSet())
-    }
-
-    @Test
     fun overrides_activeUntilIsLatestUnexpired() = runTest {
         assertNull(dao.activeOverrideUntil(INSTAGRAM, now = 0))
 
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 0, expiresAt = 300, method = "WAIT"))
-        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "PHRASE"))
+        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "TAP"))
         dao.insertOverride(BlockOverrideEntity(packageName = TIKTOK, grantedAt = 100, expiresAt = 900, method = "WAIT"))
 
         assertEquals(400L, dao.activeOverrideUntil(INSTAGRAM, now = 200))
@@ -91,7 +76,7 @@ class BlockingDaoTest {
 
     @Test
     fun deleteAllOverrides_endsTheLog_butKeepsLimits() = runTest {
-        dao.upsertLimit(AppLimitEntity(INSTAGRAM, 30, false, false, 127, 0, 0, null, null))
+        dao.upsertLimit(AppLimitEntity(INSTAGRAM, 30, false, false, 127, 0, 0))
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "WAIT"))
 
         dao.deleteAllOverrides()
@@ -103,11 +88,11 @@ class BlockingDaoTest {
     @Test
     fun overrides_areLoggedForTheDashboard() = runTest {
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "WAIT"))
-        dao.insertOverride(BlockOverrideEntity(packageName = TIKTOK, grantedAt = 500, expiresAt = 800, method = "PHRASE"))
+        dao.insertOverride(BlockOverrideEntity(packageName = TIKTOK, grantedAt = 500, expiresAt = 800, method = "TAP"))
 
         val since = dao.observeOverridesSince(200).first()
         assertEquals(listOf(TIKTOK), since.map { it.packageName })
-        assertEquals("PHRASE", since.single().method)
+        assertEquals("TAP", since.single().method)
         assertEquals(2, dao.observeOverridesSince(0).first().size)
     }
 
@@ -115,12 +100,12 @@ class BlockingDaoTest {
     fun swipeExtensions_areCounted_butNeverExtendTime() = runTest {
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 100, method = "SWIPES"))
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 300, expiresAt = 300, method = "SWIPES"))
-        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 200, expiresAt = 900, method = "PHRASE"))
+        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 200, expiresAt = 900, method = "TAP"))
 
         assertEquals(2, dao.swipeExtensionsSince(INSTAGRAM, since = 0))
         assertEquals(1, dao.swipeExtensionsSince(INSTAGRAM, since = 200))
         assertEquals(0, dao.swipeExtensionsSince("com.facebook.katana", since = 0))
-        // Only the PHRASE row is a time extension.
+        // Only the TAP row is a time extension.
         assertEquals(900L, dao.activeOverrideUntil(INSTAGRAM, now = 50))
     }
 

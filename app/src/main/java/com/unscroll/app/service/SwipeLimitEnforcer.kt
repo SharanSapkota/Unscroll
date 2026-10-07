@@ -154,7 +154,7 @@ class SwipeLimitEnforcer @Inject constructor(
         }
         val now = clock.now()
         val zone = ZoneId.systemDefault()
-        val settings = limits.getLimit(packageName, now).settings
+        val settings = limits.getLimit(packageName).settings
         val status = swipeLimits.status(packageName, settings, now, zone)
         _foreground.value = status?.let { ForegroundSwipeLimit(packageName, it) }
         if (status == null || !status.reached) {
@@ -207,10 +207,10 @@ class SwipeLimitEnforcer @Inject constructor(
         if (!started) scrollCounting.goHomeAction?.invoke()
     }
 
-    /** The typed phrase was entered on the cover: +20 swipes, logged with the other extensions. */
+    /** "I need access" was tapped on the cover: +20 swipes, logged with the other extensions. */
     private suspend fun grantAccess(packageName: String) {
         val now = clock.now()
-        if (!limits.getLimit(packageName, now).settings.swipeAccessAllowed) return
+        if (!limits.getLimit(packageName).settings.swipeAccessAllowed) return
         limits.grantSwipeExtension(packageName, now)
         evaluate(packageName)
     }

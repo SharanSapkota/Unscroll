@@ -199,7 +199,7 @@ class FrictionCoordinator @Inject constructor(
         }
 
         // Limit warnings and the tint need a daily limit.
-        val limitMinutes = limits.getLimit(packageName, now).settings.dailyLimitMinutes
+        val limitMinutes = limits.getLimit(packageName).settings.dailyLimitMinutes
         if (limitMinutes == null) {
             withContext(Dispatchers.Main.immediate) { tint.hide() }
             return nextCheck

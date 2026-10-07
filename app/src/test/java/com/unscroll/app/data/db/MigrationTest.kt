@@ -53,6 +53,7 @@ class MigrationTest {
                         if (version >= 3) MIGRATION_2_3.migrate(db)
                         if (version >= 4) MIGRATION_3_4.migrate(db)
                         if (version >= 5) MIGRATION_4_5.migrate(db)
+                        if (version >= 6) MIGRATION_5_6.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -91,7 +92,7 @@ class MigrationTest {
                 sessions,
             )
 
-            val limit = AppLimitEntity("com.instagram.android", 30, false, false, 127, 1320, 420, null, null)
+            val limit = AppLimitEntity("com.instagram.android", 30, false, false, 127, 1320, 420)
             database.blockingDao().upsertLimit(limit)
             assertEquals(limit, database.blockingDao().getLimit("com.instagram.android"))
 
@@ -292,6 +293,115 @@ class MigrationTest {
 
             database.blockingDao().upsertLimit(limit.copy(swipeLimit = 100))
             assertEquals(100, database.blockingDao().getLimit("com.instagram.android")?.swipeLimit)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate6To7_appliesPendingChangesNow_andDropsThePendingColumns() = runTest {
+        createDatabase(version = 6)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(DB_NAME)
+            .callback(
+                object : SupportSQLiteOpenHelper.Callback(6) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            )
+            .build()
+        // Instagram: blocked, with "Block completely" off still waiting out its cooldown (far in
+        // the future) and a raised swipe limit. TikTok: a corrupt pending value. Facebook: none.
+        val pendingOff = "{\"dailyLimitMinutes\":60,\"blockedAlways\":false,\"scheduleEnabled\":false," +
+            "\"scheduleDays\":127,\"scheduleStartMinute\":1320,\"scheduleEndMinute\":420," +
+            "\"swipeLimit\":200,\"swipeLimitPerSession\":false,\"swipeSessionGapMinutes\":30," +
+            "\"swipeAccessAllowed\":false}"
+        val columns = "(packageName, dailyLimitMinutes, blockedAlways, scheduleEnabled, scheduleDays, " +
+            "scheduleStartMinute, scheduleEndMinute, pendingChangeJson, pendingChangeAppliesAt, swipeLimit, " +
+            "swipeLimitScope, swipeSessionGapMinutes, swipeAccessAllowed)"
+        FrameworkSQLiteOpenHelperFactory().create(config).apply {
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits $columns VALUES " +
+                    "('com.instagram.android', 30, 1, 1, 31, 1320, 420, ?, 9999999999999, 100, 'DAY', 30, 0)",
+                arrayOf<Any?>(pendingOff),
+            )
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits $columns VALUES " +
+                    "('com.zhiliaoapp.musically', 15, 1, 0, 127, 1320, 420, 'not json', 5000, NULL, 'SESSION', 15, 1)",
+            )
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits $columns VALUES " +
+                    "('com.facebook.katana', 45, 0, 1, 1, 600, 720, NULL, NULL, 50, 'DAY', 30, 1)",
+            )
+            writableDatabase.execSQL(
+                "INSERT INTO block_overrides (packageName, grantedAt, expiresAt, method) " +
+                    "VALUES ('com.instagram.android', 1, 2, 'PHRASE')",
+            )
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = database.blockingDao()
+            assertEquals(
+                AppLimitEntity(
+                    packageName = "com.instagram.android",
+                    dailyLimitMinutes = 60,
+                    blockedAlways = false,
+                    scheduleEnabled = false,
+                    scheduleDays = 127,
+                    scheduleStartMinute = 1320,
+                    scheduleEndMinute = 420,
+                    swipeLimit = 200,
+                    swipeLimitScope = "DAY",
+                    swipeSessionGapMinutes = 30,
+                    swipeAccessAllowed = false,
+                ),
+                dao.getLimit("com.instagram.android"),
+            )
+            assertEquals(
+                AppLimitEntity(
+                    packageName = "com.zhiliaoapp.musically",
+                    dailyLimitMinutes = 15,
+                    blockedAlways = true,
+                    scheduleEnabled = false,
+                    scheduleDays = 127,
+                    scheduleStartMinute = 1320,
+                    scheduleEndMinute = 420,
+                    swipeLimit = null,
+                    swipeLimitScope = "SESSION",
+                    swipeSessionGapMinutes = 15,
+                    swipeAccessAllowed = true,
+                ),
+                dao.getLimit("com.zhiliaoapp.musically"),
+            )
+            assertEquals(
+                AppLimitEntity(
+                    packageName = "com.facebook.katana",
+                    dailyLimitMinutes = 45,
+                    blockedAlways = false,
+                    scheduleEnabled = true,
+                    scheduleDays = 1,
+                    scheduleStartMinute = 600,
+                    scheduleEndMinute = 720,
+                    swipeLimit = 50,
+                    swipeLimitScope = "DAY",
+                    swipeSessionGapMinutes = 30,
+                    swipeAccessAllowed = true,
+                ),
+                dao.getLimit("com.facebook.katana"),
+            )
+            val limitColumns = database.openHelper.readableDatabase
+                .query("PRAGMA table_info(`app_limits`)")
+                .use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.getString(1)) } }
+            assertFalse("pendingChangeJson" in limitColumns)
+            assertFalse("pendingChangeAppliesAt" in limitColumns)
+            // Sessions and the extension log are untouched.
+            assertEquals(2, database.sessionDao().observeRecent(10).first().size)
+            assertEquals(listOf("PHRASE"), dao.observeOverridesSince(0).first().map { it.method })
         } finally {
             database.close()
         }

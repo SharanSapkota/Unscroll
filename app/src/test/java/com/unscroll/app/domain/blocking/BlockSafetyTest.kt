@@ -4,20 +4,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class UnlockPhraseAndSafetyTest {
-
-    private val phrase = "I choose to waste my time"
-
-    @Test
-    fun phrase_exactMatchOnly() {
-        assertTrue(UnlockPhrase.matches("I choose to waste my time", phrase))
-        assertTrue(UnlockPhrase.matches("  I choose to waste my time ", phrase))
-        assertFalse(UnlockPhrase.matches("i choose to waste my time", phrase))
-        assertFalse(UnlockPhrase.matches("I choose to waste my time.", phrase))
-        assertFalse(UnlockPhrase.matches("I choose to waste", phrase))
-        assertFalse(UnlockPhrase.matches("", phrase))
-        assertFalse(UnlockPhrase.matches("", ""))
-    }
+class BlockSafetyTest {
 
     private val own = "com.unscroll.app"
     private val home = setOf("com.google.android.apps.nexuslauncher")

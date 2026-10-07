@@ -28,9 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.unscroll.app.R
+import com.unscroll.app.domain.blocking.AccessExtension
 import com.unscroll.app.domain.blocking.BlockReason
-import com.unscroll.app.domain.blocking.BlockingSettings
-import com.unscroll.app.domain.blocking.FrictionMode
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.appLabel
@@ -41,8 +40,6 @@ fun BlockScreen(
     state: BlockUiState,
     onGoHome: () -> Unit,
     onRequestAccess: () -> Unit,
-    onCancelAccess: () -> Unit,
-    onFrictionPassed: () -> Unit,
 ) {
     val context = LocalContext.current
     val appName = remember(state.packageName) { context.packageManager.appLabel(state.packageName) }
@@ -98,49 +95,19 @@ fun BlockScreen(
                 Text(stringResource(R.string.block_go_home))
             }
             if (state.canRequestAccess) {
-                AccessSection(state, onRequestAccess, onCancelAccess, onFrictionPassed)
+                // One tap: the extension is granted, logged, and the app opens again.
+                TextButton(onClick = onRequestAccess, enabled = !state.accessGranted) {
+                    Text(
+                        text = stringResource(R.string.block_need_access, EXTENSION_MINUTES),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
     }
 }
 
-@Composable
-private fun AccessSection(
-    state: BlockUiState,
-    onRequestAccess: () -> Unit,
-    onCancelAccess: () -> Unit,
-    onFrictionPassed: () -> Unit,
-) {
-    when (val request = state.accessRequest) {
-        AccessRequest.NotStarted -> TextButton(onClick = onRequestAccess) {
-            Text(
-                text = stringResource(R.string.block_need_access),
-                style = MaterialTheme.typography.bodySmall,
-            )
-        }
-        AccessRequest.TypingPhrase -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            PhraseInput(onUnlocked = onFrictionPassed, modifier = Modifier.fillMaxWidth())
-            TextButton(onClick = onCancelAccess) { Text(stringResource(R.string.action_cancel)) }
-        }
-        is AccessRequest.Waiting -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.block_wait_countdown, request.secondsLeft),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-            )
-            TextButton(onClick = onCancelAccess) { Text(stringResource(R.string.action_cancel)) }
-        }
-        AccessRequest.WaitDone -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            TextButton(onClick = onFrictionPassed) {
-                Text(stringResource(R.string.block_open_for_minutes, EXTENSION_MINUTES))
-            }
-            TextButton(onClick = onCancelAccess) { Text(stringResource(R.string.action_cancel)) }
-        }
-        AccessRequest.Granted -> Unit
-    }
-}
-
-private val EXTENSION_MINUTES = (BlockingSettings.EXTENSION_MILLIS / 60_000L).toInt()
+private val EXTENSION_MINUTES = (AccessExtension.MILLIS / 60_000L).toInt()
 
 @Preview(showBackground = true)
 @Composable
@@ -152,13 +119,9 @@ private fun BlockScreenPreview() {
                 reason = BlockReason.DAILY_LIMIT_REACHED,
                 until = null,
                 usedTodayMillis = 47 * 60_000L,
-                frictionMode = FrictionMode.WAIT,
-                accessRequest = AccessRequest.Waiting(23),
             ),
             onGoHome = {},
             onRequestAccess = {},
-            onCancelAccess = {},
-            onFrictionPassed = {},
         )
     }
 }

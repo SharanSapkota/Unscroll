@@ -3,11 +3,13 @@ package com.unscroll.app.ui.block
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.unscroll.app.data.blocking.BlockingPreferences
 import com.unscroll.app.data.blocking.LimitRepository
+import com.unscroll.app.data.blocking.SwipeLimitRepository
+import com.unscroll.app.domain.blocking.AccessExtension
+import com.unscroll.app.domain.blocking.BlockEvaluator
 import com.unscroll.app.domain.blocking.BlockReason
-import com.unscroll.app.domain.blocking.BlockingSettings
-import com.unscroll.app.domain.blocking.FrictionMode
+import com.unscroll.app.domain.blocking.BlockScreenRules
+import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -17,23 +19,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
 import kotlin.random.Random
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-/** Where the "I need access" flow is. */
-sealed interface AccessRequest {
-    data object NotStarted : AccessRequest
-    data object TypingPhrase : AccessRequest
-    data class Waiting(val secondsLeft: Int) : AccessRequest
-    data object WaitDone : AccessRequest
-    /** Extension saved: the activity should reopen the app. */
-    data object Granted : AccessRequest
-}
 
 data class BlockUiState(
     val packageName: String,
@@ -41,8 +34,10 @@ data class BlockUiState(
     val until: Long?,
     val usedTodayMillis: Long = 0,
     val messageIndex: Int = 0,
-    val frictionMode: FrictionMode = FrictionMode.WAIT,
-    val accessRequest: AccessRequest = AccessRequest.NotStarted,
+    /** "I need access" was tapped and the extension saved: the activity should reopen the app. */
+    val accessGranted: Boolean = false,
+    /** The app isn't blocked any more (the user changed its limits): the activity should close. */
+    val unblocked: Boolean = false,
 ) {
     /** Extra time is only offered for the daily limit, never for "Block completely" or schedules. */
     val canRequestAccess: Boolean get() = reason == BlockReason.DAILY_LIMIT_REACHED
@@ -52,8 +47,9 @@ data class BlockUiState(
 class BlockViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val limits: LimitRepository,
+    private val swipeLimits: SwipeLimitRepository,
     private val usage: UsageDataSource,
-    private val blockingPreferences: BlockingPreferences,
+    private val evaluator: BlockEvaluator,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -71,59 +67,56 @@ class BlockViewModel @Inject constructor(
     )
     val uiState: StateFlow<BlockUiState> = _uiState.asStateFlow()
 
-    private var waitJob: Job? = null
-
     init {
         viewModelScope.launch {
             val now = clock.now()
-            val zone = ZoneId.systemDefault()
-            val todayStart = startOfDay(localDate(now, zone), zone)
-            val used = usage.appTotals(TimeRange(todayStart, now), now)[_uiState.value.packageName] ?: 0L
-            val mode = blockingPreferences.current(now).frictionMode
-            _uiState.update { it.copy(usedTodayMillis = used, frictionMode = mode) }
+            _uiState.update { it.copy(usedTodayMillis = usedToday(now, ZoneId.systemDefault())) }
+        }
+        // Changes in the Apps tab apply at once. Each one after the screen opened is checked here,
+        // so unblocking the app (or raising its limit, or turning off its schedule) closes the
+        // screen even while it sits in the background.
+        viewModelScope.launch {
+            val packageName = _uiState.value.packageName
+            limits.observeLimits()
+                .map { it[packageName]?.settings ?: LimitSettings.NONE }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { recheck(it) }
         }
     }
 
+    /** One tap: grants [AccessExtension.MILLIS] and logs it in `block_overrides`. */
     fun requestAccess() {
         val state = _uiState.value
-        if (!state.canRequestAccess || state.accessRequest != AccessRequest.NotStarted) return
-        when (state.frictionMode) {
-            FrictionMode.TYPE_PHRASE -> _uiState.update { it.copy(accessRequest = AccessRequest.TypingPhrase) }
-            FrictionMode.WAIT -> startWait()
-        }
-    }
-
-    fun cancelAccessRequest() {
-        waitJob?.cancel()
-        _uiState.update { it.copy(accessRequest = AccessRequest.NotStarted) }
-    }
-
-    /** The phrase was typed correctly, or the wait finished and the user confirmed. */
-    fun frictionPassed() {
-        val state = _uiState.value
-        val passed = state.accessRequest == AccessRequest.TypingPhrase ||
-            state.accessRequest == AccessRequest.WaitDone
-        if (!state.canRequestAccess || !passed) return
+        if (!state.canRequestAccess || state.accessGranted) return
         viewModelScope.launch {
-            limits.grantExtension(
-                packageName = state.packageName,
-                now = clock.now(),
-                durationMillis = BlockingSettings.EXTENSION_MILLIS,
-                method = state.frictionMode,
-            )
-            _uiState.update { it.copy(accessRequest = AccessRequest.Granted) }
+            limits.grantExtension(state.packageName, clock.now(), AccessExtension.MILLIS)
+            _uiState.update { it.copy(accessGranted = true) }
         }
     }
 
-    private fun startWait() {
-        waitJob?.cancel()
-        waitJob = viewModelScope.launch {
-            for (left in BlockingSettings.BLOCK_SCREEN_WAIT_SECONDS downTo 1) {
-                _uiState.update { it.copy(accessRequest = AccessRequest.Waiting(left)) }
-                delay(1_000)
-            }
-            _uiState.update { it.copy(accessRequest = AccessRequest.WaitDone) }
+    private suspend fun recheck(settings: LimitSettings) {
+        val state = _uiState.value
+        val now = clock.now()
+        val zone = ZoneId.systemDefault()
+        val decision = evaluator.evaluate(
+            settings = settings,
+            usedTodayMillis = usedToday(now, zone),
+            extensionUntil = limits.activeExtensionUntil(state.packageName, now),
+            now = now,
+            zone = zone,
+        )
+        val swipeLimitReached = state.reason == BlockReason.SWIPE_LIMIT_REACHED &&
+            swipeLimits.status(state.packageName, settings, now, zone)?.reached == true
+        val blocked = BlockScreenRules.current(state.reason, decision, swipeLimitReached)
+        _uiState.update {
+            if (blocked == null) it.copy(unblocked = true) else it.copy(reason = blocked.reason, until = blocked.until)
         }
+    }
+
+    private suspend fun usedToday(now: Long, zone: ZoneId): Long {
+        val todayStart = startOfDay(localDate(now, zone), zone)
+        return usage.appTotals(TimeRange(todayStart, now), now)[_uiState.value.packageName] ?: 0L
     }
 
     companion object {

@@ -40,7 +40,7 @@ data class LimitSettings(
     val swipeLimitScope: SwipeLimitScope = SwipeLimitScope.DAY,
     /** Per-session scope: the count starts again after the user stayed away this long. */
     val swipeSessionGapMinutes: Int = SwipeLimitRules.DEFAULT_SESSION_GAP_MINUTES,
-    /** Offer "I need access" (typed phrase, +20 swipes) on the swipe-limit cover. */
+    /** Offer "I need access" (one tap, +20 swipes) on the swipe-limit cover. */
     val swipeAccessAllowed: Boolean = false,
 ) {
     /** Time-based rules, enforced by BlockEnforcer. The swipe limit has its own enforcer. */
@@ -52,20 +52,13 @@ data class LimitSettings(
     }
 }
 
-/** A loosening change waiting out its cooldown. */
-data class PendingChange(val settings: LimitSettings, val appliesAt: Long)
-
 data class AppLimit(
     val packageName: String,
     val settings: LimitSettings = LimitSettings.NONE,
-    val pending: PendingChange? = null,
 )
 
-/** How the user proves they really want something weaker. */
-enum class FrictionMode {
-    /** Wait out the cooldown (or 30 s on the block screen). */
-    WAIT,
-
-    /** Type a fixed phrase to skip the wait. */
-    TYPE_PHRASE,
+/** "I need access" on the block screen: one tap, logged in `block_overrides`. */
+object AccessExtension {
+    /** How long a time extension from the block screen lasts. */
+    const val MILLIS = 5 * 60_000L
 }

@@ -88,7 +88,7 @@ class SwipeLimitRepositoryTest {
 
     @Test
     fun extensions_add20SwipesForTheCurrentWindowOnly() = runTest {
-        limits.requestChange(PKG, LimitSettings(swipeLimit = 50), now = 0, delayMillis = 0)
+        limits.updateLimit(PKG) { LimitSettings(swipeLimit = 50) }
         session(at(7, 9), null, swipes = 60)
         limits.grantSwipeExtension(PKG, at(6, 20)) // Yesterday: doesn't count today.
         limits.grantSwipeExtension(PKG, at(7, 9, 30))
@@ -110,8 +110,8 @@ class SwipeLimitRepositoryTest {
             swipeSessionGapMinutes = 15,
             swipeAccessAllowed = true,
         )
-        limits.requestChange(PKG, settings, now = 0, delayMillis = 0)
-        assertEquals(AppLimit(PKG, settings), limits.getLimit(PKG, now = 1))
+        limits.updateLimit(PKG) { settings }
+        assertEquals(AppLimit(PKG, settings), limits.getLimit(PKG))
     }
 
     private companion object {

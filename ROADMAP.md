@@ -39,8 +39,8 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 ## M5: Limits + block screen ✅ Done
 - Per-app daily limit, block always, block on schedule
 - `BlockActivity` shown when a blocked app opens (send user to home on dismiss)
-- Cooldown: unblock/limit changes take effect after N minutes or require typing a phrase
-- **Done when**: blocked app can't be used without passing friction.
+- Changes apply immediately (a cooldown with a typed-phrase unlock was built here and later removed by design: no cooldown, changes apply immediately)
+- **Done when**: a blocked app can't be used until the user changes its limits.
 
 ## M6: Friction + nudges ✅ Done
 - No pause screen: apps open instantly, the live timer is the stopper (a pause screen was built and later removed by design)
@@ -66,5 +66,13 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Per-app swipe limit (off by default; 25/50/100/200/300 or custom; per day or per session with a reset gap)
 - "N swipes left" on the pill from 80 %
 - When reached: a full-screen, touch-blocking cover over the app ("Swipe limit reached", swipes, time today, "Go home"), every time the app opens until the limit resets; block screen + Home as fallback without the overlay permission
-- Raising/removing the limit uses the same cooldown or typed phrase as other limits; optional "I need access" (+20 swipes, typed phrase), logged with the other extensions
+- Changes apply immediately like any limit; optional "I need access" (one tap, +20 swipes), logged with the other extensions
 - **Done when**: the cover appears at the limit, no touch reaches the app, and the user can always go home.
+
+## Design change after M9: no cooldown ✅ Done (awaiting device testing)
+- No cooldown: changes apply immediately. Turning off "Block completely", raising or removing a limit, or disabling a schedule takes effect at once; no pending changes, countdown, Cancel or typed phrase
+- Removed the friction settings (wait vs typed phrase, cooldown length) and the debug 10-second cooldown; their DataStore keys are deleted on upgrade
+- Room v7 applies any pending change, then drops the pending columns
+- An open block screen closes as soon as the app is no longer blocked
+- "I need access" on the block screen and the swipe-limit cover is one tap, still logged
+- **Done when**: unblocking an app in the Apps tab lets it open right away, and a block screen showing for it disappears.
