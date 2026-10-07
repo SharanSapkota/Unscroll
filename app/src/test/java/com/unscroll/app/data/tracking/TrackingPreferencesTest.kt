@@ -24,12 +24,18 @@ class TrackingPreferencesTest {
     )
 
     @Test
-    fun trackingIsOffByDefault_andCanBeTurnedOn() = runTest {
+    fun freshInstall_trackingIsOn() = runTest {
+        assertTrue(createPreferences().trackingEnabled.first())
+    }
+
+    @Test
+    fun explicitOff_staysOff_andCanBeTurnedBackOn() = runTest {
         val preferences = createPreferences()
+
+        preferences.setTrackingEnabled(false)
         assertFalse(preferences.trackingEnabled.first())
 
         preferences.setTrackingEnabled(true)
-
         assertTrue(preferences.trackingEnabled.first())
     }
 

@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -28,7 +29,10 @@ class OverlayPreferencesTest {
 
     @Test
     fun defaults() = runTest {
-        assertEquals(OverlaySettings(), createPreferences().settings.first())
+        val settings = createPreferences().settings.first()
+        assertEquals(OverlaySettings(), settings)
+        // The timer is on by default (it still needs the overlay permission to show).
+        assertTrue(settings.enabled)
     }
 
     @Test
