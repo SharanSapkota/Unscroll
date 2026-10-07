@@ -27,8 +27,9 @@ import kotlinx.coroutines.flow.combine
  * Shows the block screen when the app in front is blocked. Runs inside TrackingService.
  *
  * While a tracked app is in the foreground it re-evaluates right when the daily limit or an
- * extension runs out (and at least every [MAX_CHECK_MILLIS], for schedules and pending changes),
- * so a user who is already scrolling gets blocked the moment the limit is reached.
+ * extension runs out (and at least every [MAX_CHECK_MILLIS], for schedules), so a user who is
+ * already scrolling gets blocked the moment the limit is reached. Limit changes apply at once:
+ * every change restarts the evaluation, so an app that was just unblocked is let through.
  */
 @Singleton
 class BlockEnforcer @Inject constructor(
@@ -63,10 +64,10 @@ class BlockEnforcer @Inject constructor(
             }
     }
 
-    /** Current decision for [packageName], with due pending changes applied first. */
+    /** Current decision for [packageName], from its stored settings. */
     suspend fun decide(packageName: String): BlockDecision {
         val now = clock.now()
-        val limit = limits.getLimit(packageName, now)
+        val limit = limits.getLimit(packageName)
         if (!limit.settings.hasAnyRule) return BlockDecision.Allowed(remainingMillis = null)
         return evaluator.evaluate(
             settings = limit.settings,

@@ -2,17 +2,13 @@ package com.unscroll.app.ui.apps
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.unscroll.app.data.blocking.BlockingPreferences
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
-import com.unscroll.app.domain.blocking.BlockingSettings
-import com.unscroll.app.domain.blocking.LimitChangePolicy
 import com.unscroll.app.domain.blocking.LimitSettings
-import com.unscroll.app.domain.blocking.PendingChange
 import com.unscroll.app.domain.blocking.SwipeLimitRules
 import com.unscroll.app.domain.blocking.SwipeLimitScope
 import com.unscroll.app.domain.friction.FrictionSettings
@@ -39,7 +35,6 @@ import kotlinx.coroutines.launch
 data class AppCardState(
     val packageName: String,
     val settings: LimitSettings,
-    val pending: PendingChange?,
     val decision: BlockDecision,
     val now: Long,
     val friction: FrictionSettings = FrictionSettings.DEFAULT,
@@ -48,7 +43,6 @@ data class AppCardState(
 data class AppsUiState(
     val isLoading: Boolean = true,
     val apps: List<AppCardState> = emptyList(),
-    val blocking: BlockingSettings = BlockingSettings(),
     /** Swipe limits only work while the opt-in scroll counting runs. */
     val scrollCountingActive: Boolean = false,
 )
@@ -60,13 +54,12 @@ class AppsViewModel @Inject constructor(
     private val limits: LimitRepository,
     private val usage: UsageDataSource,
     private val evaluator: BlockEvaluator,
-    private val blockingPreferences: BlockingPreferences,
     private val friction: FrictionRepository,
     private val scrollCounting: ScrollCountingRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
-    /** Ticks once a second while the Apps tab is visible, for countdowns and "min left". */
+    /** Ticks once a second while the Apps tab is visible, for "min left". */
     private val ticks = flow {
         while (true) {
             emit(Unit)
@@ -77,10 +70,9 @@ class AppsViewModel @Inject constructor(
     val uiState: StateFlow<AppsUiState> = combine(
         limits.observeLimits(),
         friction.observeSettings(),
-        blockingPreferences.settings,
         ticks,
         scrollCounting.isCounting,
-    ) { stored, frictionSettings, _, _, counting -> Triple(stored, frictionSettings, counting) }
+    ) { stored, frictionSettings, _, counting -> Triple(stored, frictionSettings, counting) }
         .mapLatest { (stored, frictionSettings, counting) ->
             build(stored, frictionSettings).copy(scrollCountingActive = counting)
         }
@@ -106,7 +98,7 @@ class AppsViewModel @Inject constructor(
     fun setScheduleEnd(packageName: String, minuteOfDay: Int) =
         change(packageName) { it.copy(schedule = it.schedule.copy(endMinute = minuteOfDay)) }
 
-    /** Off (null), a preset, or a custom number. Raising or removing it waits out the cooldown. */
+    /** Off (null), a preset, or a custom number. */
     fun setSwipeLimit(packageName: String, swipes: Int?) = change(packageName) {
         it.copy(swipeLimit = swipes?.coerceIn(SwipeLimitRules.MIN_LIMIT, SwipeLimitRules.MAX_LIMIT))
     }
@@ -120,25 +112,12 @@ class AppsViewModel @Inject constructor(
     fun setSwipeAccessAllowed(packageName: String, allowed: Boolean) =
         change(packageName) { it.copy(swipeAccessAllowed = allowed) }
 
-    fun cancelPendingChange(packageName: String) {
-        viewModelScope.launch { limits.cancelPendingChange(packageName, clock.now()) }
-    }
-
-    /** Only reachable after typing the unlock phrase in the dialog, in either friction mode. */
-    fun applyPendingChangeNow(packageName: String) {
-        viewModelScope.launch { limits.applyPendingChangeNow(packageName, clock.now()) }
-    }
-
     /**
-     * The card's controls show the pending target, so edits apply to it (LimitChangePolicy.edit):
-     * stronger changes apply now, weaker ones wait, and undoing a pending change cancels it.
+     * Writes the change straight to the stored settings: it applies at once, stronger or weaker.
+     * The Apps card, BlockEnforcer and SwipeLimitEnforcer all observe the limits and update with it.
      */
     private fun change(packageName: String, transform: (LimitSettings) -> LimitSettings) {
-        viewModelScope.launch {
-            val now = clock.now()
-            val cooldown = blockingPreferences.current(now).cooldownMillis
-            limits.editLimit(packageName, transform, now, cooldown)
-        }
+        viewModelScope.launch { limits.updateLimit(packageName, transform) }
     }
 
     /** Nudges, break reminders, warnings, tint and swipe breaks apply immediately. */
@@ -154,16 +133,14 @@ class AppsViewModel @Inject constructor(
 
     private suspend fun build(stored: Map<String, AppLimit>, frictionSettings: Map<String, FrictionSettings>): AppsUiState {
         val now = clock.now()
-        limits.applyDueChanges(now)
         val zone = ZoneId.systemDefault()
         val todayStart = startOfDay(localDate(now, zone), zone)
         val usedToday = usage.appTotals(TimeRange(todayStart, now), now)
         val cards = installedApps.packages().map { packageName ->
-            val limit = LimitChangePolicy.resolve(stored[packageName] ?: AppLimit(packageName), now)
+            val limit = stored[packageName] ?: AppLimit(packageName)
             AppCardState(
                 packageName = packageName,
                 settings = limit.settings,
-                pending = limit.pending,
                 decision = evaluator.evaluate(
                     settings = limit.settings,
                     usedTodayMillis = usedToday[packageName] ?: 0L,
@@ -175,6 +152,6 @@ class AppsViewModel @Inject constructor(
                 friction = frictionSettings[packageName] ?: FrictionSettings.DEFAULT,
             )
         }
-        return AppsUiState(isLoading = false, apps = cards, blocking = blockingPreferences.current(now))
+        return AppsUiState(isLoading = false, apps = cards)
     }
 }

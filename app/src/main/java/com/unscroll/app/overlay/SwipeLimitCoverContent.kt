@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
@@ -15,10 +14,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -29,24 +24,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.SwipeLimitRules
-import com.unscroll.app.ui.block.PhraseInput
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
 
-/** "Swipe limit reached": the count, today's time, and "Go home". No countdown, no animation. */
+/**
+ * "Swipe limit reached": the count, today's time, and "Go home". No countdown, no animation.
+ * "I need access" (if the user allowed it) is one tap: +20 swipes.
+ */
 @Composable
 internal fun SwipeLimitCoverContent(
     state: SwipeCoverState,
     onGoHome: () -> Unit,
     onAccessGranted: () -> Unit,
 ) {
-    var typingPhrase by rememberSaveable(state.packageName) { mutableStateOf(false) }
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
@@ -73,20 +68,8 @@ internal fun SwipeLimitCoverContent(
                 Text(stringResource(R.string.swipe_cover_go_home))
             }
             if (state.accessAllowed) {
-                if (typingPhrase) {
-                    Text(
-                        text = stringResource(R.string.swipe_cover_access_explanation, SwipeLimitRules.EXTENSION_SWIPES),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    PhraseInput(onUnlocked = onAccessGranted, modifier = Modifier.fillMaxWidth())
-                    TextButton(onClick = { typingPhrase = false }) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                } else {
-                    TextButton(onClick = { typingPhrase = true }) {
-                        Text(stringResource(R.string.swipe_cover_need_access))
-                    }
+                TextButton(onClick = onAccessGranted) {
+                    Text(stringResource(R.string.swipe_cover_need_access, SwipeLimitRules.EXTENSION_SWIPES))
                 }
             }
         }

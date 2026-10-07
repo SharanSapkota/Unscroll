@@ -37,7 +37,7 @@ import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.SwipeLimitRules
 import com.unscroll.app.domain.blocking.SwipeLimitScope
 
-/** Callbacks for the swipe-limit controls. Weaker changes wait out the cooldown like any limit. */
+/** Callbacks for the swipe-limit controls. Every change applies at once, like any limit. */
 internal class SwipeLimitActions(
     val onLimit: (Int?) -> Unit = {},
     val onScope: (SwipeLimitScope) -> Unit = {},
@@ -47,8 +47,7 @@ internal class SwipeLimitActions(
 
 /**
  * "Swipe limit" on an app card: off, a preset or a custom number; per day or per session (with the
- * reset gap); and whether the cover offers "I need access". [settings] is what the card shows
- * (the pending target while a loosening change waits).
+ * reset gap); and whether the cover offers "I need access". [settings] are the app's stored settings.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

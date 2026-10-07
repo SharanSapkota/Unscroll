@@ -138,7 +138,7 @@
     <string name="action_cancel">Cancel</string>
 
     <!-- Apps tab: limits and blocking -->
-    <string name="apps_cooldown_note">Stricter rules apply right away. Loosening a rule waits %1$d minutes first.</string>
+    <string name="apps_changes_note">Changes apply right away.</string>
     <string name="apps_daily_limit">Daily limit</string>
     <string name="apps_limit_none">None</string>
     <string name="apps_limit_minutes">%1$d min</string>
@@ -156,26 +156,6 @@
     <string name="apps_status_blocked_always">Blocked</string>
     <string name="apps_status_limit_reached">Daily limit reached. Blocked until tomorrow</string>
     <string name="apps_status_blocked_until">Blocked until %1$s</string>
-    <string name="apps_pending_countdown">Loosening change applies in %1$s</string>
-    <string name="apps_pending_explanation">This change makes blocking weaker, so it waits a little in case it\'s just an urge.</string>
-    <string name="apps_pending_cancel">Cancel</string>
-    <string name="apps_pending_unlock_now">Type phrase to unlock now</string>
-    <string name="apps_pending_block_off">Block turns off in %1$s</string>
-    <string name="apps_pending_limit_removed">Daily limit is removed in %1$s</string>
-    <string name="apps_pending_limit_raised">Daily limit goes up to %1$d min in %2$s</string>
-    <string name="apps_pending_schedule_off">Schedule turns off in %1$s</string>
-    <string name="apps_pending_schedule_changed">Schedule loosens in %1$s</string>
-    <string name="apps_pending_switch_off">Turns off in %1$s · tap to keep it on</string>
-    <string name="apps_cooldown_note_debug">Stricter rules apply right away. Loosening a rule waits 10 seconds (debug cooldown).</string>
-    <string name="settings_debug_short_cooldown">10-second cooldown</string>
-    <string name="settings_debug_short_cooldown_description">Debug builds only. Every cooldown (loosening limits and friction) takes 10 seconds, for testing.</string>
-
-    <!-- Unlock phrase -->
-    <string name="unlock_phrase">I choose to waste my time</string>
-    <string name="unlock_phrase_title">Type to unlock</string>
-    <string name="unlock_phrase_instruction">Type this sentence exactly to continue:</string>
-    <string name="unlock_phrase_field">Your answer</string>
-    <string name="unlock_phrase_confirm">Unlock</string>
 
     <!-- Block screen -->
     <string name="block_title">%1$s is blocked</string>
@@ -185,9 +165,7 @@
     <string name="block_reason_schedule_until">This app is blocked on your schedule until %1$s.</string>
     <string name="block_used_today">Used today: %1$s</string>
     <string name="block_go_home">Go home</string>
-    <string name="block_need_access">I need access</string>
-    <string name="block_wait_countdown">Take a breath. You can continue in %1$d s.</string>
-    <string name="block_open_for_minutes">Open for %1$d minutes</string>
+    <string name="block_need_access">I need access (%1$d more minutes)</string>
     <string-array name="block_messages">
         <item>The feed will still be there tomorrow. This moment won\'t.</item>
         <item>You set this limit for a reason. Trust past you.</item>
@@ -198,15 +176,6 @@
         <item>Every time you close this, it gets a little easier.</item>
         <item>You\'re in charge here, not the algorithm.</item>
     </string-array>
-
-    <!-- Settings: blocking friction -->
-    <string name="settings_blocking_title">Blocking</string>
-    <string name="settings_blocking_description">Loosening a limit or block never happens instantly. Choose how you prove you really mean it.</string>
-    <string name="settings_blocking_mode">To loosen a rule</string>
-    <string name="settings_blocking_mode_wait">Wait it out</string>
-    <string name="settings_blocking_mode_phrase">Type a phrase</string>
-    <string name="settings_blocking_cooldown">Waiting time</string>
-    <string name="settings_blocking_pending">Your weaker setting takes effect at %1$s.</string>
 
     <!-- Break screen (M7, after N swipes) -->
     <string name="break_countdown">Take a breath. %1$d s</string>
@@ -387,8 +356,7 @@
     </plurals>
     <string name="swipe_cover_today">%1$s in this app today</string>
     <string name="swipe_cover_go_home">Go home</string>
-    <string name="swipe_cover_need_access">I need access</string>
-    <string name="swipe_cover_access_explanation">Typing the phrase gives you %1$d more swipes.</string>
+    <string name="swipe_cover_need_access">I need access (%1$d more swipes)</string>
     <string name="overlay_swipes_separator"> · %1$s</string>
     <plurals name="overlay_swipes_left">
         <item quantity="one">%d swipe left</item>
@@ -403,7 +371,7 @@
         <item quantity="other">Red after %d swipes</item>
     </plurals>
     <string name="swipe_limit_title">Swipe limit</string>
-    <string name="swipe_limit_description">When you reach it, the app is covered until the limit resets. Raising or removing it waits like any other limit.</string>
+    <string name="swipe_limit_description">When you reach it, the app is covered until the limit resets.</string>
     <string name="swipe_limit_needs_counting">Needs scroll counting (Settings › Scroll counting). Without it, swipes aren\'t counted and this limit does nothing.</string>
     <string name="swipe_limit_custom">Custom</string>
     <string name="swipe_limit_custom_value">Custom: %1$d</string>
@@ -414,8 +382,5 @@
     <string name="swipe_limit_per_session">Per session</string>
     <string name="swipe_limit_session_gap">Starts again after you stay away for</string>
     <string name="swipe_limit_access">Allow \"I need access\"</string>
-    <string name="swipe_limit_access_description">The cover offers %1$d more swipes after you type the unlock phrase.</string>
-    <string name="apps_pending_swipes_removed">Swipe limit is removed in %1$s</string>
-    <string name="apps_pending_swipes_raised">Swipe limit goes up to %1$d in %2$s</string>
-    <string name="apps_pending_swipes_loosened">Swipe limit loosens in %1$s</string>
+    <string name="swipe_limit_access_description">The cover offers %1$d more swipes with one tap.</string>
 </resources>

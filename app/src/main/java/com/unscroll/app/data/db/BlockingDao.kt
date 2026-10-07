@@ -18,10 +18,6 @@ interface BlockingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLimit(limit: AppLimitEntity)
 
-    /** Limits whose pending change is due at [now]. */
-    @Query("SELECT * FROM app_limits WHERE pendingChangeAppliesAt IS NOT NULL AND pendingChangeAppliesAt <= :now")
-    suspend fun getDuePendingChanges(now: Long): List<AppLimitEntity>
-
     @Insert
     suspend fun insertOverride(override: BlockOverrideEntity): Long
 

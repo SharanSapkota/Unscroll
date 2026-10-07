@@ -8,7 +8,7 @@ Draft answers for the Play Console **Accessibility API** declaration (App conten
 
 ## Core functionality
 
-Unscroll helps people cut down on compulsive scrolling ("doomscrolling") in social media apps they choose to limit: Instagram, TikTok and Facebook. It shows a live session timer, logs time spent, lets users set daily limits, and adds friction such as cooldowns and break reminders. All of this works without the Accessibility API.
+Unscroll helps people cut down on compulsive scrolling ("doomscrolling") in social media apps they choose to limit: Instagram, TikTok and Facebook. It shows a live session timer, logs time spent, lets users set daily limits, and adds friction such as nudges and break reminders. All of this works without the Accessibility API.
 
 **Scroll counting** is an optional, opt-in feature. It counts how many times the user swipes in those apps, so that Unscroll can:
 - show the swipe count next to the live timer,

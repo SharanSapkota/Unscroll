@@ -10,7 +10,7 @@ Doomscrolling steals hours you never get back. Unscroll shows you exactly how mu
 - App blocking: block apps entirely, on a schedule, or after your daily limit
 - Hours invested: see how many hours and days you've given each app
 - Insights: time-of-day heatmap, number of opens, longest sessions, weekly trends
-- Friction, not guilt: a live timer, cooldowns, and gentle nudges that actually work
+- Friction, not guilt: a live timer, limits, and gentle nudges that actually work
 - Swipe counter and swipe limit (optional): see how many times you swipe, and cover the app when you hit the limit you set
 - Private by design: all your data stays on your phone. No account. No tracking.
 

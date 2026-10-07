@@ -11,13 +11,17 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.unscroll.app.domain.blocking.BlockReason
 import com.unscroll.app.ui.theme.UnscrollTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Full-screen block screen, opened by BlockEnforcer on top of the home screen when a blocked app
- * comes to the front. Back does nothing, so it can't be used to slip back into the app.
+ * comes to the front. Back does nothing, so it can't be used to slip back into the app. It closes
+ * by itself as soon as the app is no longer blocked (see BlockViewModel).
  */
 @AndroidEntryPoint
 class BlockActivity : ComponentActivity() {
@@ -38,17 +42,21 @@ class BlockActivity : ComponentActivity() {
         setContent {
             UnscrollTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
-                LaunchedEffect(state.accessRequest) {
-                    if (state.accessRequest == AccessRequest.Granted) openBlockedApp(state.packageName)
+                LaunchedEffect(state.accessGranted) {
+                    if (state.accessGranted) openBlockedApp(state.packageName)
                 }
                 BlockScreen(
                     state = state,
                     onGoHome = ::goHome,
                     onRequestAccess = viewModel::requestAccess,
-                    onCancelAccess = viewModel::cancelAccessRequest,
-                    onFrictionPassed = viewModel::frictionPassed,
                 )
             }
+        }
+        // Not tied to STARTED: the screen also closes while it waits in the background, so it
+        // never comes back for an app the user has unblocked in the meantime.
+        lifecycleScope.launch {
+            viewModel.uiState.first { it.unblocked }
+            finishAndRemoveTask()
         }
     }
 

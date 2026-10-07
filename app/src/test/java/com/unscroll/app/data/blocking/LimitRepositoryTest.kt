@@ -6,25 +6,38 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.unscroll.app.data.db.UnscrollDatabase
 import com.unscroll.app.domain.blocking.AppLimit
-import com.unscroll.app.domain.blocking.FrictionMode
+import com.unscroll.app.domain.blocking.BlockDecision
+import com.unscroll.app.domain.blocking.BlockEvaluator
+import com.unscroll.app.domain.blocking.BlockReason
+import com.unscroll.app.domain.blocking.BlockSchedule
+import com.unscroll.app.domain.blocking.BlockScreenRules
 import com.unscroll.app.domain.blocking.LimitSettings
-import com.unscroll.app.domain.blocking.PendingChange
+import com.unscroll.app.domain.time.Clock
+import java.time.LocalDateTime
+import java.time.ZoneId
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
+/** No cooldown: every change is stored at once, and the next evaluation already sees it. */
 @RunWith(AndroidJUnit4::class)
 @Config(application = Application::class)
 class LimitRepositoryTest {
 
     private lateinit var database: UnscrollDatabase
     private lateinit var repository: LimitRepository
-    private val delay = 10 * 60_000L
+    private val zone = ZoneId.of("Europe/Berlin")
+
+    // A Wednesday at 23:00.
+    private val now = LocalDateTime.of(2026, 10, 7, 23, 0).atZone(zone).toInstant().toEpochMilli()
+    private val evaluator = BlockEvaluator(Clock { now })
 
     @Before
     fun setUp() {
@@ -40,86 +53,110 @@ class LimitRepositoryTest {
         database.close()
     }
 
+    private suspend fun decide(usedTodayMillis: Long = 0): BlockDecision = evaluator.evaluate(
+        settings = repository.getLimit(PKG).settings,
+        usedTodayMillis = usedTodayMillis,
+        extensionUntil = repository.activeExtensionUntil(PKG, now),
+        now = now,
+        zone = zone,
+    )
+
     @Test
     fun unconfiguredApp_hasNoRules() = runTest {
-        assertEquals(AppLimit(PKG), repository.getLimit(PKG, now = 0))
+        assertEquals(AppLimit(PKG), repository.getLimit(PKG))
     }
 
     @Test
-    fun strongerChange_isStoredImmediately() = runTest {
-        repository.requestChange(PKG, LimitSettings(dailyLimitMinutes = 30), now = 0, delayMillis = delay)
-        assertEquals(AppLimit(PKG, LimitSettings(dailyLimitMinutes = 30)), repository.getLimit(PKG, now = 1))
+    fun turningOffBlockCompletely_unblocksImmediately() = runTest {
+        repository.updateLimit(PKG) { it.copy(blockedAlways = true) }
+        assertEquals(BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, until = null), decide())
+
+        val stored = repository.updateLimit(PKG) { it.copy(blockedAlways = false) }
+
+        assertEquals(AppLimit(PKG, LimitSettings.NONE), stored)
+        assertEquals(LimitSettings.NONE, repository.getLimit(PKG).settings)
+        assertEquals(BlockDecision.Allowed(remainingMillis = null), decide())
     }
 
     @Test
-    fun weakerChange_waits_thenAppliesOnRead() = runTest {
-        repository.requestChange(PKG, LimitSettings(dailyLimitMinutes = 30), now = 0, delayMillis = delay)
-        repository.requestChange(PKG, LimitSettings(dailyLimitMinutes = null), now = 1_000, delayMillis = delay)
+    fun raisingALimit_appliesImmediately() = runTest {
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 30) }
+        assertTrue(decide(usedTodayMillis = 40 * MINUTE) is BlockDecision.Blocked)
 
-        val waiting = repository.getLimit(PKG, now = 1_000 + delay - 1)
-        assertEquals(LimitSettings(dailyLimitMinutes = 30), waiting.settings)
-        assertEquals(PendingChange(LimitSettings.NONE, appliesAt = 1_000 + delay), waiting.pending)
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 60) }
 
-        val applied = repository.getLimit(PKG, now = 1_000 + delay)
-        assertEquals(AppLimit(PKG, LimitSettings.NONE, pending = null), applied)
+        assertEquals(60, repository.getLimit(PKG).settings.dailyLimitMinutes)
+        assertEquals(BlockDecision.Allowed(remainingMillis = 20 * MINUTE), decide(usedTodayMillis = 40 * MINUTE))
     }
 
     @Test
-    fun applyDueChanges_writesThroughForAllApps() = runTest {
-        repository.requestChange(PKG, LimitSettings(blockedAlways = true), now = 0, delayMillis = delay)
-        repository.requestChange(PKG, LimitSettings.NONE, now = 0, delayMillis = delay)
+    fun removingALimit_appliesImmediately() = runTest {
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 30) }
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = null) }
 
-        repository.applyDueChanges(now = delay)
-
-        assertNull(database.blockingDao().getLimit(PKG)?.pendingChangeJson)
-        assertEquals(false, database.blockingDao().getLimit(PKG)?.blockedAlways)
+        assertEquals(BlockDecision.Allowed(remainingMillis = null), decide(usedTodayMillis = 40 * MINUTE))
     }
 
     @Test
-    fun cancelAndApplyNow() = runTest {
-        repository.requestChange(PKG, LimitSettings(blockedAlways = true), now = 0, delayMillis = delay)
-        repository.requestChange(PKG, LimitSettings.NONE, now = 0, delayMillis = delay)
-        repository.cancelPendingChange(PKG, now = 1)
-        assertEquals(AppLimit(PKG, LimitSettings(blockedAlways = true)), repository.getLimit(PKG, now = delay * 2))
+    fun disablingASchedule_appliesImmediately() = runTest {
+        // 22:00 to 07:00 every day, and it's 23:00.
+        repository.updateLimit(PKG) { it.copy(schedule = BlockSchedule(enabled = true)) }
+        assertTrue(decide() is BlockDecision.Blocked)
 
-        repository.requestChange(PKG, LimitSettings.NONE, now = 0, delayMillis = delay)
-        repository.applyPendingChangeNow(PKG, now = 1)
-        assertEquals(AppLimit(PKG, LimitSettings.NONE), repository.getLimit(PKG, now = 2))
+        repository.updateLimit(PKG) { it.copy(schedule = it.schedule.copy(enabled = false)) }
+
+        assertEquals(false, repository.getLimit(PKG).settings.schedule.enabled)
+        assertEquals(BlockDecision.Allowed(remainingMillis = null), decide())
     }
 
     @Test
-    fun blockOff_isPending_thenApplied_evenAfterTheAppWasClosed() = runTest {
-        repository.requestChange(PKG, LimitSettings(blockedAlways = true), now = 0, delayMillis = delay)
-        repository.editLimit(PKG, { it.copy(blockedAlways = false) }, now = 1_000, delayMillis = delay)
-        assertEquals(1_000 + delay, database.blockingDao().getLimit(PKG)?.pendingChangeAppliesAt)
+    fun anOpenBlockScreenSeesTheUnblockRightAway() = runTest {
+        repository.updateLimit(PKG) { it.copy(blockedAlways = true) }
+        val shown = (decide() as BlockDecision.Blocked).reason
 
-        // The process dies; nothing runs while the cooldown passes. A new repository (as after a
-        // restart) sees the block off as soon as anything reads it, and saves that.
-        val afterRestart = LimitRepository(database.blockingDao())
-        assertEquals(AppLimit(PKG, LimitSettings(blockedAlways = false)), afterRestart.getLimit(PKG, now = 1_000 + delay))
-        assertEquals(false, database.blockingDao().getLimit(PKG)?.blockedAlways)
-        assertNull(database.blockingDao().getLimit(PKG)?.pendingChangeAppliesAt)
+        repository.updateLimit(PKG) { it.copy(blockedAlways = false) }
+
+        assertEquals(LimitSettings.NONE, repository.observeLimits().first()[PKG]?.settings)
+        assertNull(BlockScreenRules.current(shown, decide(), swipeLimitReached = false))
     }
 
     @Test
-    fun editLimit_otherChangeWhilePending_keepsThePendingBlockOff() = runTest {
-        repository.requestChange(PKG, LimitSettings(blockedAlways = true), now = 0, delayMillis = delay)
-        repository.editLimit(PKG, { it.copy(blockedAlways = false) }, now = 1_000, delayMillis = delay)
-        repository.editLimit(PKG, { it.copy(dailyLimitMinutes = 45) }, now = 2_000, delayMillis = delay)
+    fun strongerChanges_applyImmediatelyToo() = runTest {
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 30, swipeLimit = 100) }
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 15, swipeLimit = 50) }
 
-        val stored = repository.getLimit(PKG, now = 3_000)
-        assertEquals(LimitSettings(blockedAlways = true, dailyLimitMinutes = 45), stored.settings)
-        assertEquals(PendingChange(LimitSettings(dailyLimitMinutes = 45), appliesAt = 1_000 + delay), stored.pending)
+        assertEquals(LimitSettings(dailyLimitMinutes = 15, swipeLimit = 50), repository.getLimit(PKG).settings)
     }
 
     @Test
-    fun extension_activeForItsDuration() = runTest {
-        repository.grantExtension(PKG, now = 1_000, durationMillis = 300_000, method = FrictionMode.TYPE_PHRASE)
+    fun updateLimit_keepsTheOtherSettings() = runTest {
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 45, blockedAlways = true, swipeLimit = 100) }
+        repository.updateLimit(PKG) { it.copy(blockedAlways = false) }
+
+        assertEquals(LimitSettings(dailyLimitMinutes = 45, swipeLimit = 100), repository.getLimit(PKG).settings)
+    }
+
+    @Test
+    fun extension_oneTap_activeForItsDuration_andLogged() = runTest {
+        repository.grantExtension(PKG, now = 1_000, durationMillis = 300_000)
+
         assertEquals(301_000L, repository.activeExtensionUntil(PKG, now = 2_000))
         assertNull(repository.activeExtensionUntil(PKG, now = 301_000))
+        val logged = database.blockingDao().observeOverridesSince(0).first().single()
+        assertEquals("TAP", logged.method)
+        assertEquals(1_000L, logged.grantedAt)
+    }
+
+    @Test
+    fun extension_letsTheUserBackInAfterTheDailyLimit() = runTest {
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = 30) }
+        repository.grantExtension(PKG, now = now, durationMillis = 5 * MINUTE)
+
+        assertEquals(BlockDecision.Allowed(remainingMillis = 5 * MINUTE), decide(usedTodayMillis = 40 * MINUTE))
     }
 
     private companion object {
         const val PKG = "com.instagram.android"
+        const val MINUTE = 60_000L
     }
 }

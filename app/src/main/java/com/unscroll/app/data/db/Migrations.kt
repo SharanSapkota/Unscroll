@@ -116,4 +116,69 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+
+/**
+ * v6 → v7: no more cooldown. Any pending change in `app_limits` is applied now (whether or not
+ * its cooldown was over), then `pendingChangeJson` and `pendingChangeAppliesAt` are dropped. SQLite
+ * on API 26 has no DROP COLUMN, so the table is rebuilt, keeping every row and setting.
+ */
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        val pending = db.query("SELECT packageName, pendingChangeJson FROM app_limits WHERE pendingChangeJson IS NOT NULL")
+            .use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val settings = LegacyPendingChange.decode(cursor.getString(1)) ?: continue
+                        add(cursor.getString(0) to settings)
+                    }
+                }
+            }
+        pending.forEach { (packageName, settings) ->
+            db.execSQL(
+                "UPDATE app_limits SET dailyLimitMinutes = ?, blockedAlways = ?, scheduleEnabled = ?, " +
+                    "scheduleDays = ?, scheduleStartMinute = ?, scheduleEndMinute = ?, swipeLimit = ?, " +
+                    "swipeLimitScope = ?, swipeSessionGapMinutes = ?, swipeAccessAllowed = ? WHERE packageName = ?",
+                arrayOf<Any?>(
+                    settings.dailyLimitMinutes,
+                    if (settings.blockedAlways) 1 else 0,
+                    if (settings.schedule.enabled) 1 else 0,
+                    settings.schedule.daysBitmask,
+                    settings.schedule.startMinute,
+                    settings.schedule.endMinute,
+                    settings.swipeLimit,
+                    settings.swipeLimitScope.name,
+                    settings.swipeSessionGapMinutes,
+                    if (settings.swipeAccessAllowed) 1 else 0,
+                    packageName,
+                ),
+            )
+        }
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `app_limits_new` (" +
+                "`packageName` TEXT NOT NULL, " +
+                "`dailyLimitMinutes` INTEGER, " +
+                "`blockedAlways` INTEGER NOT NULL, " +
+                "`scheduleEnabled` INTEGER NOT NULL, " +
+                "`scheduleDays` INTEGER NOT NULL, " +
+                "`scheduleStartMinute` INTEGER NOT NULL, " +
+                "`scheduleEndMinute` INTEGER NOT NULL, " +
+                "`swipeLimit` INTEGER, " +
+                "`swipeLimitScope` TEXT NOT NULL DEFAULT 'DAY', " +
+                "`swipeSessionGapMinutes` INTEGER NOT NULL DEFAULT 30, " +
+                "`swipeAccessAllowed` INTEGER NOT NULL DEFAULT 0, " +
+                "PRIMARY KEY(`packageName`))",
+        )
+        db.execSQL(
+            "INSERT INTO `app_limits_new` (packageName, dailyLimitMinutes, blockedAlways, scheduleEnabled, " +
+                "scheduleDays, scheduleStartMinute, scheduleEndMinute, swipeLimit, swipeLimitScope, " +
+                "swipeSessionGapMinutes, swipeAccessAllowed) " +
+                "SELECT packageName, dailyLimitMinutes, blockedAlways, scheduleEnabled, scheduleDays, " +
+                "scheduleStartMinute, scheduleEndMinute, swipeLimit, swipeLimitScope, swipeSessionGapMinutes, " +
+                "swipeAccessAllowed FROM `app_limits`",
+        )
+        db.execSQL("DROP TABLE `app_limits`")
+        db.execSQL("ALTER TABLE `app_limits_new` RENAME TO `app_limits`")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)

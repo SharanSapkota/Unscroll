@@ -3,9 +3,9 @@
 Android app that helps people stop doomscrolling. It detects when Instagram, TikTok, or Facebook is in the foreground, shows a live ticking session timer as a floating overlay, logs every session, lets the user block apps, and shows a dashboard of time invested.
 
 ## Current state
-Last updated with M9. Keep this section in sync when a milestone lands.
+Last updated with the cooldown removal (after M9). Keep this section in sync when a milestone lands.
 
-- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking), M6 (friction and nudges), M7 (opt-in accessibility scroll counting) and M8 (goals, streaks, weekly report, data export/delete and release docs; the Play release steps themselves are manual, docs/RELEASE.md). M9 (hard swipe limit) is implemented and awaiting device testing. See ROADMAP.md.
+- **Done**: M0 (project setup, CI), M1 (permissions onboarding), M2 (foreground detection and session logging), M3 (dashboard), M4 (overlay timer), M5 (limits and blocking), M6 (friction and nudges), M7 (opt-in accessibility scroll counting) and M8 (goals, streaks, weekly report, data export/delete and release docs; the Play release steps themselves are manual, docs/RELEASE.md). M9 (hard swipe limit) is implemented and awaiting device testing. The cooldown/pending-change system was removed after M9: changes apply immediately. See ROADMAP.md.
 - **Build**: AGP 8.13, Kotlin 2.2, Gradle 8.14 wrapper, compileSdk/targetSdk 36, KSP for Hilt and Room. Versions live in `gradle/libs.versions.toml`. CI (`.github/workflows/ci.yml`) runs `./gradlew lint test assembleDebug` on every PR and on pushes to `main`.
 - **App shell**: `MainActivity` (edge-to-edge) → `UnscrollRoot`, which uses `AppViewModel`/`AppGate` to pick onboarding or the main app. The main app (`UnscrollApp`) is a bottom bar with Dashboard, Apps and Settings. `MainActivity.onResume` refreshes permissions and the accessibility-service state, and restarts tracking if it is enabled.
 - **Onboarding** (`ui/onboarding`, `domain/onboarding`): Welcome → Usage Access → Overlay → Notifications → Battery (with OEM hints). Navigation rules are pure Kotlin in `OnboardingFlow`. The current step is kept in `SavedStateHandle`.
@@ -23,10 +23,10 @@ Last updated with M9. Keep this section in sync when a milestone lands.
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v6): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` (v6 adds the swipe-limit columns, `MIGRATION_5_6`) and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`; v5 drops the pause columns) and `nudge_log` (`FrictionDao`/`FrictionRepository`). v5 also drops the old `pause_outcomes` table (`MIGRATION_4_5`).
+  - Room `UnscrollDatabase` (v7): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` (v6 adds the swipe-limit columns, `MIGRATION_5_6`; v7 applies any pending change and drops `pendingChangeJson`/`pendingChangeAppliesAt`, `MIGRATION_6_7`, decoding the old JSON with `LegacyPendingChange`) and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`; v5 drops the pause columns) and `nudge_log` (`FrictionDao`/`FrictionRepository`). v5 also drops the old `pause_outcomes` table (`MIGRATION_4_5`).
   - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
   - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
-  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, blocking, quiet-hours, goal and scroll-counting preferences.
+  - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, quiet-hours, goal and scroll-counting preferences. `RemovedPreferencesMigration` (a DataStore migration) deletes the keys of removed features (the old cooldown/friction settings).
 - **Dashboard** (`ui/dashboard`, `domain/insights`):
   - Today's total with a trend against yesterday at the same time of day.
   - A period selector (Today, Week = last 7 days, Month = last 30 days, All time) driving per-app cards (time, opens, average, longest), plus an "All apps" summary.
@@ -51,16 +51,15 @@ Last updated with M9. Keep this section in sync when a milestone lands.
 - **Limits and blocking** (`domain/blocking`, `data/blocking`, `service/BlockEnforcer`, `ui/apps`, `ui/block`):
   - Per app: daily limit, "Block completely", and a schedule (days plus a start/end time, which may cross midnight).
   - `BlockEvaluator` (pure, injectable `Clock`) returns `Allowed(remainingMillis)` or `Blocked(reason, until)`. Order of precedence: always, then schedule, then daily limit; an extension only lifts the daily limit.
-  - `LimitChangePolicy`: stronger changes apply at once; anything weaker becomes a pending change after the cooldown (default 10 min). Pending changes are applied on read by `LimitRepository.getLimit`/`applyDueChanges`, so they take effect on time even if the app was closed.
-  - The Apps cards show the pending *target* (a switch being turned off already shows off, dimmed, with "Turns off in 9:42"), plus a box per change ("Block turns off in 9:42", from `LimitChangePolicy.describe`) with a live countdown, Cancel and "Type phrase to unlock now" (in both friction modes). Edits go through `LimitChangePolicy.edit` (`LimitRepository.editLimit`): they apply to the target, keep the countdown unless they loosen it further, apply their stronger parts at once, and tapping a pending switch again undoes it.
-  - `FrictionPolicy` applies the same rule to the friction settings themselves (`BlockingPreferences`: wait vs typed phrase, cooldown length).
-  - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s). When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
-  - "I need access" is offered only for the daily limit. It needs the typed phrase or a 30 s wait, grants 5 min, and is logged in `block_overrides`.
+  - **Design decision: no cooldown, changes apply immediately.** Every edit in the Apps tab goes straight to the stored settings (`LimitRepository.updateLimit`), stronger or weaker: no pending changes, countdown, Cancel or typed phrase. The card's status line ("No limits", "12 min left today", "Blocked", ...) updates with it. (A cooldown with pending changes and a typed-phrase unlock existed in M5–M9 and was removed.)
+  - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s) and on every limit change. When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
+  - `BlockViewModel` re-checks every limit change after the block screen opened (`BlockScreenRules.current`, pure): once the app is no longer blocked (unblocked, limit raised, schedule off) the screen closes itself (`finishAndRemoveTask`), even from the background.
+  - "I need access" is offered only for the daily limit. One tap grants 5 min (`AccessExtension.MILLIS`), logged in `block_overrides` with method `TAP` (older rows: `PHRASE`/`WAIT`).
   - `BlockSafety` only allows tracked packages, and never Unscroll, launchers, Settings, the dialer or emergency apps.
 - **Swipe limit (hard stop, M9)** (`domain/blocking/SwipeLimitRules`, `data/blocking/SwipeLimitRepository`, `service/SwipeLimitEnforcer`, `overlay/SwipeLimitCover`, `ui/apps/SwipeLimitSection`):
-  - Per app, in `LimitSettings`/`app_limits`: `swipeLimit` (off by default; 25/50/100/200/300 or custom), `swipeLimitScope` (DAY default, or SESSION with `swipeSessionGapMinutes`, default 30) and `swipeAccessAllowed`. It goes through `LimitChangePolicy` like the time limit: lowering applies at once; raising, removing, day→session, a shorter gap or allowing "I need access" wait out the cooldown (or the typed phrase).
+  - Per app, in `LimitSettings`/`app_limits`: `swipeLimit` (off by default; 25/50/100/200/300 or custom), `swipeLimitScope` (DAY default, or SESSION with `swipeSessionGapMinutes`, default 30) and `swipeAccessAllowed`. Like every limit, any change applies at once; raising or removing it takes the cover down right away.
   - `SwipeLimitRules` (pure): the window (local midnight, or the latest run of sessions with gaps shorter than the reset gap; back after the gap means a fresh window), `status` (used, +20 per extension, remaining, reached, 80 % warning).
-  - `SwipeLimitEnforcer` evaluates on foreground changes, every swipe, limit changes and the accessibility window event (faster than usage stats). When reached, `SwipeLimitCover` covers the app: a full-screen `TYPE_APPLICATION_OVERLAY` that is touchable and focusable (consumes every touch and Back), with swipes, time today, "Go home", and "I need access" (typed phrase, +20 swipes, logged in `block_overrides` with method `SWIPES`) only if the user enabled it. It is shown again every time the app comes back until the window resets, and removed when the user leaves. Without the overlay permission: `GLOBAL_ACTION_HOME` via the service plus `BlockActivity` (`BlockReason.SWIPE_LIMIT_REACHED`). Without scroll counting nothing is enforced.
+  - `SwipeLimitEnforcer` evaluates on foreground changes, every swipe, limit changes and the accessibility window event (faster than usage stats). When reached, `SwipeLimitCover` covers the app: a full-screen `TYPE_APPLICATION_OVERLAY` that is touchable and focusable (consumes every touch and Back), with swipes, time today, "Go home", and "I need access" (one tap, +20 swipes, logged in `block_overrides` with method `SWIPES`) only if the user enabled it. It is shown again every time the app comes back until the window resets, and removed when the user leaves. Without the overlay permission: `GLOBAL_ACTION_HOME` via the service plus `BlockActivity` (`BlockReason.SWIPE_LIMIT_REACHED`). Without scroll counting nothing is enforced.
 - **Friction and nudges** (`domain/friction`, `data/friction`, `service/FrictionCoordinator`):
   - **Design decision: no pause screen.** Apps open instantly; the live overlay timer is the stopper. The only screen that ever comes up when opening a tracked app is the block screen, for a blocked app or an exceeded limit. (A "mindful gate" pause screen existed in M6 and was removed.)
   - Per-app settings (`FrictionSettings` in `app_friction`; defaults until changed; "Reset to defaults") cover: open-count nudges (thresholds), break reminders (interval), limit warnings, an experimental tint and swipe breaks. They live under each Apps card ("Nudges and breaks").
@@ -77,7 +76,7 @@ Last updated with M9. Keep this section in sync when a milestone lands.
   - Play docs: `docs/ACCESSIBILITY_DECLARATION.md` and the disclosure wording in `STORE_LISTING.md`.
 - **Your data** (`data/history`, `domain/export`, Settings): "Export sessions (CSV)" writes `SessionCsv` (RFC 4180, ISO times with offset) to a file the user picks (`CreateDocument`, no storage permission). "Delete usage history" (`HistoryRepository`) ends the open session, then deletes sessions, the nudge log and the extension log in one transaction, and resets the swipe-stats start. Settings, limits, goal and consent stay on purpose.
 - **Release docs** (`docs/`): `PRIVACY_POLICY.md`, `DATA_SAFETY.md` (no data collected or shared; no `INTERNET` permission), `ACCESSIBILITY_DECLARATION.md`, `RELEASE.md` (signing, testing tracks, per-release checks).
-- **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`), and a "10-second cooldown" switch (`BlockingSettings.debugShortCooldown`, ignored in release builds) for testing pending changes.
+- **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`), .
 - **Not built yet**: accessibility events for foreground detection (still `UsageStatsManager` only); a weekly report notification (would need WorkManager); per-app goals; R8/minify for release; the manual Play steps (signing, screenshots, testing tracks).
 - **Tests**: JVM unit tests only (`app/src/test`):
   - Pure domain logic, `SessionManager` with a fake clock (virtual time) and fakes.
@@ -88,7 +87,7 @@ Last updated with M9. Keep this section in sync when a milestone lands.
 
 ## Principles
 - **Privacy first**: all data stays on-device. No analytics SDKs, no network calls, no accounts in v1. Never read or store screen content, only package names and timestamps (plus swipe counts from the opt-in accessibility service).
-- **Friction over hard blocks**: hard blocks get bypassed. Prefer the live timer, cooldowns, and nudges. No pause screen before an app opens: apps open instantly and the live timer is the stopper.
+- **Friction over hard blocks**: hard blocks get bypassed. Prefer the live timer, limits, and nudges. No cooldown: changes to limits and blocks apply immediately. No pause screen before an app opens: apps open instantly and the live timer is the stopper.
 - **Battery**: only poll or tick while a tracked app is in the foreground and the screen is on.
 - **Play Store policy safe**: every sensitive permission must have a clear in-app explanation screen before the system prompt.
 
@@ -126,9 +125,9 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 
 ## Core data model
 - `SessionEntity(id, packageName, startTime, endTime, scrollCount)`; `scrollCount` is filled only while the optional accessibility service runs
-- `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute, pendingChangeJson?, pendingChangeAppliesAt?)`
+- `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute)`; v7 dropped `pendingChangeJson?`/`pendingChangeAppliesAt?`
 - `AppLimitEntity` v6 adds `swipeLimit?`, `swipeLimitScope` ("DAY"/"SESSION"), `swipeSessionGapMinutes`, `swipeAccessAllowed`
-- `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension: "PHRASE"/"WAIT" (time, until `expiresAt`) or "SWIPES" (+20 swipes for the current swipe window)
+- `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension: "TAP" (time, until `expiresAt`; "PHRASE"/"WAIT" before v7) or "SWIPES" (+20 swipes for the current swipe window)
 - `AppFrictionEntity(packageName, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter?)`
 - `NudgeLogEntity(packageName, day, kind, value, sentAt)`
 - `DailyStat` is computed from sessions via queries, not stored
