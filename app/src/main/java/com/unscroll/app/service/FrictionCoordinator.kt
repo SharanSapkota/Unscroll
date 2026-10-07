@@ -13,7 +13,6 @@ import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockSafety
 import com.unscroll.app.domain.friction.BreakReminders
 import com.unscroll.app.domain.friction.NudgeRules
-import com.unscroll.app.domain.friction.PauseGate
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -26,7 +25,6 @@ import com.unscroll.app.overlay.OverlayTimerManager
 import com.unscroll.app.overlay.PillMessage
 import com.unscroll.app.overlay.PillMessageKind
 import com.unscroll.app.overlay.TintOverlay
-import com.unscroll.app.ui.pause.PauseActivity
 import com.unscroll.app.ui.scroll.BreakActivity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.ZoneId
@@ -45,13 +43,12 @@ import kotlinx.coroutines.withContext
 
 /**
  * Friction and nudges (M6), run by TrackingService next to the overlay and the block enforcer:
- * - the pause screen when a tracked app is opened from outside ([PauseGate]),
  * - open-count notifications (once per threshold per day),
  * - break reminders on the pill (or a heads-up notification without the overlay),
  * - 80 % / 100 % limit warnings,
  * - the experimental gray tint after the limit while an extension runs,
  * - the "take a break" screen after N swipes, when scroll counting is on (M7).
- * Quiet hours silence the nudges, reminders and warnings, never the pause or break screens or blocking.
+ * Quiet hours silence the nudges, reminders and warnings, never the break screen or blocking.
  */
 @Singleton
 class FrictionCoordinator @Inject constructor(
@@ -68,7 +65,6 @@ class FrictionCoordinator @Inject constructor(
     private val notifier: NudgeNotifier,
     private val clock: Clock,
 ) {
-    val pauseGate = PauseGate()
     val swipeBreaks = SwipeBreakTracker()
 
     /** Break reminders already shown, per session id. */
@@ -76,9 +72,7 @@ class FrictionCoordinator @Inject constructor(
     private var nextMessageId = 1L
 
     suspend fun run() = coroutineScope {
-        pauseGate.onTrackingStarted(clock.now())
         try {
-            launch { watchPauseGate() }
             launch { watchOpenCounts() }
             launch { watchSwipeBreaks() }
             watchForegroundSession()
@@ -96,45 +90,6 @@ class FrictionCoordinator @Inject constructor(
         messages.dismiss()
     }
 
-    // --- Pause screen ---------------------------------------------------------------------------
-
-    private suspend fun watchPauseGate() {
-        sessionManager.foregroundSession
-            .map { it?.packageName }
-            .distinctUntilChanged()
-            .collect { packageName ->
-                val now = clock.now()
-                if (packageName == null || !isSafe(packageName)) {
-                    pauseGate.onForegroundChanged(null, now, pauseEnabled = false, blocked = false)
-                    return@collect
-                }
-                val settings = friction.getSettings(packageName)
-                val blocked = blockEnforcer.decide(packageName) is BlockDecision.Blocked
-                if (pauseGate.onForegroundChanged(packageName, now, settings.pauseEnabled, blocked)) {
-                    showPauseScreen(packageName, settings.pauseSeconds)
-                }
-            }
-    }
-
-    /** Called by the pause screen when the user chose "Continue to app". */
-    fun onPauseContinued(packageName: String) = pauseGate.onContinued(packageName, clock.now())
-
-    private fun showPauseScreen(packageName: String, seconds: Int) {
-        // Home first, so the app isn't left running underneath, then the pause screen on top.
-        val home = Intent(Intent.ACTION_MAIN)
-            .addCategory(Intent.CATEGORY_HOME)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val pause = PauseActivity.intent(context, packageName, seconds, shownAt = clock.now())
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        try {
-            context.startActivities(arrayOf(home, pause))
-        } catch (e: ActivityNotFoundException) {
-            Log.w(TAG, "Could not open the pause screen", e)
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Could not open the pause screen", e)
-        }
-    }
-
     // --- Take a break after N swipes (M7) --------------------------------------------------------
 
     private suspend fun watchSwipeBreaks() {
@@ -150,14 +105,13 @@ class FrictionCoordinator @Inject constructor(
         }
     }
 
-    /** "Keep scrolling" on the break screen: no pause screen on the way back, next break after N more. */
+    /** "Keep scrolling" on the break screen: the next break comes after another N swipes. */
     fun onSwipeBreakKeepScrolling(packageName: String, sessionId: Long, swipes: Int) {
-        pauseGate.onContinued(packageName, clock.now())
         swipeBreaks.onKeepScrolling(sessionId, swipes)
     }
 
     private fun showBreakScreen(packageName: String, sessionId: Long, swipes: Int, sessionMillis: Long) {
-        // Same as the pause screen: home first, so the app isn't left running underneath.
+        // Like the block screen: home first, so the app isn't left running underneath.
         val home = Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_HOME)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

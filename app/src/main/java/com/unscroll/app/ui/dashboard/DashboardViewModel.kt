@@ -3,8 +3,6 @@ package com.unscroll.app.ui.dashboard
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.unscroll.app.data.friction.FrictionRepository
-import com.unscroll.app.data.friction.PauseStat
 import com.unscroll.app.data.goals.GoalPreferences
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
@@ -25,8 +23,6 @@ import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.insights.WeeklyReport
-import com.unscroll.app.domain.insights.localDate
-import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.scroll.GetScrollStatsUseCase
 import com.unscroll.app.domain.scroll.ScrollStats
 import com.unscroll.app.domain.time.Clock
@@ -43,7 +39,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -58,8 +53,6 @@ data class DashboardUiState(
     val periodUsage: PeriodUsage? = null,
     val weekComparison: WeekComparison? = null,
     val hoursInvested: HoursInvested = GetHoursInvestedUseCase.calculate(0),
-    /** Today's pause screens per app, most skipped first. */
-    val pauseStats: List<PauseStat> = emptyList(),
     /** Swipe stats for the period, or null if scroll counting was never switched on (cards hidden). */
     val scrollStats: ScrollStats? = null,
     /** Today against the daily goal, with the streak; null without a goal. */
@@ -88,7 +81,6 @@ class DashboardViewModel @Inject constructor(
     usageDataSource: UsageDataSource,
     sessionManager: SessionManager,
     trackingPreferences: TrackingPreferences,
-    private val friction: FrictionRepository,
     goalPreferences: GoalPreferences,
     private val getStreakHistory: GetStreakHistoryUseCase,
     private val getWeeklyReport: GetWeeklyReportUseCase,
@@ -170,7 +162,6 @@ class DashboardViewModel @Inject constructor(
             periodUsage = getPeriodUsage(period, now, zone),
             weekComparison = getWeekComparison(now, zone),
             hoursInvested = getHoursInvested(now),
-            pauseStats = friction.observePauseStatsSince(startOfDay(localDate(now, zone), zone)).first(),
             scrollStats = countingSince?.let { getScrollStats(period, it, now, zone) },
         )
     }

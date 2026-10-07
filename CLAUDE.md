@@ -23,7 +23,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - `BootReceiver` restarts tracking after a reboot or app update.
   - Tracked packages live in `domain/tracking/TrackedApps`, mirrored in the manifest `<queries>`.
 - **Storage**:
-  - Room `UnscrollDatabase` (v4): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`), `pause_outcomes` and `nudge_log` (`FrictionDao`/`FrictionRepository`).
+  - Room `UnscrollDatabase` (v5): `sessions` (`SessionEntity`/`SessionDao`/`SessionRepository`), plus `app_limits` and `block_overrides` (`BlockingDao`/`LimitRepository`), plus `app_friction` (v4 adds `swipeBreakAfter`; v5 drops the pause columns) and `nudge_log` (`FrictionDao`/`FrictionRepository`). v5 also drops the old `pause_outcomes` table (`MIGRATION_4_5`).
   - Migrations are explicit (`data/db/Migrations.kt`, `ALL_MIGRATIONS`); never use destructive fallback. `MigrationTest` builds the old schema by hand and migrates it.
   - The schema is exported to `app/schemas/` by the `androidx.room` Gradle plugin. Don't use the `room.schemaLocation` KSP argument: parallel variants race on the same file.
   - Preferences DataStore (`user_preferences`) holds the onboarding flag, the tracking switch and the session heartbeat (`TrackingPreferences`), plus the overlay, blocking, quiet-hours, goal and scroll-counting preferences.
@@ -57,14 +57,13 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - `BlockEnforcer` re-evaluates when the limit or extension runs out (at least every 15 s). When blocked, it sends the user home and opens `BlockActivity` in its own task (Back disabled).
   - "I need access" is offered only for the daily limit. It needs the typed phrase or a 30 s wait, grants 5 min, and is logged in `block_overrides`.
   - `BlockSafety` only allows tracked packages, and never Unscroll, launchers, Settings, the dialer or emergency apps.
-- **Friction and nudges** (`domain/friction`, `data/friction`, `service/FrictionCoordinator`, `ui/pause`):
-  - Per-app settings (`FrictionSettings` in `app_friction`; defaults until changed; "Reset to defaults") cover: the pause screen (seconds), open-count nudges (thresholds), break reminders (interval), limit warnings, and an experimental tint. They live under each Apps card.
-  - `PauseGate` (pure) shows `PauseActivity` when a tracked app is opened from outside. It skips a return within 30 s of last use, a blocked app (the block screen wins), the first 5 s after tracking starts, and the reopen right after "Continue".
-  - `PauseActivity`: breathing circle, countdown, rotating prompt. Back is disabled; leaving counts as "Never mind". Outcomes go to `pause_outcomes`, and the Dashboard shows "Pauses that saved you".
+- **Friction and nudges** (`domain/friction`, `data/friction`, `service/FrictionCoordinator`):
+  - **Design decision: no pause screen.** Apps open instantly; the live overlay timer is the stopper. The only screen that ever comes up when opening a tracked app is the block screen, for a blocked app or an exceeded limit. (A "mindful gate" pause screen existed in M6 and was removed.)
+  - Per-app settings (`FrictionSettings` in `app_friction`; defaults until changed; "Reset to defaults") cover: open-count nudges (thresholds), break reminders (interval), limit warnings, an experimental tint and swipe breaks. They live under each Apps card ("Nudges and breaks").
   - `NudgeRules` (pure): open-count thresholds and 80/100 % limit warnings, each once per day via `nudge_log`. `BreakReminders`: every interval of a session.
   - Break reminders and limit warnings expand the pill (`OverlayMessages`, Keep going / Leave). Without the overlay they become notifications (`NudgeNotifier`; "nudges" and high-importance "breaks" channels).
   - `TintOverlay`: a gray, non-touchable overlay with alpha 0.45, shown while over the limit with an extension running.
-  - `QuietHours` (global, DataStore, may cross midnight) silences nudges, break reminders and limit warnings, but never pauses or blocking. Everything goes through `BlockSafety`.
+  - `QuietHours` (global, DataStore, may cross midnight) silences nudges, break reminders and limit warnings, but never blocking or swipe breaks. Everything goes through `BlockSafety`.
 - **Scroll counting (optional)** (`domain/scroll`, `data/scroll`, `service/ScrollAccessibilityService`, `ui/scroll`):
   - `ScrollAccessibilityService`: opt-in, `canRetrieveWindowContent="false"`, only `typeViewScrolled`/`typeWindowStateChanged`, only tracked packages (`res/xml/accessibility_service_config.xml`, kept equal to `TrackedApps` by `AccessibilityConfigTest` and set from `TrackedApps` on connect), `isAccessibilityTool="false"`. Reads only the event type and package name, and ignores everything without in-app consent.
   - `SwipeDetector` (pure, injectable `Clock`): scroll events within `SWIPE_BURST_GAP_MILLIS` (300 ms) of each other are one swipe; screen off, untracked apps and window changes end a burst. Each swipe goes to `SessionManager.onSwipe`.
@@ -72,7 +71,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
   - `ScrollCountingPreferences` (consent, first connection) and `ScrollCountingRepository` (enabled in `Settings.Secure`, re-checked on resume; connected, as reported by the service). `ScrollCountingRules.status` (pure) gives OFF / NEEDS_CONSENT / NEEDS_ENABLING / ACTIVE / NEEDS_REENABLE. "Turn off" withdraws consent and the service calls `disableSelf()`.
   - Take a break: per-app `FrictionSettings.swipeBreakAfter` (off by default; 25/50/100/200). `SwipeBreakTracker` (pure) decides when; `FrictionCoordinator` opens `BreakActivity` (swipes, time, 15 s breathing countdown, "Keep scrolling" / "I'm done", Back disabled, Home always works). A blocked app gets the block screen instead.
   - Play docs: `docs/ACCESSIBILITY_DECLARATION.md` and the disclosure wording in `STORE_LISTING.md`.
-- **Your data** (`data/history`, `domain/export`, Settings): "Export sessions (CSV)" writes `SessionCsv` (RFC 4180, ISO times with offset) to a file the user picks (`CreateDocument`, no storage permission). "Delete usage history" (`HistoryRepository`) ends the open session, then deletes sessions, pause outcomes, the nudge log and the extension log in one transaction, and resets the swipe-stats start. Settings, limits, goal and consent stay on purpose.
+- **Your data** (`data/history`, `domain/export`, Settings): "Export sessions (CSV)" writes `SessionCsv` (RFC 4180, ISO times with offset) to a file the user picks (`CreateDocument`, no storage permission). "Delete usage history" (`HistoryRepository`) ends the open session, then deletes sessions, the nudge log and the extension log in one transaction, and resets the swipe-stats start. Settings, limits, goal and consent stay on purpose.
 - **Release docs** (`docs/`): `PRIVACY_POLICY.md`, `DATA_SAFETY.md` (no data collected or shared; no `INTERNET` permission), `ACCESSIBILITY_DECLARATION.md`, `RELEASE.md` (signing, testing tracks, per-release checks).
 - **Debug tools**: in debug builds, Settings has "Insert sample data", which seeds 30 days of sessions (`SampleSessionGenerator`/`SampleDataSeeder`), and a "10-second cooldown" switch (`BlockingSettings.debugShortCooldown`, ignored in release builds) for testing pending changes.
 - **Not built yet**: accessibility events for foreground detection (still `UsageStatsManager` only); a weekly report notification (would need WorkManager); per-app goals; R8/minify for release; the manual Play steps (signing, screenshots, testing tracks).
@@ -85,7 +84,7 @@ Last updated with M8. Keep this section in sync when a milestone lands.
 
 ## Principles
 - **Privacy first**: all data stays on-device. No analytics SDKs, no network calls, no accounts in v1. Never read or store screen content, only package names and timestamps (plus swipe counts from the opt-in accessibility service).
-- **Friction over hard blocks**: hard blocks get bypassed. Prefer pause screens, cooldowns, and nudges.
+- **Friction over hard blocks**: hard blocks get bypassed. Prefer the live timer, cooldowns, and nudges. No pause screen before an app opens: apps open instantly and the live timer is the stopper.
 - **Battery**: only poll or tick while a tracked app is in the foreground and the screen is on.
 - **Play Store policy safe**: every sensitive permission must have a clear in-app explanation screen before the system prompt.
 
@@ -104,7 +103,7 @@ domain/      models, use cases (pure Kotlin, unit-testable)
 service/     TrackingService (foreground), AppDetector, SessionManager
 overlay/     OverlayTimerManager (WindowManager overlay), BlockActivity
 ui/          Compose screens, ViewModels, theme
-  onboarding/  dashboard/  apps/  settings/  block/  pause/  scroll/
+  onboarding/  dashboard/  apps/  settings/  block/  scroll/
 util/        time formatting, permission helpers
 ```
 
@@ -125,8 +124,8 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 - `SessionEntity(id, packageName, startTime, endTime, scrollCount)`; `scrollCount` is filled only while the optional accessibility service runs
 - `AppLimitEntity(packageName, dailyLimitMinutes?, blockedAlways, scheduleEnabled, scheduleDays bitmask, scheduleStartMinute, scheduleEndMinute, pendingChangeJson?, pendingChangeAppliesAt?)`
 - `BlockOverrideEntity(id, packageName, grantedAt, expiresAt, method)` logs every "I need access" extension
-- `AppFrictionEntity(packageName, pauseEnabled, pauseSeconds, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter?)`
-- `PauseOutcomeEntity(id, packageName, shownAt, outcome)` and `NudgeLogEntity(packageName, day, kind, value, sentAt)`
+- `AppFrictionEntity(packageName, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter?)`
+- `NudgeLogEntity(packageName, day, kind, value, sentAt)`
 - `DailyStat` is computed from sessions via queries, not stored
 Sessions are logged from day one because Android only keeps short usage history.
 

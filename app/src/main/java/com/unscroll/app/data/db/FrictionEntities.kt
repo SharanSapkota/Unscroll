@@ -1,15 +1,16 @@
 package com.unscroll.app.data.db
 
 import androidx.room.Entity
-import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** Per-app pause screen and nudge settings. A row only exists once the user changes a default. */
+/**
+ * Per-app nudge and friction settings. A row only exists once the user changes a default. The
+ * pause-screen columns were dropped in v5 (no pause screen: apps open instantly, the live timer
+ * is the stopper).
+ */
 @Entity(tableName = "app_friction")
 data class AppFrictionEntity(
     @PrimaryKey val packageName: String,
-    val pauseEnabled: Boolean,
-    val pauseSeconds: Int,
     val nudgesEnabled: Boolean,
     /** "5,10,20" */
     val nudgeThresholds: String,
@@ -21,15 +22,6 @@ data class AppFrictionEntity(
     val swipeBreakAfter: Int? = null,
 )
 
-/** One pause screen and what the user did: "CONTINUED" or "ABANDONED". */
-@Entity(tableName = "pause_outcomes", indices = [Index("shownAt")])
-data class PauseOutcomeEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val packageName: String,
-    val shownAt: Long,
-    val outcome: String,
-)
-
 /** A once-a-day nudge that was sent, so it is never sent twice ([kind] "OPENS" or "LIMIT"). */
 @Entity(tableName = "nudge_log", primaryKeys = ["packageName", "day", "kind", "value"])
 data class NudgeLogEntity(
@@ -39,11 +31,4 @@ data class NudgeLogEntity(
     val kind: String,
     val value: Int,
     val sentAt: Long,
-)
-
-/** Result row: pause screens shown and skipped for one app. */
-data class PauseStatRow(
-    val packageName: String,
-    val shown: Int,
-    val abandoned: Int,
 )

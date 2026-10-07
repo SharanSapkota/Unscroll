@@ -8,8 +8,6 @@ class FrictionSettingsTest {
     @Test
     fun defaults() {
         val d = FrictionSettings.DEFAULT
-        assertEquals(true, d.pauseEnabled)
-        assertEquals(10, d.pauseSeconds)
         assertEquals(listOf(5, 10, 20), d.nudgeThresholds)
         assertEquals(15, d.breakIntervalMinutes)
         assertEquals(false, d.tintEnabled)
@@ -17,11 +15,11 @@ class FrictionSettingsTest {
     }
 
     @Test
-    fun normalized_clampsPauseAndSortsThresholds() {
-        val n = FrictionSettings(pauseSeconds = 99, nudgeThresholds = listOf(20, 5, 5, 0)).normalized()
-        assertEquals(30, n.pauseSeconds)
+    fun normalized_clampsBreakIntervalAndSortsThresholds() {
+        val n = FrictionSettings(breakIntervalMinutes = 0, nudgeThresholds = listOf(20, 5, 5, 0)).normalized()
+        assertEquals(1, n.breakIntervalMinutes)
         assertEquals(listOf(5, 20), n.nudgeThresholds)
-        assertEquals(5, FrictionSettings(pauseSeconds = 1).normalized().pauseSeconds)
+        assertEquals(24 * 60, FrictionSettings(breakIntervalMinutes = 99_999).normalized().breakIntervalMinutes)
         assertEquals(null, FrictionSettings(swipeBreakAfter = -5).normalized().swipeBreakAfter)
         assertEquals(25, FrictionSettings(swipeBreakAfter = 25).normalized().swipeBreakAfter)
     }

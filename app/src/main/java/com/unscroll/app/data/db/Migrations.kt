@@ -75,4 +75,35 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+/**
+ * v4 → v5: the pause screen is gone (apps open instantly; the live timer is the stopper). Drops
+ * `pause_outcomes` and the pause columns of `app_friction`. SQLite on API 26 has no DROP COLUMN,
+ * so `app_friction` is rebuilt, keeping every other setting. Nothing else is touched.
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `pause_outcomes`")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `app_friction_new` (" +
+                "`packageName` TEXT NOT NULL, " +
+                "`nudgesEnabled` INTEGER NOT NULL, " +
+                "`nudgeThresholds` TEXT NOT NULL, " +
+                "`breakRemindersEnabled` INTEGER NOT NULL, " +
+                "`breakIntervalMinutes` INTEGER NOT NULL, " +
+                "`limitWarningsEnabled` INTEGER NOT NULL, " +
+                "`tintEnabled` INTEGER NOT NULL, " +
+                "`swipeBreakAfter` INTEGER, " +
+                "PRIMARY KEY(`packageName`))",
+        )
+        db.execSQL(
+            "INSERT INTO `app_friction_new` (packageName, nudgesEnabled, nudgeThresholds, " +
+                "breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter) " +
+                "SELECT packageName, nudgesEnabled, nudgeThresholds, breakRemindersEnabled, " +
+                "breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter FROM `app_friction`",
+        )
+        db.execSQL("DROP TABLE `app_friction`")
+        db.execSQL("ALTER TABLE `app_friction_new` RENAME TO `app_friction`")
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)

@@ -16,7 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * "Take a break" after N swipes (M7). Opened by FrictionCoordinator on top of the home screen,
- * like the pause screen. Back does nothing, but Home always works: the user is never trapped.
+ * like the block screen. Back does nothing, but Home always works: the user is never trapped.
  */
 @AndroidEntryPoint
 class BreakActivity : ComponentActivity() {
@@ -30,7 +30,7 @@ class BreakActivity : ComponentActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    // Deliberately ignored, like the pause and block screens.
+                    // Deliberately ignored, like the block screen.
                 }
             },
         )

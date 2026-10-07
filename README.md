@@ -1,6 +1,6 @@
 # Unscroll
 
-Android app that helps people stop doomscrolling: it times sessions in Instagram, TikTok and Facebook, shows a live overlay timer, and adds friction (pause screens, cooldowns, blocks). All data stays on the device.
+Android app that helps people stop doomscrolling: it times sessions in Instagram, TikTok and Facebook, shows a live overlay timer, and adds friction (cooldowns, nudges, blocks). Apps open instantly; the live timer is the stopper. All data stays on the device.
 
 See [CLAUDE.md](CLAUDE.md) for principles and architecture, and [ROADMAP.md](ROADMAP.md) for milestones.
 
