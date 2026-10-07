@@ -31,11 +31,12 @@ internal class OverlayLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, Save
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
     }
 
-    /** Call after removing the view. */
+    /** Call after removing the view. Safe to call twice, or without [onCreate]. */
     fun onDestroy() {
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
-        lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        if (lifecycleRegistry.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+            // Moves down through ON_PAUSE and ON_STOP to ON_DESTROY, from wherever it is.
+            lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        }
         viewModelStore.clear()
     }
 }
