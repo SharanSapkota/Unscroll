@@ -29,6 +29,8 @@ import kotlinx.coroutines.launch
  * - It is limited to the tracked apps (packageNames) and to TYPE_VIEW_SCROLLED and
  *   TYPE_WINDOW_STATE_CHANGED events. It never reads an event's text, content description or
  *   source node, and never logs events.
+ * - Window changes of tracked apps (package name only) let the swipe limit cover an app that is
+ *   already over its limit the moment it opens.
  * - Swipes go straight to [SessionManager], which owns sessions; this service never writes them
  *   itself. Nothing leaves the device.
  */
@@ -40,6 +42,8 @@ class ScrollAccessibilityService : AccessibilityService() {
     @Inject lateinit var repository: ScrollCountingRepository
 
     @Inject lateinit var clock: Clock
+
+    @Inject lateinit var swipeLimitEnforcer: SwipeLimitEnforcer
 
     private lateinit var detector: SwipeDetector
     private var powerManager: PowerManager? = null
@@ -59,6 +63,7 @@ class ScrollAccessibilityService : AccessibilityService() {
             serviceInfo = info
         }
         repository.onServiceConnected()
+        repository.goHomeAction = { performGlobalAction(GLOBAL_ACTION_HOME) }
         val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         scope = serviceScope
         serviceScope.launch {
@@ -76,7 +81,11 @@ class ScrollAccessibilityService : AccessibilityService() {
         // Only the type and the package name are read.
         val packageName = event.packageName?.toString()
         when (event.eventType) {
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> detector.reset()
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                detector.reset()
+                // A tracked app came up: cover it at once if its swipe limit is already used up.
+                if (packageName != null) swipeLimitEnforcer.onAppWindow(packageName)
+            }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 val screenOn = powerManager?.isInteractive ?: true
                 if (detector.onScrollEvent(packageName, screenOn) && packageName != null) {
@@ -101,6 +110,7 @@ class ScrollAccessibilityService : AccessibilityService() {
     private fun stop() {
         scope?.cancel()
         scope = null
+        repository.goHomeAction = null
         repository.onServiceDisconnected()
     }
 }

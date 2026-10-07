@@ -51,12 +51,20 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 
 ## M7: Accessibility Service (optional) ✅ Done
 - Opt-in scroll counting (TYPE_VIEW_SCROLLED), "take a break" after N swipes
-- More reliable foreground detection
+- More reliable foreground detection (not built: foreground detection still uses UsageStatsManager; window events only speed up the swipe-limit cover)
 - Separate explanation + Play Store disclosure text
 - **Done when**: scroll count per session shows on the dashboard.
 
-## M8: Polish + release
+## M8: Polish + release ✅ Done (code and docs; the Play release steps are manual, see docs/RELEASE.md)
 - Streaks, weekly report, goals
-- Settings: data export (CSV), delete all data
+- Settings: data export (CSV), delete usage history
 - App icon, screenshots, privacy policy, Data Safety form
 - Internal testing track -> closed testing (Play requires testers for new personal accounts) -> production
+
+## M9: Swipe limit (hard stop)
+- Swipe count on the live pill, and pill color by swipes (configurable thresholds)
+- Per-app swipe limit (off by default; 25/50/100/200/300 or custom; per day or per session with a reset gap)
+- "N swipes left" on the pill from 80 %
+- When reached: a full-screen, touch-blocking cover over the app ("Swipe limit reached", swipes, time today, "Go home"), every time the app opens until the limit resets; block screen + Home as fallback without the overlay permission
+- Raising/removing the limit uses the same cooldown or typed phrase as other limits; optional "I need access" (+20 swipes, typed phrase), logged with the other extensions
+- **Done when**: the cover appears at the limit, no touch reaches the app, and the user can always go home.

@@ -19,6 +19,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -55,6 +57,13 @@ class ScrollCountingRepository @Inject constructor(
 
     val record: Flow<ScrollCountingRecord> = preferences.record
 
+    /**
+     * Set by the running service: performGlobalAction(GLOBAL_ACTION_HOME). The swipe limit's
+     * fallback uses it when the cover can't be drawn.
+     */
+    @Volatile
+    var goHomeAction: (() -> Boolean)? = null
+
     /** Re-evaluated once more when the bind grace period after a process start is over. */
     private val graceTicks: Flow<Unit> = flow {
         emit(Unit)
@@ -82,10 +91,10 @@ class ScrollCountingRepository @Inject constructor(
         )
     }.distinctUntilChanged()
 
-    /** Swipes are being counted right now. */
-    val isCounting: Flow<Boolean> = combine(preferences.record, _connected) { record, connected ->
+    /** Swipes are being counted right now. Kept hot so the swipe limit can read it at once. */
+    val isCounting: StateFlow<Boolean> = combine(preferences.record, _connected) { record, connected ->
         ScrollCountingRules.shouldCount(record.consent, connected)
-    }.distinctUntilChanged()
+    }.distinctUntilChanged().stateIn(scope, SharingStarted.Eagerly, false)
 
     /** First time counting was switched on, or null if it never was (dashboard cards stay hidden). */
     val countingSince: Flow<Long?> = preferences.record.map { it.countingSince }.distinctUntilChanged()

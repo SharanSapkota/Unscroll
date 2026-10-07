@@ -26,6 +26,20 @@ object PillRules {
         }
     }
 
+    /** Green before the warning threshold, yellow before the danger threshold, red after, by swipes. */
+    fun levelForSwipes(swipes: Int, thresholds: SwipeColorThresholds): PillLevel {
+        val safe = thresholds.normalized()
+        return when {
+            swipes >= safe.dangerAfterSwipes -> PillLevel.DANGER
+            swipes >= safe.warningAfterSwipes -> PillLevel.WARNING
+            else -> PillLevel.CALM
+        }
+    }
+
+    /** The more urgent of the time level and the swipe level (no swipes counted: time only). */
+    fun combinedLevel(timeLevel: PillLevel, swipeLevel: PillLevel?): PillLevel =
+        if (swipeLevel != null && swipeLevel > timeLevel) swipeLevel else timeLevel
+
     /** "mm:ss" under an hour ("07:05", "59:59"), then "h:mm:ss" ("1:00:00"). */
     fun formatTime(elapsedMillis: Long): String {
         val totalSeconds = elapsedMillis.coerceAtLeast(0) / 1_000

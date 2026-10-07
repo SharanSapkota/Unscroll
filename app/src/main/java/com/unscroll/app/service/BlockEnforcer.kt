@@ -84,9 +84,10 @@ class BlockEnforcer @Inject constructor(
 
     /**
      * Sends the user home first, so the blocked app is stopped rather than left running
-     * underneath, then opens the block screen in its own task on top.
+     * underneath, then opens the block screen in its own task on top. Also the swipe limit's
+     * fallback when the overlay permission is missing.
      */
-    private fun showBlockScreen(packageName: String, decision: BlockDecision.Blocked) {
+    fun showBlockScreen(packageName: String, decision: BlockDecision.Blocked) {
         val home = Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_HOME)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

@@ -13,11 +13,12 @@ Unscroll helps people cut down on compulsive scrolling ("doomscrolling") in soci
 **Scroll counting** is an optional, opt-in feature. It counts how many times the user swipes in those apps, so that Unscroll can:
 - show the swipe count next to the live timer,
 - show swipe statistics on the dashboard (swipes today, swipes per session, swipes per minute),
-- offer a "take a break" screen after a number of swipes that the user chooses (off by default).
+- offer a "take a break" screen after a number of swipes that the user chooses (off by default),
+- enforce a **swipe limit** the user sets per app (off by default, per day or per session): when it is reached, Unscroll covers the app with its own full-screen "Swipe limit reached" screen until the limit resets, with a "Go home" button that always works.
 
 ## Why the Accessibility API is needed
 
-Android has no other API that tells an app when the user scrolls inside another app. `UsageStatsManager`, which Unscroll already uses to measure time, only reports which app is in the foreground. Counting swipes is the core of this feature and can't be done any other way.
+Android has no other API that tells an app when the user scrolls inside another app. `UsageStatsManager`, which Unscroll already uses to measure time, only reports which app is in the foreground. Counting swipes is the core of this feature and can't be done any other way. The window-change event (package name only) lets Unscroll cover an app that is already over its swipe limit the moment it opens, instead of about a second later.
 
 ## What data is accessed
 
@@ -27,7 +28,8 @@ Android has no other API that tells an app when the user scrolls inside another 
   - `packageNames` covers only the tracked apps.
   - `accessibilityEventTypes` covers only scroll and window-change events.
 - **Stored:** one number per usage session (the swipe count), next to the session's package name and start and end times, in the app's private on-device database.
-- **Not accessed or stored:** screen content, text, messages, posts, usernames, passwords, keystrokes, contacts or any personal information. The service doesn't perform actions for the user and doesn't interact with other apps' interfaces.
+- **Not accessed or stored:** screen content, text, messages, posts, usernames, passwords, keystrokes, contacts or any personal information. The service doesn't interact with other apps' interfaces: it never taps, types or reads them.
+- **One action, only for the user's own limit:** if the user's swipe limit is reached and Unscroll can't draw its cover (the "Display over other apps" permission was removed), the service calls `performGlobalAction(GLOBAL_ACTION_HOME)` to go to the home screen, and Unscroll shows its own block screen. That is the only action it performs.
 
 ## Data sharing and collection
 

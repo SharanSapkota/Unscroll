@@ -19,11 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.unscroll.app.R
 import com.unscroll.app.domain.overlay.PillLevel
 import com.unscroll.app.domain.overlay.PillSize
 
@@ -38,8 +40,10 @@ data class TimerPillState(
     val size: PillSize,
     val opacity: Float,
     val collapsed: Boolean,
-    /** "86 swipes", already formatted, or null to hide (M7). */
+    /** "86 swipes", already formatted, or null to hide. Shown right after the time. */
     val swipesText: String? = null,
+    /** "12 swipes left" near a swipe limit, or null. */
+    val remainingText: String? = null,
 )
 
 /** Fixed traffic-light colors: they must read the same over any app, in light or dark mode. */
@@ -99,21 +103,34 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
             maxLines = 1,
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = state.elapsedText,
-                color = content,
-                fontSize = if (small) 13.sp else 16.sp,
-                fontWeight = FontWeight.Bold,
-                // Monospaced digits so the pill doesn't jiggle every second.
-                fontFamily = FontFamily.Monospace,
-                maxLines = 1,
-            )
-            state.swipesText?.let {
+            // "12:41 · 86 swipes"
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = state.elapsedText,
+                    color = content,
+                    fontSize = if (small) 13.sp else 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    // Monospaced digits so the pill doesn't jiggle every second.
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1,
+                )
+                state.swipesText?.let {
+                    Text(
+                        text = stringResource(R.string.overlay_swipes_separator, it),
+                        color = content,
+                        fontSize = if (small) 11.sp else 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
+            }
+            state.remainingText?.let {
                 Text(
                     text = it,
-                    color = content.copy(alpha = 0.85f),
+                    color = content,
                     style = MaterialTheme.typography.labelSmall,
-                    fontSize = if (small) 9.sp else 10.sp,
+                    fontSize = if (small) 10.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
             }

@@ -54,6 +54,9 @@ class TrackingService : Service() {
     @Inject
     lateinit var frictionCoordinator: FrictionCoordinator
 
+    @Inject
+    lateinit var swipeLimitEnforcer: SwipeLimitEnforcer
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
 
@@ -73,6 +76,7 @@ class TrackingService : Service() {
                 launch { overlayTimerManager.run() }
                 launch { blockEnforcer.run() }
                 launch { frictionCoordinator.run() }
+                launch { swipeLimitEnforcer.run() }
                 sessionManager.run()
             }
         }
@@ -83,6 +87,7 @@ class TrackingService : Service() {
         // Remove the overlay synchronously so it can never outlive the service.
         overlayTimerManager.hide()
         frictionCoordinator.hideNow()
+        swipeLimitEnforcer.hideNow()
         // Cancelling run() closes the open session.
         scope.cancel()
         super.onDestroy()

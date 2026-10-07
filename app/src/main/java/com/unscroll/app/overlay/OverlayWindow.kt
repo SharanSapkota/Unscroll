@@ -31,7 +31,7 @@ internal class OverlayWindow(
     private val onMessageAction: (PillAction) -> Unit,
 ) {
     private var state by mutableStateOf(initialState)
-    private var swipes by mutableStateOf<Int?>(null)
+    private var swipes by mutableStateOf<PillSwipes?>(null)
     private val owner = OverlayLifecycleOwner()
     private var hasSavedPosition = false
 
@@ -95,8 +95,8 @@ internal class OverlayWindow(
     }
 
     /** Updated on every swipe, separately from [update] so the rest of the pill isn't rebuilt. */
-    fun updateSwipes(count: Int?) {
-        swipes = count
+    fun updateSwipes(info: PillSwipes?) {
+        swipes = info
     }
 
     fun detach() {

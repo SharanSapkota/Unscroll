@@ -13,6 +13,7 @@ import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillSize
+import com.unscroll.app.domain.overlay.SwipeColorThresholds
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.TrackingController
@@ -103,6 +104,18 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowTodayTotal(show: Boolean) {
         viewModelScope.launch { overlayPreferences.setShowTodayTotal(show) }
+    }
+
+    fun setSwipeWarning(swipes: Int) {
+        val current = overlaySettings.value.swipeThresholds
+        val danger = maxOf(current.dangerAfterSwipes, swipes + 1)
+        viewModelScope.launch { overlayPreferences.setSwipeThresholds(SwipeColorThresholds(swipes, danger)) }
+    }
+
+    fun setSwipeDanger(swipes: Int) {
+        val current = overlaySettings.value.swipeThresholds
+        val warning = minOf(current.warningAfterSwipes, swipes - 1)
+        viewModelScope.launch { overlayPreferences.setSwipeThresholds(SwipeColorThresholds(warning, swipes)) }
     }
 
     fun setShowSwipes(show: Boolean) {

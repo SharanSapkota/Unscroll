@@ -111,6 +111,33 @@ class BlockingDaoTest {
         assertEquals(2, dao.observeOverridesSince(0).first().size)
     }
 
+    @Test
+    fun swipeExtensions_areCounted_butNeverExtendTime() = runTest {
+        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 100, method = "SWIPES"))
+        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 300, expiresAt = 300, method = "SWIPES"))
+        dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 200, expiresAt = 900, method = "PHRASE"))
+
+        assertEquals(2, dao.swipeExtensionsSince(INSTAGRAM, since = 0))
+        assertEquals(1, dao.swipeExtensionsSince(INSTAGRAM, since = 200))
+        assertEquals(0, dao.swipeExtensionsSince("com.facebook.katana", since = 0))
+        // Only the PHRASE row is a time extension.
+        assertEquals(900L, dao.activeOverrideUntil(INSTAGRAM, now = 50))
+    }
+
+    @Test
+    fun swipeLimitColumns_defaultToNoLimit_andRoundTrip() = runTest {
+        dao.upsertLimit(limit())
+        val stored = dao.getLimit(INSTAGRAM)!!
+        assertNull(stored.swipeLimit)
+        assertEquals("DAY", stored.swipeLimitScope)
+        assertEquals(30, stored.swipeSessionGapMinutes)
+        assertEquals(false, stored.swipeAccessAllowed)
+
+        val withSwipes = stored.copy(swipeLimit = 100, swipeLimitScope = "SESSION", swipeSessionGapMinutes = 15, swipeAccessAllowed = true)
+        dao.upsertLimit(withSwipes)
+        assertEquals(withSwipes, dao.getLimit(INSTAGRAM))
+    }
+
     private companion object {
         const val INSTAGRAM = "com.instagram.android"
         const val TIKTOK = "com.zhiliaoapp.musically"

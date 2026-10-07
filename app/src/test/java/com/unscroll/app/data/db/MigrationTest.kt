@@ -52,6 +52,7 @@ class MigrationTest {
                         if (version >= 2) MIGRATION_1_2.migrate(db)
                         if (version >= 3) MIGRATION_2_3.migrate(db)
                         if (version >= 4) MIGRATION_3_4.migrate(db)
+                        if (version >= 5) MIGRATION_4_5.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -251,6 +252,46 @@ class MigrationTest {
             assertEquals(listOf(5), friction.sentNudges("com.instagram.android", "2026-10-06", "OPENS"))
             assertEquals(30, database.blockingDao().getLimit("com.instagram.android")?.dailyLimitMinutes)
             assertEquals(listOf(3, 0), database.sessionDao().observeRecent(10).first().map { it.scrollCount })
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate5To6_keepsLimits_andAddsSwipeLimitOff() = runTest {
+        createDatabase(version = 5)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(DB_NAME)
+            .callback(
+                object : SupportSQLiteOpenHelper.Callback(5) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            )
+            .build()
+        FrameworkSQLiteOpenHelperFactory().create(config).apply {
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits VALUES ('com.instagram.android', 45, 1, 0, 127, 1320, 420, NULL, NULL)",
+            )
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val limit = database.blockingDao().getLimit("com.instagram.android")!!
+            assertEquals(45, limit.dailyLimitMinutes)
+            assertEquals(true, limit.blockedAlways)
+            assertEquals(null, limit.swipeLimit)
+            assertEquals("DAY", limit.swipeLimitScope)
+            assertEquals(30, limit.swipeSessionGapMinutes)
+            assertEquals(false, limit.swipeAccessAllowed)
+            assertEquals(listOf(3, 0), database.sessionDao().observeRecent(10).first().map { it.scrollCount })
+
+            database.blockingDao().upsertLimit(limit.copy(swipeLimit = 100))
+            assertEquals(100, database.blockingDao().getLimit("com.instagram.android")?.swipeLimit)
         } finally {
             database.close()
         }

@@ -7,7 +7,14 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import javax.inject.Inject
 
-enum class BlockReason { BLOCKED_ALWAYS, DAILY_LIMIT_REACHED, INSIDE_SCHEDULE }
+enum class BlockReason {
+    BLOCKED_ALWAYS,
+    DAILY_LIMIT_REACHED,
+    INSIDE_SCHEDULE,
+
+    /** Never returned by BlockEvaluator: the swipe limit's fallback when the cover can't be drawn. */
+    SWIPE_LIMIT_REACHED,
+}
 
 sealed interface BlockDecision {
     /** [remainingMillis] is the time left under the daily limit, or null without a limit. */

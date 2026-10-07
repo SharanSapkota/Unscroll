@@ -22,6 +22,12 @@ data class AppScrollStatsRow(
     val durationMillis: Long,
 )
 
+/** Result row: when one session started and ended. */
+data class SessionSpanRow(
+    val startTime: Long,
+    val endTime: Long?,
+)
+
 /** Changes whenever a session is inserted, closed or gets new swipes. */
 data class SessionsChangeToken(
     val count: Int,

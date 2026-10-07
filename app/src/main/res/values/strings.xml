@@ -259,14 +259,14 @@
 
     <!-- M7: optional scroll counting (accessibility service) -->
     <string name="accessibility_service_label">Unscroll swipe counter</string>
-    <string name="accessibility_service_description">Counts how many times you swipe in Instagram, TikTok and Facebook, so Unscroll can show your swipe count and suggest a break. It does not read your screen, messages or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
+    <string name="accessibility_service_description">Counts how many times you swipe in Instagram, TikTok and Facebook, so Unscroll can show your swipe count, suggest a break, and cover the app when your swipe limit is reached. It does not read your screen, messages or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
 
     <string name="scroll_disclosure_title">Count your swipes (optional)</string>
-    <string name="scroll_disclosure_intro">Unscroll can count how many times you swipe in the apps you track. You\'ll see the count on the timer and the dashboard, and you can ask for a break after a number of swipes.</string>
+    <string name="scroll_disclosure_intro">Unscroll can count how many times you swipe in the apps you choose. You\'ll see the count on the timer and the dashboard, you can ask for a break after a number of swipes, and you can set a swipe limit that covers the app when you reach it.</string>
     <string name="scroll_disclosure_does_title">What it does</string>
-    <string name="scroll_disclosure_does_body">It uses Android\'s Accessibility Service to notice that a scroll happened in Instagram, TikTok or Facebook, and in which of these apps. It only counts. It doesn\'t look at any other app.</string>
+    <string name="scroll_disclosure_does_body">It uses Android\'s Accessibility Service to notice that a scroll happened in Instagram, TikTok or Facebook, and in which of these apps. It counts, and it can cover the screen when your swipe limit is reached. It doesn\'t look at any other app.</string>
     <string name="scroll_disclosure_does_not_title">What it does not do</string>
-    <string name="scroll_disclosure_does_not_body">It does not read your screen, posts, messages, usernames or anything you type. It does not control your phone or tap anything for you. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.</string>
+    <string name="scroll_disclosure_does_not_body">It does not read your screen, posts, messages, usernames or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.</string>
     <string name="scroll_disclosure_optional_title">It\'s optional</string>
     <string name="scroll_disclosure_optional_body">Everything else in Unscroll works without it. You can turn it off at any time in Settings, or in your phone\'s Accessibility settings.</string>
     <string name="scroll_disclosure_next">If you agree, Unscroll opens Accessibility settings. Find \"Unscroll swipe counter\" there and switch it on.</string>
@@ -377,4 +377,45 @@
         <item quantity="one">Deleted %d session.</item>
         <item quantity="other">Deleted %d sessions.</item>
     </plurals>
+
+    <!-- Swipe limit (hard stop) -->
+    <string name="block_reason_swipes">You\'ve reached your swipe limit for this app.</string>
+    <string name="swipe_cover_title">Swipe limit reached</string>
+    <plurals name="swipe_cover_count">
+        <item quantity="one">%1$d swipe in %2$s</item>
+        <item quantity="other">%1$d swipes in %2$s</item>
+    </plurals>
+    <string name="swipe_cover_today">%1$s in this app today</string>
+    <string name="swipe_cover_go_home">Go home</string>
+    <string name="swipe_cover_need_access">I need access</string>
+    <string name="swipe_cover_access_explanation">Typing the phrase gives you %1$d more swipes.</string>
+    <string name="overlay_swipes_separator"> · %1$s</string>
+    <plurals name="overlay_swipes_left">
+        <item quantity="one">%d swipe left</item>
+        <item quantity="other">%d swipes left</item>
+    </plurals>
+    <plurals name="settings_overlay_swipe_warning_after">
+        <item quantity="one">Yellow after %d swipe</item>
+        <item quantity="other">Yellow after %d swipes</item>
+    </plurals>
+    <plurals name="settings_overlay_swipe_danger_after">
+        <item quantity="one">Red after %d swipe</item>
+        <item quantity="other">Red after %d swipes</item>
+    </plurals>
+    <string name="swipe_limit_title">Swipe limit</string>
+    <string name="swipe_limit_description">When you reach it, the app is covered until the limit resets. Raising or removing it waits like any other limit.</string>
+    <string name="swipe_limit_needs_counting">Needs scroll counting (Settings › Scroll counting). Without it, swipes aren\'t counted and this limit does nothing.</string>
+    <string name="swipe_limit_custom">Custom</string>
+    <string name="swipe_limit_custom_value">Custom: %1$d</string>
+    <string name="swipe_limit_custom_title">Custom swipe limit</string>
+    <string name="swipe_limit_custom_field">Swipes</string>
+    <string name="swipe_limit_custom_set">Set</string>
+    <string name="swipe_limit_per_day">Per day</string>
+    <string name="swipe_limit_per_session">Per session</string>
+    <string name="swipe_limit_session_gap">Starts again after you stay away for</string>
+    <string name="swipe_limit_access">Allow \"I need access\"</string>
+    <string name="swipe_limit_access_description">The cover offers %1$d more swipes after you type the unlock phrase.</string>
+    <string name="apps_pending_swipes_removed">Swipe limit is removed in %1$s</string>
+    <string name="apps_pending_swipes_raised">Swipe limit goes up to %1$d in %2$s</string>
+    <string name="apps_pending_swipes_loosened">Swipe limit loosens in %1$s</string>
 </resources>

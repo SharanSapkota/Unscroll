@@ -54,6 +54,7 @@ import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.overlay.PillSize
+import com.unscroll.app.domain.overlay.SwipeColorThresholds
 import com.unscroll.app.overlay.TimerPill
 import com.unscroll.app.overlay.TimerPillState
 import com.unscroll.app.ui.durationText
@@ -107,6 +108,8 @@ fun SettingsScreen(
                 onEnabledChange = viewModel::setOverlayEnabled,
                 onShowTodayTotalChange = viewModel::setShowTodayTotal,
                 onShowSwipesChange = viewModel::setShowSwipes,
+                onSwipeWarningChange = viewModel::setSwipeWarning,
+                onSwipeDangerChange = viewModel::setSwipeDanger,
                 onWarningMinutesChange = viewModel::setWarningMinutes,
                 onDangerMinutesChange = viewModel::setDangerMinutes,
                 onSizeChange = viewModel::setPillSize,
@@ -152,6 +155,8 @@ private class OverlayActions(
     val onEnabledChange: (Boolean) -> Unit,
     val onShowTodayTotalChange: (Boolean) -> Unit,
     val onShowSwipesChange: (Boolean) -> Unit,
+    val onSwipeWarningChange: (Int) -> Unit,
+    val onSwipeDangerChange: (Int) -> Unit,
     val onWarningMinutesChange: (Int) -> Unit,
     val onDangerMinutesChange: (Int) -> Unit,
     val onSizeChange: (PillSize) -> Unit,
@@ -193,6 +198,18 @@ private fun OverlaySection(
         description = stringResource(R.string.settings_overlay_swipes_description),
         checked = settings.showSwipes,
         onCheckedChange = actions.onShowSwipesChange,
+    )
+    CountSlider(
+        label = R.plurals.settings_overlay_swipe_warning_after,
+        value = settings.swipeThresholds.warningAfterSwipes,
+        range = SwipeColorThresholds.MIN_SWIPES..(SwipeColorThresholds.MAX_SWIPES - 1),
+        onValueChange = actions.onSwipeWarningChange,
+    )
+    CountSlider(
+        label = R.plurals.settings_overlay_swipe_danger_after,
+        value = settings.swipeThresholds.dangerAfterSwipes,
+        range = (SwipeColorThresholds.MIN_SWIPES + 1)..SwipeColorThresholds.MAX_SWIPES,
+        onValueChange = actions.onSwipeDangerChange,
     )
     MinutesSlider(
         label = R.plurals.settings_overlay_warning_after,
@@ -311,6 +328,29 @@ private fun MinutesSlider(
             onValueChangeFinished = { onMinutesChange(value.roundToInt()) },
             valueRange = range.first.toFloat()..range.last.toFloat(),
             steps = range.last - range.first - 1,
+        )
+    }
+}
+
+/** A count slider without tick marks (the range is too wide for steps); saved when the finger lifts. */
+@Composable
+private fun CountSlider(
+    label: Int,
+    value: Int,
+    range: IntRange,
+    onValueChange: (Int) -> Unit,
+) {
+    var current by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)) {
+        Text(
+            text = pluralStringResource(label, current.roundToInt(), current.roundToInt()),
+            style = MaterialTheme.typography.bodyLarge,
+        )
+        Slider(
+            value = current,
+            onValueChange = { current = it },
+            onValueChangeFinished = { onValueChange(current.roundToInt()) },
+            valueRange = range.first.toFloat()..range.last.toFloat(),
         )
     }
 }
@@ -555,7 +595,7 @@ private fun OverlaySectionPreview() {
                 settings = OverlaySettings(showTodayTotal = true),
                 canDrawOverlays = false,
                 positionReset = true,
-                actions = OverlayActions({}, {}, {}, {}, {}, {}, {}, {}),
+                actions = OverlayActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {}),
             )
         }
     }
