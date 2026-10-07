@@ -132,11 +132,15 @@ object PillColors {
 }
 
 /**
- * The fox mascot's colors: its fur follows the accent (primary), so only the light and dark
- * details are fixed here. Cream reads on teal in both modes; ink is the eyes and nose.
+ * The fox mascot's colors, the same as the launcher icon's fox. Fixed in light and dark: the
+ * orange fox reads on both, like the icon on any wallpaper.
  */
 object FoxColors {
-    val cream = Color(0xFFF6F1E7)
-    val ink = Color(0xFF14201D)
-    val blush = Color(0x33FF8A80)
+    /** The launcher icon's fox (assets/icon/icon.svg): fur, darker inner ears, cream lower face. */
+    val fur = Color(0xFFFF8A3D)
+    val innerEar = Color(0xFFC2501A)
+    val cream = Color(0xFFFFF3E6)
+    val ink = Color(0xFF1B1B1B)
+    val highlight = Color(0xFFFFFFFF)
+    val blush = Color(0x40FF5A5F)
 }

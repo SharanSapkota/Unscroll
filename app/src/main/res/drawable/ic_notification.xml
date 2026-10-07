@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The fox face, drawn from the same shapes as ui/fox/FoxMascot. -->
+<!-- Notification small icon: the fox face, white only (the system tints it). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="100"
-    android:viewportHeight="100">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M13,46 L20,4 L46,31 Z" />
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M87,46 L80,4 L54,31 Z" />
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:scaleX="1.38"
+        android:scaleY="1.38"
+        android:translateX="-97.3"
+        android:translateY="-108.5">
         <path
             android:fillColor="#FFFFFFFF"
             android:fillType="evenOdd"
-            android:pathData="M10,40 L50,26 L90,40 L82,68 L50,92 L18,68 Z M31.5,50 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 Z M59.5,50 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 Z M45.5,76 L54.5,76 L50,81.5 Z" />
+            android:pathData="M96,120 L200,190 Q256,176 312,190 L416,120 L402,272 Q392,342 256,422 Q120,342 110,272 Z M177,252 a15,19 0 1,0 30,0 a15,19 0 1,0 -30,0 Z M305,252 a15,19 0 1,0 30,0 a15,19 0 1,0 -30,0 Z M234,392 a22,15 0 1,0 44,0 a22,15 0 1,0 -44,0 Z" />
+    </group>
 </vector>

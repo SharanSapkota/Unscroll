@@ -1,24 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The fox face, drawn from the same shapes as ui/fox/FoxMascot. -->
+<!-- Themed (monochrome) launcher icon: the fox and scroll bar silhouette, eyes and nose cut out. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.6"
-        android:scaleY="0.6"
-        android:translateX="24"
-        android:translateY="25.2">
+        android:scaleX="0.151"
+        android:scaleY="0.151"
+        android:translateX="14.438"
+        android:translateY="15.646">
+        <group
+            android:scaleX="0.82"
+            android:scaleY="0.82"
+            android:translateX="5"
+            android:translateY="40">
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:fillType="evenOdd"
+                android:pathData="M96,120 L200,190 Q256,176 312,190 L416,120 L402,272 Q392,342 256,422 Q120,342 110,272 Z M132,166 L190,206 L128,238 Z M380,166 L322,206 L384,238 Z M110,272 Q150,332 256,422 Q362,332 402,272 Q332,304 256,304 Q180,304 110,272 Z M177,252 a15,19 0 1,0 30,0 a15,19 0 1,0 -30,0 Z M305,252 a15,19 0 1,0 30,0 a15,19 0 1,0 -30,0 Z" />
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:fillAlpha="0.5"
+                android:pathData="M132,166 L190,206 L128,238 Z M380,166 L322,206 L384,238 Z" />
+            <path
+                android:fillColor="#FFFFFFFF"
+                android:fillAlpha="0.5"
+                android:fillType="evenOdd"
+                android:pathData="M110,272 Q150,332 256,422 Q362,332 402,272 Q332,304 256,304 Q180,304 110,272 Z M234,392 a22,15 0 1,0 44,0 a22,15 0 1,0 -44,0 Z" />
+        </group>
         <path
             android:fillColor="#FFFFFFFF"
-            android:pathData="M13,46 L20,4 L46,31 Z" />
+            android:fillAlpha="0.3"
+            android:pathData="M413,112 h0 a11,11 0 0,1 11,11 v266 a11,11 0 0,1 -11,11 h0 a11,11 0 0,1 -11,-11 v-266 a11,11 0 0,1 11,-11 Z" />
         <path
             android:fillColor="#FFFFFFFF"
-            android:pathData="M87,46 L80,4 L54,31 Z" />
+            android:fillAlpha="0.6"
+            android:pathData="M413,168 h0 a11,11 0 0,1 11,11 v74 a11,11 0 0,1 -11,11 h0 a11,11 0 0,1 -11,-11 v-74 a11,11 0 0,1 11,-11 Z" />
         <path
             android:fillColor="#FFFFFFFF"
-            android:fillType="evenOdd"
-            android:pathData="M10,40 L50,26 L90,40 L82,68 L50,92 L18,68 Z M31.5,50 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 Z M59.5,50 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 Z M45.5,76 L54.5,76 L50,81.5 Z" />
+            android:pathData="M395.0,270.0 h36.0 a7.0,7.0 0 0,1 7.0,7.0 v0.0 a7.0,7.0 0 0,1 -7.0,7.0 h-36.0 a7.0,7.0 0 0,1 -7.0,-7.0 v-0.0 a7.0,7.0 0 0,1 7.0,-7.0 Z" />
     </group>
 </vector>
