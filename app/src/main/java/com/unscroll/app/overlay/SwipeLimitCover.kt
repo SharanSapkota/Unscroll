@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.unscroll.app.data.appearance.AppearancePreferences
+import com.unscroll.app.ui.fox.ProvideFoxSettings
 import com.unscroll.app.ui.theme.UnscrollTheme
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -49,6 +51,7 @@ data class SwipeCoverState(
 @Singleton
 class SwipeLimitCover @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val appearancePreferences: AppearancePreferences,
 ) {
     private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -94,11 +97,13 @@ class SwipeLimitCover @Inject constructor(
             setContent {
                 state?.let { current ->
                     UnscrollTheme(darkTheme = true) {
-                        SwipeLimitCoverContent(
-                            state = current,
-                            onGoHome = { onGoHome() },
-                            onAccessGranted = { onAccessGranted(current.packageName) },
-                        )
+                        ProvideFoxSettings(appearancePreferences.fox) {
+                            SwipeLimitCoverContent(
+                                state = current,
+                                onGoHome = { onGoHome() },
+                                onAccessGranted = { onAccessGranted(current.packageName) },
+                            )
+                        }
                     }
                 }
             }

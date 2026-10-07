@@ -23,8 +23,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.unscroll.app.R
+import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.overlay.PillLevel
 import com.unscroll.app.domain.overlay.PillSize
+import com.unscroll.app.ui.fox.FoxMascot
+import com.unscroll.app.ui.fox.LocalFoxSettings
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
 import com.unscroll.app.ui.theme.PillColors
@@ -54,6 +57,13 @@ private fun PillLevel.background(): Color = when (this) {
     PillLevel.DANGER -> PillColors.danger
 }
 
+/** The collapsed pill's fox follows the pill's own level. */
+private fun PillLevel.foxMood(): FoxMood = when (this) {
+    PillLevel.CALM -> FoxMood.HAPPY
+    PillLevel.WARNING -> FoxMood.ALERT
+    PillLevel.DANGER -> FoxMood.CONCERNED
+}
+
 private fun PillLevel.content(): Color = when (this) {
     PillLevel.CALM -> PillColors.onCalm
     PillLevel.WARNING -> PillColors.onWarning
@@ -62,8 +72,8 @@ private fun PillLevel.content(): Color = when (this) {
 
 /**
  * The floating timer: a compact capsule with a soft shadow, the time bold, the app name and the
- * swipe count smaller ("Instagram 12:41 · 86 swipes"), or a small dot when collapsed. Colors
- * cross-fade between levels.
+ * swipe count smaller ("Instagram 12:41 · 86 swipes"), or, collapsed, a tiny fox face (a small
+ * dot with the fox off). Colors cross-fade between levels.
  */
 @Composable
 fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
@@ -80,6 +90,19 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
     val small = state.size == PillSize.SMALL
     // Room for the shadow inside the overlay window.
     Box(modifier = modifier.padding(Dimens.pillShadow)) {
+        if (state.collapsed && LocalFoxSettings.current.showFox) {
+            // Still (no idle animation): it sits over other apps and must not draw attention.
+            FoxMascot(
+                mood = state.level.foxMood(),
+                modifier = Modifier
+                    .alpha(state.opacity)
+                    .size(if (small) Dimens.pillFoxSmall else Dimens.pillFoxMedium),
+                showTail = false,
+                animate = false,
+                fur = background,
+            )
+            return@Box
+        }
         if (state.collapsed) {
             Box(
                 modifier = Modifier

@@ -12,9 +12,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.domain.blocking.BlockReason
+import com.unscroll.app.ui.fox.ProvideFoxSettings
 import com.unscroll.app.ui.theme.UnscrollTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -27,6 +30,9 @@ import kotlinx.coroutines.launch
 class BlockActivity : ComponentActivity() {
 
     private val viewModel: BlockViewModel by viewModels()
+
+    @Inject
+    lateinit var appearancePreferences: AppearancePreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -41,15 +47,17 @@ class BlockActivity : ComponentActivity() {
         )
         setContent {
             UnscrollTheme(darkTheme = true) {
-                val state by viewModel.uiState.collectAsStateWithLifecycle()
-                LaunchedEffect(state.accessGranted) {
-                    if (state.accessGranted) openBlockedApp(state.packageName)
+                ProvideFoxSettings(appearancePreferences.fox) {
+                    val state by viewModel.uiState.collectAsStateWithLifecycle()
+                    LaunchedEffect(state.accessGranted) {
+                        if (state.accessGranted) openBlockedApp(state.packageName)
+                    }
+                    BlockScreen(
+                        state = state,
+                        onGoHome = ::goHome,
+                        onRequestAccess = viewModel::requestAccess,
+                    )
                 }
-                BlockScreen(
-                    state = state,
-                    onGoHome = ::goHome,
-                    onRequestAccess = viewModel::requestAccess,
-                )
             }
         }
         // Not tied to STARTED: the screen also closes while it waits in the background, so it

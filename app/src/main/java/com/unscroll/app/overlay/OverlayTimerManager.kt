@@ -5,6 +5,7 @@ import android.content.Intent
 import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
+import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.insights.TimeRange
@@ -54,6 +55,7 @@ class OverlayTimerManager @Inject constructor(
     private val scrollCounting: ScrollCountingRepository,
     private val swipeLimitEnforcer: SwipeLimitEnforcer,
     private val clock: Clock,
+    private val appearance: AppearancePreferences,
 ) {
     private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
     private val collapsed = MutableStateFlow(false)
@@ -170,6 +172,7 @@ class OverlayTimerManager @Inject constructor(
             onTap = { collapsed.update { !it } },
             onMoved = ::savePosition,
             onMessageAction = ::onMessageAction,
+            foxSettings = appearance.fox,
         )
         try {
             newWindow.updateSwipes(swipesShown)

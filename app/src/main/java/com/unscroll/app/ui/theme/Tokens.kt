@@ -59,6 +59,8 @@ object Dimens {
     /** The floating pill. */
     val pillDotSmall = 14.dp
     val pillDotMedium = 18.dp
+    val pillFoxSmall = 22.dp
+    val pillFoxMedium = 28.dp
     val pillPaddingHSmall = 10.dp
     val pillPaddingHMedium = 14.dp
     val pillPaddingVSmall = 5.dp
@@ -66,6 +68,12 @@ object Dimens {
     val pillShadow = 6.dp
     val pillMessageMaxWidth = 280.dp
     val pillPreviewHeight = 72.dp
+
+    /** The fox mascot. */
+    val foxSmall = 44.dp
+    val foxHome = 76.dp
+    val foxLarge = 120.dp
+    val foxBubbleMaxWidth = 220.dp
 
     /** The breathing circle on the break screen. */
     val breathingCircle = 220.dp

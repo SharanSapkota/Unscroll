@@ -12,6 +12,7 @@ import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.service.TrackingController
 import com.unscroll.app.ui.UnscrollRoot
+import com.unscroll.app.ui.fox.ProvideFoxSettings
 import com.unscroll.app.ui.theme.UnscrollTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -38,7 +39,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val dynamicColor by appearancePreferences.dynamicColor.collectAsStateWithLifecycle(initialValue = false)
             UnscrollTheme(dynamicColor = dynamicColor) {
-                UnscrollRoot()
+                ProvideFoxSettings(appearancePreferences.fox) {
+                    UnscrollRoot()
+                }
             }
         }
     }

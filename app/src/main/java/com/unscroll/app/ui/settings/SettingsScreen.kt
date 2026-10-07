@@ -43,8 +43,8 @@ import com.unscroll.app.util.openSettings
 
 /**
  * Settings: permission health at the top, then four groups (Tracking, Timer pill, Notifications,
- * Data & privacy), plus Appearance on Android 12+ and debug tools in debug builds. Details open
- * in bottom sheets, never more than one level deep.
+ * Data & privacy), plus Appearance (the fox; dynamic color on Android 12+) and debug tools in
+ * debug builds. Details open in bottom sheets, never more than one level deep.
  */
 @Composable
 fun SettingsScreen(
@@ -62,6 +62,7 @@ fun SettingsScreen(
     val permissions by viewModel.permissions.collectAsStateWithLifecycle()
     val scrollStatus by viewModel.scrollStatus.collectAsStateWithLifecycle()
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
+    val fox by viewModel.fox.collectAsStateWithLifecycle()
     var checklistOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -134,9 +135,22 @@ fun SettingsScreen(
         )
         DataPrivacyGroup()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            SectionHeader(title = stringResource(R.string.settings_group_appearance))
-            SettingsGroup {
+        SectionHeader(title = stringResource(R.string.settings_group_appearance))
+        SettingsGroup {
+            SettingSwitchRow(
+                title = stringResource(R.string.settings_show_fox),
+                icon = R.drawable.ic_fox,
+                checked = fox.showFox,
+                onCheckedChange = viewModel::setShowFox,
+            )
+            SettingSwitchRow(
+                title = stringResource(R.string.settings_fox_messages),
+                icon = R.drawable.ic_bell,
+                checked = fox.messages,
+                onCheckedChange = viewModel::setFoxMessages,
+                enabled = fox.showFox,
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 SettingSwitchRow(
                     title = stringResource(R.string.settings_dynamic_color),
                     icon = R.drawable.ic_palette,
