@@ -21,7 +21,7 @@ Read CLAUDE.md and ROADMAP.md. Implement M4: the live overlay timer. Create Over
 Read CLAUDE.md and ROADMAP.md. Implement M5: limits and blocking. Add AppLimitEntity and a management UI in the Apps tab (daily limit, block always, schedule). Create BlockActivity that appears over a blocked app and sends the user home on dismiss. Add a cooldown mechanism so unblocking or raising a limit takes effect after a delay or requires typing a phrase. Add tests for the limit/schedule evaluation logic.
 
 ## M6
-Read CLAUDE.md and ROADMAP.md. Implement M6: friction and nudges. Add a 10-second pause screen with a breathing animation before tracked apps open, open-count notifications, periodic break reminders, and per-app toggles for each feature.
+Read CLAUDE.md and ROADMAP.md. Implement M6: friction and nudges. Add open-count notifications, periodic break reminders, and per-app toggles for each feature. No pause screen before tracked apps open: apps open instantly and the live timer is the stopper.
 
 ## M7
 Read CLAUDE.md and ROADMAP.md. Implement M7: an opt-in AccessibilityService that counts scroll events per session in tracked apps only, and shows a take-a-break screen after a configurable number of swipes. Never read or store text content from the screen. Add a clear in-app disclosure screen before the user is sent to Accessibility settings.

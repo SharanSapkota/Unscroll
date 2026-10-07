@@ -26,7 +26,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.unscroll.app.R
 import com.unscroll.app.ui.durationText
-import com.unscroll.app.ui.pause.BreathingCircle
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.appLabel
 
@@ -70,7 +69,7 @@ fun BreakScreen(
             BreathingCircle()
             if (state.secondsLeft > 0) {
                 Text(
-                    text = stringResource(R.string.pause_countdown, state.secondsLeft),
+                    text = stringResource(R.string.break_countdown, state.secondsLeft),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

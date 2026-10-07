@@ -6,8 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.friction.NudgeKind
-import com.unscroll.app.data.friction.PauseOutcome
-import com.unscroll.app.data.friction.PauseStat
 import com.unscroll.app.domain.friction.FrictionSettings
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
@@ -44,7 +42,7 @@ class FrictionDaoTest {
     fun settings_defaultUntilSaved_thenResetDeletesTheRow() = runTest {
         assertEquals(FrictionSettings.DEFAULT, repository.getSettings(INSTAGRAM))
 
-        val custom = FrictionSettings(pauseSeconds = 20, nudgeThresholds = listOf(3, 30), tintEnabled = true)
+        val custom = FrictionSettings(breakIntervalMinutes = 20, nudgeThresholds = listOf(3, 30), tintEnabled = true)
         repository.saveSettings(INSTAGRAM, custom)
         assertEquals(custom, repository.getSettings(INSTAGRAM))
         assertEquals(mapOf(INSTAGRAM to custom), repository.observeSettings().first())
@@ -56,9 +54,9 @@ class FrictionDaoTest {
 
     @Test
     fun settings_areNormalizedOnSave() = runTest {
-        repository.saveSettings(INSTAGRAM, FrictionSettings(pauseSeconds = 300, nudgeThresholds = listOf(20, 5, 5)))
+        repository.saveSettings(INSTAGRAM, FrictionSettings(breakIntervalMinutes = 0, nudgeThresholds = listOf(20, 5, 5)))
         val stored = repository.getSettings(INSTAGRAM)
-        assertEquals(30, stored.pauseSeconds)
+        assertEquals(1, stored.breakIntervalMinutes)
         assertEquals(listOf(5, 20), stored.nudgeThresholds)
     }
 
@@ -74,32 +72,15 @@ class FrictionDaoTest {
     }
 
     @Test
-    fun pauseOutcomes_statsSinceStartOfDay() = runTest {
-        repository.logPauseOutcome(INSTAGRAM, shownAt = 50, outcome = PauseOutcome.ABANDONED) // yesterday
-        repository.logPauseOutcome(INSTAGRAM, shownAt = 150, outcome = PauseOutcome.ABANDONED)
-        repository.logPauseOutcome(INSTAGRAM, shownAt = 160, outcome = PauseOutcome.ABANDONED)
-        repository.logPauseOutcome(INSTAGRAM, shownAt = 170, outcome = PauseOutcome.CONTINUED)
-        repository.logPauseOutcome(TIKTOK, shownAt = 180, outcome = PauseOutcome.CONTINUED)
-
-        assertEquals(
-            listOf(PauseStat(INSTAGRAM, shown = 3, abandoned = 2), PauseStat(TIKTOK, shown = 1, abandoned = 0)),
-            repository.observePauseStatsSince(100).first(),
-        )
-    }
-
-    @Test
-    fun deletingHistory_clearsPauseOutcomesAndNudges_butKeepsSettings() = runTest {
+    fun deletingHistory_clearsNudges_butKeepsSettings() = runTest {
         val today = LocalDate.of(2026, 10, 6)
-        repository.saveSettings(INSTAGRAM, FrictionSettings(pauseSeconds = 20))
-        repository.logPauseOutcome(INSTAGRAM, shownAt = 150, outcome = PauseOutcome.ABANDONED)
+        repository.saveSettings(INSTAGRAM, FrictionSettings(breakIntervalMinutes = 20))
         repository.recordNudges(INSTAGRAM, today, NudgeKind.OPENS, listOf(5), now = 1)
 
-        database.frictionDao().deleteAllPauseOutcomes()
         database.frictionDao().deleteAllNudges()
 
-        assertEquals(emptyList<PauseStat>(), repository.observePauseStatsSince(0).first())
         assertEquals(emptySet<Int>(), repository.sentNudges(INSTAGRAM, today, NudgeKind.OPENS))
-        assertEquals(20, repository.getSettings(INSTAGRAM).pauseSeconds)
+        assertEquals(20, repository.getSettings(INSTAGRAM).breakIntervalMinutes)
     }
 
     @Test

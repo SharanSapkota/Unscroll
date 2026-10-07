@@ -16,13 +16,13 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 |---|---|
 | Which tracked app (Instagram, TikTok, Facebook) was open, and when each session started and ended | Session timer, dashboard, limits, nudges |
 | How many times you swiped in a session (only if you turn on the optional swipe counter) | Swipe count, swipe stats, "take a break after N swipes" |
-| Pause-screen outcomes, sent nudges and "I need access" extensions | Dashboard ("Pauses that saved you") and so nudges aren't repeated |
+| Sent nudges and "I need access" extensions | So nudges aren't repeated, and to log extensions |
 | Your settings: limits, schedules, goal, overlay, quiet hours, consent choices | So the app works the way you set it up |
 
 ## Permissions and what they are used for
 
 - **Usage access:** to see which app is in the foreground and measure time. Only app package names and timestamps are read.
-- **Display over other apps:** to show the floating timer, the pause, break and block screens.
+- **Display over other apps:** to show the floating timer and the break and block screens.
 - **Notifications** (optional): nudges and break reminders.
 - **Accessibility service** (optional, off by default, needs your explicit consent in the app): counts scroll gestures in the tracked apps. It can't read screen content (`canRetrieveWindowContent` is off) and only receives scroll and window-change events from the tracked apps.
 - **Run at startup** and a foreground service: to keep tracking after a restart.

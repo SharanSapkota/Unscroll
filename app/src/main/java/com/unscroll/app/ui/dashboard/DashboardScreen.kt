@@ -41,7 +41,6 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
-import com.unscroll.app.data.friction.PauseStat
 import com.unscroll.app.domain.insights.AppUsage
 import com.unscroll.app.domain.insights.DayUsage
 import com.unscroll.app.domain.insights.GetHoursInvestedUseCase
@@ -146,9 +145,6 @@ private fun DashboardList(
             item { HeatmapCard(periodUsage.hourly) }
         }
         uiState.scrollStats?.let { stats -> item { SwipesCard(stats) } }
-        if (uiState.pauseStats.isNotEmpty()) {
-            item { PausesCard(uiState.pauseStats) }
-        }
         uiState.weeklyReport?.let { report -> item { WeeklyReportCard(report) } }
         item { HoursInvestedCard(uiState.hoursInvested) }
         uiState.weekComparison?.let { comparison -> item { WeekCard(comparison) } }
@@ -356,39 +352,6 @@ private fun SwipeStatsRow(stats: AppScrollStats) {
             value = stringResource(R.string.dashboard_swipes_decimal, stats.perMinute),
             modifier = Modifier.weight(1f),
         )
-    }
-}
-
-/** "Pauses that saved you": how often the pause screen talked the user out of an app today. */
-@Composable
-private fun PausesCard(stats: List<PauseStat>) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.dashboard_pauses_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            val skipped = stats.sumOf { it.abandoned }
-            Text(
-                text = pluralStringResource(R.plurals.dashboard_pauses_total, skipped, skipped, stats.sumOf { it.shown }),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            stats.filter { it.abandoned > 0 }.forEach { stat ->
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.dashboard_pauses_skipped_app,
-                        stat.abandoned,
-                        rememberAppLabel(stat.packageName),
-                        stat.abandoned,
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            }
-        }
     }
 }
 

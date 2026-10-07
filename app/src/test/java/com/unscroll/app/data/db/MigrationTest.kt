@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -50,6 +51,7 @@ class MigrationTest {
                         db.execSQL("CREATE INDEX IF NOT EXISTS `index_sessions_endTime` ON `sessions` (`endTime`)")
                         if (version >= 2) MIGRATION_1_2.migrate(db)
                         if (version >= 3) MIGRATION_2_3.migrate(db)
+                        if (version >= 4) MIGRATION_3_4.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -130,13 +132,19 @@ class MigrationTest {
 
             val friction = database.frictionDao()
             friction.upsertSettings(
-                AppFrictionEntity("com.instagram.android", true, 10, true, "5,10,20", true, 15, true, false),
+                AppFrictionEntity(
+                    packageName = "com.instagram.android",
+                    nudgesEnabled = true,
+                    nudgeThresholds = "5,10,20",
+                    breakRemindersEnabled = true,
+                    breakIntervalMinutes = 15,
+                    limitWarningsEnabled = true,
+                    tintEnabled = false,
+                ),
             )
             assertEquals("5,10,20", friction.getSettings("com.instagram.android")?.nudgeThresholds)
-            friction.insertPauseOutcome(
-                PauseOutcomeEntity(packageName = "com.instagram.android", shownAt = 1, outcome = "ABANDONED"),
-            )
-            assertEquals(1, friction.observePauseStatsSince(0).first().single().abandoned)
+            // Added in v3, dropped again in v5.
+            assertFalse(database.hasTable("pause_outcomes"))
             friction.insertNudges(listOf(NudgeLogEntity("com.instagram.android", "2026-10-06", "OPENS", 5, 1)))
             assertEquals(listOf(5), friction.sentNudges("com.instagram.android", "2026-10-06", "OPENS"))
         } finally {
@@ -145,7 +153,7 @@ class MigrationTest {
     }
 
     @Test
-    fun migrate3To4_keepsFrictionSettings_andAddsSwipeBreakOff() = runTest {
+    fun migrate3To4To5_keepsFrictionSettings_addsSwipeBreakOff_andDropsPauseColumns() = runTest {
         createDatabase(version = 3)
         val config = SupportSQLiteOpenHelper.Configuration.builder(context)
             .name(DB_NAME)
@@ -173,8 +181,19 @@ class MigrationTest {
 
             val friction = database.frictionDao()
             val migrated = friction.getSettings("com.instagram.android")
-            assertEquals(20, migrated?.pauseSeconds)
-            assertEquals(null, migrated?.swipeBreakAfter)
+            assertEquals(
+                AppFrictionEntity(
+                    packageName = "com.instagram.android",
+                    nudgesEnabled = true,
+                    nudgeThresholds = "5,10",
+                    breakRemindersEnabled = false,
+                    breakIntervalMinutes = 15,
+                    limitWarningsEnabled = true,
+                    tintEnabled = false,
+                    swipeBreakAfter = null,
+                ),
+                migrated,
+            )
 
             friction.upsertSettings(migrated!!.copy(swipeBreakAfter = 50))
             assertEquals(50, friction.getSettings("com.instagram.android")?.swipeBreakAfter)
@@ -182,6 +201,65 @@ class MigrationTest {
             database.close()
         }
     }
+
+    @Test
+    fun migrate4To5_dropsPauseOutcomes_andPauseSettings_keepingEverythingElse() = runTest {
+        createDatabase(version = 4)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(DB_NAME)
+            .callback(
+                object : SupportSQLiteOpenHelper.Callback(4) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            )
+            .build()
+        FrameworkSQLiteOpenHelperFactory().create(config).apply {
+            writableDatabase.apply {
+                // v4 app_friction: packageName, pauseEnabled, pauseSeconds, nudgesEnabled, nudgeThresholds,
+                // breakRemindersEnabled, breakIntervalMinutes, limitWarningsEnabled, tintEnabled, swipeBreakAfter.
+                execSQL("INSERT INTO app_friction VALUES ('com.instagram.android', 0, 25, 0, '3,30', 1, 45, 0, 1, 100)")
+                execSQL("INSERT INTO app_friction VALUES ('com.facebook.katana', 1, 10, 1, '5,10,20', 1, 15, 1, 0, NULL)")
+                execSQL("INSERT INTO pause_outcomes (packageName, shownAt, outcome) VALUES ('com.instagram.android', 1, 'ABANDONED')")
+                execSQL("INSERT INTO app_limits VALUES ('com.instagram.android', 30, 1, 0, 127, 1320, 420, NULL, NULL)")
+                execSQL("INSERT INTO nudge_log VALUES ('com.instagram.android', '2026-10-06', 'OPENS', 5, 1)")
+            }
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            assertFalse(database.hasTable("pause_outcomes"))
+            val friction = database.frictionDao()
+            assertEquals(
+                AppFrictionEntity(
+                    packageName = "com.instagram.android",
+                    nudgesEnabled = false,
+                    nudgeThresholds = "3,30",
+                    breakRemindersEnabled = true,
+                    breakIntervalMinutes = 45,
+                    limitWarningsEnabled = false,
+                    tintEnabled = true,
+                    swipeBreakAfter = 100,
+                ),
+                friction.getSettings("com.instagram.android"),
+            )
+            assertEquals(2, friction.observeSettings().first().size)
+            assertEquals(listOf(5), friction.sentNudges("com.instagram.android", "2026-10-06", "OPENS"))
+            assertEquals(30, database.blockingDao().getLimit("com.instagram.android")?.dailyLimitMinutes)
+            assertEquals(listOf(3, 0), database.sessionDao().observeRecent(10).first().map { it.scrollCount })
+        } finally {
+            database.close()
+        }
+    }
+
+    private fun UnscrollDatabase.hasTable(name: String): Boolean =
+        openHelper.readableDatabase
+            .query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(name))
+            .use { it.count > 0 }
 
     private companion object {
         const val DB_NAME = "migration-test.db"

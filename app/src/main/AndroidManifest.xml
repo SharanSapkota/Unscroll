@@ -58,16 +58,7 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Unscroll" />
 
-        <!-- Pause screen: same task setup as the block screen. -->
-        <activity
-            android:name=".ui.pause.PauseActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
-            android:theme="@style/Theme.Unscroll" />
-
-        <!-- Take-a-break screen after N swipes (M7): same task setup as the pause screen. -->
+        <!-- Take-a-break screen after N swipes (M7): same task setup as the block screen. -->
         <activity
             android:name=".ui.scroll.BreakActivity"
             android:excludeFromRecents="true"

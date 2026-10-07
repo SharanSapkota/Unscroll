@@ -118,7 +118,7 @@ class AppsViewModel @Inject constructor(
         }
     }
 
-    /** Pause screen, nudges, break reminders, warnings and tint apply immediately. */
+    /** Nudges, break reminders, warnings, tint and swipe breaks apply immediately. */
     fun updateFriction(packageName: String, transform: (FrictionSettings) -> FrictionSettings) {
         viewModelScope.launch {
             friction.saveSettings(packageName, transform(friction.getSettings(packageName)))

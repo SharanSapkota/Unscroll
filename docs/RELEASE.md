@@ -8,7 +8,7 @@ Steps to take Unscroll from CI-green to Google Play. Items marked **(manual)** c
 - [ ] **Version:** bump `versionCode` (every upload) and `versionName` in `app/build.gradle.kts`.
 - [ ] **Release build (manual):** `./gradlew bundleRelease` with the signing config passed in from local properties or CI secrets. `isMinifyEnabled` is still `false`. Turning on R8 needs keep-rule testing for Hilt, Room and Compose on a real device first, so leave it off for the first internal test.
 - [ ] **Icon:** the adaptive icon (`mipmap-anydpi/ic_launcher.xml`, with a monochrome layer for themed icons) is in place. Export a 512×512 PNG for the store listing **(manual)**.
-- [ ] **Store assets (manual):** 4–8 phone screenshots (Dashboard, the timer over an app, the pause screen, Apps limits, Settings), and a 1024×500 feature graphic. Text is in [STORE_LISTING.md](../STORE_LISTING.md).
+- [ ] **Store assets (manual):** 4–8 phone screenshots (Dashboard, the timer over an app, the block screen, Apps limits, Settings), and a 1024×500 feature graphic. Text is in [STORE_LISTING.md](../STORE_LISTING.md).
 - [ ] **Privacy policy:** publish [PRIVACY_POLICY.md](PRIVACY_POLICY.md) at a public URL **(manual)** and enter it in the Play Console.
 - [ ] **Data safety form:** answers in [DATA_SAFETY.md](DATA_SAFETY.md).
 - [ ] **Permission declarations:**

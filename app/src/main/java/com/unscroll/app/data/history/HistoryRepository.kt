@@ -52,13 +52,12 @@ class HistoryRepository @Inject constructor(
     }
 
     /**
-     * Deletes sessions, pause outcomes, the nudge log and the extension log. Ends the open session
+     * Deletes sessions, the nudge log and the extension log. Ends the open session
      * first, so the tracker doesn't keep writing to a deleted row. Returns the deleted session count.
      */
     suspend fun deleteUsageHistory(): Int {
         sessionManager.endCurrentSession()
         val deleted = database.withTransaction {
-            database.frictionDao().deleteAllPauseOutcomes()
             database.frictionDao().deleteAllNudges()
             database.blockingDao().deleteAllOverrides()
             database.sessionDao().deleteAll()

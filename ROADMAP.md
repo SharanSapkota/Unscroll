@@ -43,7 +43,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - **Done when**: blocked app can't be used without passing friction.
 
 ## M6: Friction + nudges ✅ Done
-- Pause screen with 10s breathing prompt before the app opens
+- No pause screen: apps open instantly, the live timer is the stopper (a pause screen was built and later removed by design)
 - "You've opened Instagram 14 times today" notifications
 - Break reminders at set intervals
 - Optional grayscale/limit exceeded warning screen

@@ -11,15 +11,12 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -30,10 +27,9 @@ import androidx.compose.ui.unit.dp
 import com.unscroll.app.R
 import com.unscroll.app.domain.friction.FrictionSettings
 import com.unscroll.app.domain.scroll.SwipeBreakTracker
-import kotlin.math.roundToInt
 
 /**
- * Per-app "Pauses and nudges" settings, collapsed by default under each app card. Changes apply
+ * Per-app "Nudges and breaks" settings, collapsed by default under each app card. Changes apply
  * immediately: they only add or remove reminders, they never unblock anything.
  */
 @Composable
@@ -65,28 +61,6 @@ fun FrictionSection(
     if (!expanded) return
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        // Pause screen
-        ToggleRow(
-            title = stringResource(R.string.friction_pause),
-            description = stringResource(R.string.friction_pause_description),
-            checked = settings.pauseEnabled,
-            onCheckedChange = { on -> onChange { it.copy(pauseEnabled = on) } },
-        )
-        if (settings.pauseEnabled) {
-            var seconds by remember(settings.pauseSeconds) { mutableFloatStateOf(settings.pauseSeconds.toFloat()) }
-            Text(
-                text = stringResource(R.string.friction_pause_seconds, seconds.roundToInt()),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Slider(
-                value = seconds,
-                onValueChange = { seconds = it },
-                onValueChangeFinished = { onChange { it.copy(pauseSeconds = seconds.roundToInt()) } },
-                valueRange = FrictionSettings.MIN_PAUSE_SECONDS.toFloat()..FrictionSettings.MAX_PAUSE_SECONDS.toFloat(),
-                steps = FrictionSettings.MAX_PAUSE_SECONDS - FrictionSettings.MIN_PAUSE_SECONDS - 1,
-            )
-        }
-
         // Open-count nudges
         ToggleRow(
             title = stringResource(R.string.friction_nudges),

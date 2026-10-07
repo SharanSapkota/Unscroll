@@ -4,9 +4,8 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * Global quiet hours: nudges, break reminders and limit warnings stay silent. The pause screen and
- * blocking are not affected. A range may cross midnight (22:00 to 07:00). Start equal to end
- * means all day.
+ * Global quiet hours: nudges, break reminders and limit warnings stay silent. Blocking is not
+ * affected. A range may cross midnight (22:00 to 07:00). Start equal to end means all day.
  */
 data class QuietHours(
     val enabled: Boolean = false,

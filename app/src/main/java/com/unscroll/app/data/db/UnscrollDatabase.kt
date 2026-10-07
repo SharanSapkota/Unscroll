@@ -9,10 +9,9 @@ import androidx.room.RoomDatabase
         AppLimitEntity::class,
         BlockOverrideEntity::class,
         AppFrictionEntity::class,
-        PauseOutcomeEntity::class,
         NudgeLogEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class UnscrollDatabase : RoomDatabase() {
