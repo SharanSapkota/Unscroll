@@ -133,3 +133,10 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Colors by today's total: with a daily limit green under 60 %, yellow to 100 %, red at the limit; without one the daily thresholds (30/60 min by default). Settings and preview updated
 - Break reminders, swipe breaks and per-session swipe limits still use the session; blocking and accessibility unchanged
 - **Done when**: opening an app twice shows the total continue from the first visit, and it turns yellow at 60 % of a daily limit.
+
+## Fox welcome and splash ✅ Done (awaiting device testing)
+- Presentation only: tracking, blocking, overlay and accessibility logic unchanged
+- Welcome page: the hourglass illustration is replaced by a large happy fox (idle motion, still with "Remove animations") that fades and slides in; bold "Unscroll" and "Stop doomscrolling."
+- Launch splash with the SplashScreen API (androidx.core:splashscreen): the fox icon on dark teal, no extra delay
+- Other illustrations were already the fox (empty states, permissions page, stop screens); the hourglass and timer drawables stay as small row icons
+- **Done when**: a fresh launch shows the fox splash, then the welcome fox animating in.

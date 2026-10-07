@@ -1,3 +1,10 @@
 <resources>
     <style name="Theme.Unscroll" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- The launch splash (SplashScreen API): the icon's fox on dark teal, then Theme.Unscroll. -->
+    <style name="Theme.Unscroll.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.Unscroll</item>
+    </style>
 </resources>

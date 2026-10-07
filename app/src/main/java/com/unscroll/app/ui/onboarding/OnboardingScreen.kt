@@ -7,6 +7,11 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,8 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewFontScale
 import androidx.compose.ui.tooling.preview.PreviewLightDark
@@ -49,6 +55,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
 import com.unscroll.app.domain.device.DeviceManufacturer
+import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.onboarding.OnboardingStep
 import com.unscroll.app.domain.onboarding.PrimaryAction
 import com.unscroll.app.domain.permission.AppPermission
@@ -61,7 +68,9 @@ import com.unscroll.app.ui.components.SettingsGroup
 import com.unscroll.app.ui.components.TrustFooter
 import com.unscroll.app.ui.components.TrustPromise
 import com.unscroll.app.ui.components.TrustSheet
+import com.unscroll.app.ui.fox.FoxMascot
 import com.unscroll.app.ui.theme.Dimens
+import com.unscroll.app.ui.theme.Motion
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
@@ -140,31 +149,34 @@ private val PrimaryAction.labelRes: Int
         PrimaryAction.FINISH -> R.string.onboarding_done
     }
 
+/**
+ * Welcome: the happy fox (idle blink, ear twitch and tail wag, still with "Remove animations"),
+ * fading and sliding in gently, then the name and one short line.
+ */
 @Composable
 private fun WelcomePage() {
+    // Starts hidden and turns visible right away, so the fox animates in when the page opens.
+    val foxVisible = remember { MutableTransitionState(false).apply { targetState = true } }
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(Dimens.spaceXl, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .size(Dimens.illustration * 2)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
+        AnimatedVisibility(
+            visibleState = foxVisible,
+            enter = fadeIn(tween(Motion.MEDIUM)) +
+                slideInVertically(tween(Motion.MEDIUM)) { height -> height / WELCOME_SLIDE_FRACTION },
         ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_hourglass),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(Dimens.illustration),
-            )
+            FoxMascot(mood = FoxMood.HAPPY, modifier = Modifier.size(Dimens.foxWelcome))
         }
         Text(
-            text = stringResource(R.string.app_name),
+            text = stringResource(R.string.onboarding_welcome_title),
             style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { heading() },
         )
         Text(
             text = stringResource(R.string.onboarding_welcome_line),
@@ -174,6 +186,9 @@ private fun WelcomePage() {
         )
     }
 }
+
+/** The fox starts this fraction of its height lower and slides up into place. */
+private const val WELCOME_SLIDE_FRACTION = 8
 
 @Composable
 private fun PermissionsPage(permissions: PermissionState, onNotificationPermissionResult: () -> Unit) {
@@ -296,6 +311,7 @@ private fun PageDots(current: Int) {
 }
 
 @PreviewLightDark
+@PreviewFontScale
 @Composable
 private fun OnboardingWelcomePreview() {
     UnscrollTheme {

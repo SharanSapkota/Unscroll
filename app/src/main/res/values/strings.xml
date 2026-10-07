@@ -341,7 +341,8 @@
     <string name="permission_accessibility_note">Switch on in Accessibility</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_line">See your scrolling. Take your time back.</string>
+    <string name="onboarding_welcome_title">Unscroll</string>
+    <string name="onboarding_welcome_line">Stop doomscrolling.</string>
     <string name="onboarding_permissions_title">Three permissions</string>
     <!-- Trust (onboarding and Settings › Data & privacy). Keep these true: no INTERNET permission,
          no analytics or crash SDKs, no accounts, backups off. -->

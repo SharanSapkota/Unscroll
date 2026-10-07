@@ -67,6 +67,8 @@ kotlin {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // The launch splash with the fox on every Android version (SplashScreen API backport).
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
 
     implementation(platform(libs.androidx.compose.bom))

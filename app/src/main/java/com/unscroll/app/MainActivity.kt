@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -36,6 +37,8 @@ class MainActivity : ComponentActivity() {
     lateinit var appearancePreferences: AppearancePreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The fox splash (Theme.Unscroll.Starting) stays only until the first frame: no delay.
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
