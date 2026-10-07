@@ -2,16 +2,21 @@ package com.unscroll.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.friction.QuietHoursPreferences
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.sample.SampleDataSeeder
+import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillSize
 import com.unscroll.app.domain.overlay.SwipeColorThresholds
-import com.unscroll.app.domain.permission.AppPermission
+import com.unscroll.app.domain.permission.HealthItem
+import com.unscroll.app.domain.permission.PermissionHealth
+import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.service.TrackingController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,9 +24,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** The permission checklist: each line and whether it is fine. */
+data class PermissionHealthState(val checklist: List<Pair<HealthItem, Boolean>> = emptyList()) {
+    val issues: Int get() = checklist.count { !it.second }
+}
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -29,15 +39,13 @@ class SettingsViewModel @Inject constructor(
     private val overlayPreferences: OverlayPreferences,
     private val sampleDataSeeder: SampleDataSeeder,
     private val quietHoursPreferences: QuietHoursPreferences,
-    permissionRepository: PermissionRepository,
+    private val appearancePreferences: AppearancePreferences,
+    private val permissionRepository: PermissionRepository,
+    scrollCounting: ScrollCountingRepository,
 ) : ViewModel() {
 
     val quietHours: StateFlow<QuietHours> = quietHoursPreferences.quietHours
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), QuietHours())
-
-    fun setQuietHours(transform: (QuietHours) -> QuietHours) {
-        viewModelScope.launch { quietHoursPreferences.save(transform(quietHoursPreferences.current())) }
-    }
 
     val trackingEnabled: StateFlow<Boolean> = trackingController.trackingEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -45,9 +53,20 @@ class SettingsViewModel @Inject constructor(
     val overlaySettings: StateFlow<OverlaySettings> = overlayPreferences.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OverlaySettings())
 
-    /** False if "Display over other apps" was revoked; the pill can't show without it. */
-    val canDrawOverlays: StateFlow<Boolean> = permissionRepository.isGranted(AppPermission.OVERLAY)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+    val dynamicColor: StateFlow<Boolean> = appearancePreferences.dynamicColor
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val permissions: StateFlow<PermissionState> = permissionRepository.permissions
+
+    /** "All set" or "Fix 2 issues", and the checklist behind it. */
+    val health: StateFlow<PermissionHealthState> = combine(
+        permissionRepository.permissions,
+        scrollCounting.status,
+    ) { permissions, scroll -> PermissionHealthState(PermissionHealth.checklist(permissions, scroll)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PermissionHealthState())
+
+    val scrollStatus: StateFlow<ScrollCountingStatus> = scrollCounting.status
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScrollCountingStatus.OFF)
 
     private val _sampleSessionsAdded = MutableStateFlow<Int?>(null)
 
@@ -59,9 +78,20 @@ class SettingsViewModel @Inject constructor(
     /** True after "Reset position" was tapped, to confirm it in the UI. */
     val positionReset: StateFlow<Boolean> = _positionReset.asStateFlow()
 
+    fun setQuietHours(transform: (QuietHours) -> QuietHours) {
+        viewModelScope.launch { quietHoursPreferences.save(transform(quietHoursPreferences.current())) }
+    }
+
     fun setTrackingEnabled(enabled: Boolean) {
         viewModelScope.launch { trackingController.setTrackingEnabled(enabled) }
     }
+
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch { appearancePreferences.setDynamicColor(enabled) }
+    }
+
+    /** After the user comes back from a system settings screen. */
+    fun refreshPermissions() = permissionRepository.refresh()
 
     fun setOverlayEnabled(enabled: Boolean) {
         viewModelScope.launch { overlayPreferences.setEnabled(enabled) }
@@ -71,33 +101,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { overlayPreferences.setShowTodayTotal(show) }
     }
 
-    fun setSwipeWarning(swipes: Int) {
-        val current = overlaySettings.value.swipeThresholds
-        val danger = maxOf(current.dangerAfterSwipes, swipes + 1)
-        viewModelScope.launch { overlayPreferences.setSwipeThresholds(SwipeColorThresholds(swipes, danger)) }
-    }
-
-    fun setSwipeDanger(swipes: Int) {
-        val current = overlaySettings.value.swipeThresholds
-        val warning = minOf(current.warningAfterSwipes, swipes - 1)
-        viewModelScope.launch { overlayPreferences.setSwipeThresholds(SwipeColorThresholds(warning, swipes)) }
-    }
-
     fun setShowSwipes(show: Boolean) {
         viewModelScope.launch { overlayPreferences.setShowSwipes(show) }
     }
 
-    fun setWarningMinutes(minutes: Int) {
-        val current = overlaySettings.value.thresholds
-        // Pushing warning past danger drags danger along with it.
-        val danger = maxOf(current.dangerAfterMinutes, minutes + 1)
-        viewModelScope.launch { overlayPreferences.setThresholds(ColorThresholds(minutes, danger)) }
+    /** Both swipe color thresholds at once (the range slider); normalized when saved. */
+    fun setSwipeThresholds(warning: Int, danger: Int) {
+        viewModelScope.launch { overlayPreferences.setSwipeThresholds(SwipeColorThresholds(warning, danger)) }
     }
 
-    fun setDangerMinutes(minutes: Int) {
-        val current = overlaySettings.value.thresholds
-        val warning = minOf(current.warningAfterMinutes, minutes - 1)
-        viewModelScope.launch { overlayPreferences.setThresholds(ColorThresholds(warning, minutes)) }
+    /** Both time color thresholds at once (the range slider); normalized when saved. */
+    fun setTimeThresholds(warningMinutes: Int, dangerMinutes: Int) {
+        viewModelScope.launch { overlayPreferences.setThresholds(ColorThresholds(warningMinutes, dangerMinutes)) }
     }
 
     fun setPillSize(size: PillSize) {

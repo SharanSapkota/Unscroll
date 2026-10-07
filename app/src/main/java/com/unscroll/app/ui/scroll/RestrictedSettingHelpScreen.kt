@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.R
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
@@ -37,8 +37,8 @@ fun RestrictedSettingHelpScreen(onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(Dimens.spaceXl),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
     ) {
         Text(
             text = stringResource(R.string.scroll_restricted_title),

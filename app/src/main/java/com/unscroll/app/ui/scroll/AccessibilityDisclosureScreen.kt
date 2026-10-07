@@ -21,7 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.unscroll.app.ui.theme.Dimens
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.unscroll.app.R
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -63,8 +63,8 @@ private fun AccessibilityDisclosureContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(Dimens.spaceXl),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
     ) {
         Text(
             text = stringResource(R.string.scroll_disclosure_title),
@@ -123,8 +123,8 @@ private fun DisclosureBlock(title: String, body: String, highlight: Boolean = fa
         ),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(Dimens.spaceL),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
         ) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             Text(text = body, style = MaterialTheme.typography.bodyMedium)

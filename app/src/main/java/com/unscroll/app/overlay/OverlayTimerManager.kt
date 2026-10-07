@@ -80,7 +80,7 @@ class OverlayTimerManager @Inject constructor(
                 }
                     .collectLatest { (session, settings, isCollapsed, message) ->
                         val show = PillRules.shouldShow(
-                            trackedAppInForeground = session != null,
+                            foregroundPackage = session?.packageName,
                             settings = settings,
                             canDrawOverlays = canDrawOverlays(),
                         )
@@ -127,7 +127,7 @@ class OverlayTimerManager @Inject constructor(
             if (!counting || swipes == null) return@combine null
             PillSwipes(
                 count = swipes.count,
-                showCount = settings.showSwipes,
+                showCount = settings.showsSwipesFor(swipes.packageName),
                 remaining = limit?.takeIf { it.packageName == swipes.packageName && it.status.showRemaining }
                     ?.status?.remaining,
             )
@@ -137,8 +137,12 @@ class OverlayTimerManager @Inject constructor(
         }
     }
 
-    /** True if messages can be shown on the pill (overlay on and permitted); else use notifications. */
-    suspend fun canShowMessages(): Boolean = preferences.settings.first().enabled && canDrawOverlays()
+    /**
+     * True if messages for [packageName] can be shown on its pill (overlay on for that app and
+     * permitted); else use notifications.
+     */
+    suspend fun canShowMessages(packageName: String): Boolean =
+        preferences.settings.first().showsPillFor(packageName) && canDrawOverlays()
 
     /** Removes the pill right away. Main thread. Safe to call when nothing is shown. */
     fun hide() {

@@ -40,7 +40,7 @@ class BlockActivity : ComponentActivity() {
             },
         )
         setContent {
-            UnscrollTheme {
+            UnscrollTheme(darkTheme = true) {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 LaunchedEffect(state.accessGranted) {
                     if (state.accessGranted) openBlockedApp(state.packageName)

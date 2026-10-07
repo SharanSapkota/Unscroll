@@ -2,16 +2,16 @@ package com.unscroll.app.domain.onboarding
 
 import com.unscroll.app.domain.permission.PermissionState
 
-/** Where the user goes after pressing the primary button on a step. */
+/** Where the user goes after pressing the primary button on a page. */
 sealed interface OnboardingAdvance {
     data class ToStep(val step: OnboardingStep) : OnboardingAdvance
     data object Finish : OnboardingAdvance
 }
 
-/** The label the primary button shows on a step. */
-enum class PrimaryAction { GET_STARTED, CONTINUE, SKIP, FINISH }
+/** The label the primary button shows on a page. */
+enum class PrimaryAction { GET_STARTED, FINISH }
 
-/** Pure navigation rules for the onboarding flow. */
+/** Pure navigation rules for the two-page onboarding. */
 object OnboardingFlow {
 
     private val steps = OnboardingStep.entries
@@ -19,41 +19,26 @@ object OnboardingFlow {
     val stepCount: Int get() = steps.size
 
     /**
-     * First-time users start at the welcome screen. Users who finished onboarding before but have
-     * since revoked a required permission go straight to the first missing one.
+     * First-time users start at the welcome page. Users who finished onboarding before but have
+     * since revoked a required permission go straight to the permissions page.
      */
-    fun startStep(onboardingCompleted: Boolean, permissions: PermissionState): OnboardingStep {
-        if (!onboardingCompleted) return OnboardingStep.WELCOME
-        val missing = permissions.firstMissingRequired ?: return OnboardingStep.WELCOME
-        return OnboardingStep.forPermission(missing)
-    }
+    fun startStep(onboardingCompleted: Boolean, permissions: PermissionState): OnboardingStep =
+        if (onboardingCompleted && !permissions.requiredGranted) OnboardingStep.PERMISSIONS else OnboardingStep.WELCOME
 
-    /** Required steps block until their permission is granted. Everything else can move on. */
-    fun canContinue(step: OnboardingStep, permissions: PermissionState): Boolean {
-        val permission = step.permission ?: return true
-        return !permission.required || permissions.isGranted(permission)
-    }
+    /** The permissions page blocks until both required permissions are granted. */
+    fun canContinue(step: OnboardingStep, permissions: PermissionState): Boolean =
+        step != OnboardingStep.PERMISSIONS || permissions.requiredGranted
 
     fun previous(step: OnboardingStep): OnboardingStep? = steps.getOrNull(step.ordinal - 1)
 
-    fun advance(step: OnboardingStep, permissions: PermissionState): OnboardingAdvance {
-        if (!canContinue(step, permissions)) return OnboardingAdvance.ToStep(step)
-        val next = steps.getOrNull(step.ordinal + 1)
-        if (next != null) return OnboardingAdvance.ToStep(next)
-        // Last step: a required permission may have been revoked while the user was further along.
-        val missing = permissions.firstMissingRequired
-            ?: return OnboardingAdvance.Finish
-        return OnboardingAdvance.ToStep(OnboardingStep.forPermission(missing))
+    fun advance(step: OnboardingStep, permissions: PermissionState): OnboardingAdvance = when {
+        step == OnboardingStep.WELCOME -> OnboardingAdvance.ToStep(OnboardingStep.PERMISSIONS)
+        permissions.requiredGranted -> OnboardingAdvance.Finish
+        else -> OnboardingAdvance.ToStep(OnboardingStep.PERMISSIONS)
     }
 
-    fun primaryAction(step: OnboardingStep, permissions: PermissionState): PrimaryAction {
-        val permission = step.permission
-        return when {
-            step == OnboardingStep.WELCOME -> PrimaryAction.GET_STARTED
-            step.ordinal == steps.lastIndex -> PrimaryAction.FINISH
-            permission != null && step.isOptional && !permissions.isGranted(permission) ->
-                PrimaryAction.SKIP
-            else -> PrimaryAction.CONTINUE
-        }
+    fun primaryAction(step: OnboardingStep): PrimaryAction = when (step) {
+        OnboardingStep.WELCOME -> PrimaryAction.GET_STARTED
+        OnboardingStep.PERMISSIONS -> PrimaryAction.FINISH
     }
 }

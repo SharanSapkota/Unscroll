@@ -35,7 +35,7 @@ class BreakActivity : ComponentActivity() {
             },
         )
         setContent {
-            UnscrollTheme {
+            UnscrollTheme(darkTheme = true) {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 LaunchedEffect(state.outcome) {
                     when (state.outcome) {

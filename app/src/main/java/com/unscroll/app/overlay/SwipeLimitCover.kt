@@ -93,7 +93,7 @@ class SwipeLimitCover @Inject constructor(
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent {
                 state?.let { current ->
-                    UnscrollTheme {
+                    UnscrollTheme(darkTheme = true) {
                         SwipeLimitCoverContent(
                             state = current,
                             onGoHome = { onGoHome() },

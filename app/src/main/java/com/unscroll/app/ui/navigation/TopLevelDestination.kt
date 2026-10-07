@@ -9,7 +9,13 @@ enum class TopLevelDestination(
     @StringRes val labelRes: Int,
     @DrawableRes val iconRes: Int,
 ) {
-    DASHBOARD("dashboard", R.string.nav_dashboard, R.drawable.ic_nav_dashboard),
+    HOME("home", R.string.nav_home, R.drawable.ic_nav_home),
     APPS("apps", R.string.nav_apps, R.drawable.ic_nav_apps),
     SETTINGS("settings", R.string.nav_settings, R.drawable.ic_nav_settings),
+}
+
+/** App detail, full screen over the tabs: "app/{packageName}". */
+object AppDetailRoute {
+    const val ROUTE = "app/{packageName}"
+    fun of(packageName: String): String = "app/$packageName"
 }

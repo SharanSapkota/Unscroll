@@ -7,32 +7,42 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,10 +50,18 @@ import com.unscroll.app.R
 import com.unscroll.app.domain.device.DeviceManufacturer
 import com.unscroll.app.domain.onboarding.OnboardingStep
 import com.unscroll.app.domain.onboarding.PrimaryAction
+import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.ui.components.InfoButton
+import com.unscroll.app.ui.components.InfoSheet
+import com.unscroll.app.ui.components.PermissionRow
+import com.unscroll.app.ui.components.RowDivider
+import com.unscroll.app.ui.components.SettingsGroup
+import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun OnboardingScreen(
@@ -58,73 +76,54 @@ fun OnboardingScreen(
     OnboardingContent(
         state = state,
         onContinue = viewModel::onContinue,
-        onBack = viewModel::onBack,
+        onPageChanged = viewModel::onPageChanged,
         onNotificationPermissionResult = viewModel::onPermissionResult,
         modifier = modifier,
     )
 }
 
+/** Two swipeable pages: welcome, then the permissions with a "Grant" button each. */
 @Composable
 private fun OnboardingContent(
     state: OnboardingUiState,
     onContinue: () -> Unit,
-    onBack: () -> Unit,
+    onPageChanged: (Int) -> Unit,
     onNotificationPermissionResult: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier = modifier.fillMaxSize()) {
+    val pagerState = rememberPagerState(initialPage = state.page) { OnboardingStep.entries.size }
+    // The view model owns the page: follow it, and report swipes back.
+    LaunchedEffect(state.page) {
+        if (pagerState.currentPage != state.page) pagerState.animateScrollToPage(state.page)
+    }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.distinctUntilChanged().collect { onPageChanged(it) }
+    }
+    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
+                .padding(Dimens.screenPadding),
         ) {
-            LinearProgressIndicator(
-                progress = { state.stepNumber.toFloat() / state.stepCount },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = stringResource(
-                    R.string.onboarding_step_counter,
-                    state.stepNumber,
-                    state.stepCount,
-                ),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                when (state.step) {
-                    OnboardingStep.WELCOME -> WelcomeStep()
-                    OnboardingStep.USAGE_ACCESS -> UsageAccessStep(state.isGranted)
-                    OnboardingStep.OVERLAY -> OverlayStep(state.isGranted)
-                    OnboardingStep.NOTIFICATIONS -> NotificationsStep(
-                        granted = state.isGranted,
-                        onPermissionResult = onNotificationPermissionResult,
-                    )
-                    OnboardingStep.BATTERY -> BatteryStep(state.isGranted)
+            HorizontalPager(state = pagerState, modifier = Modifier.weight(1f)) { page ->
+                when (OnboardingStep.entries[page]) {
+                    OnboardingStep.WELCOME -> WelcomePage()
+                    OnboardingStep.PERMISSIONS -> PermissionsPage(state.permissions, onNotificationPermissionResult)
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            PageDots(current = state.page)
+            Button(
+                onClick = onContinue,
+                enabled = state.canContinue,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Dimens.spaceL),
             ) {
-                if (state.canGoBack) {
-                    TextButton(onClick = onBack) {
-                        Text(stringResource(R.string.onboarding_back))
-                    }
-                } else {
-                    Spacer(Modifier)
-                }
-                Button(onClick = onContinue, enabled = state.canContinue) {
-                    Text(stringResource(state.primaryAction.labelRes))
-                }
+                Text(
+                    text = stringResource(state.primaryAction.labelRes),
+                    modifier = Modifier.padding(vertical = Dimens.spaceS),
+                )
             }
         }
     }
@@ -134,113 +133,124 @@ private fun OnboardingContent(
 private val PrimaryAction.labelRes: Int
     get() = when (this) {
         PrimaryAction.GET_STARTED -> R.string.onboarding_get_started
-        PrimaryAction.CONTINUE -> R.string.onboarding_continue
-        PrimaryAction.SKIP -> R.string.onboarding_skip
-        PrimaryAction.FINISH -> R.string.onboarding_finish
+        PrimaryAction.FINISH -> R.string.onboarding_done
     }
 
 @Composable
-private fun WelcomeStep() {
-    StepTitle(R.string.onboarding_welcome_title)
-    BodyText(R.string.onboarding_welcome_body)
-    BodyText(R.string.onboarding_welcome_privacy)
-    BodyText(R.string.onboarding_welcome_next)
+private fun WelcomePage() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceXl, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(Dimens.illustration * 2)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_hourglass),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(Dimens.illustration),
+            )
+        }
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.displaySmall,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = stringResource(R.string.onboarding_welcome_line),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+    }
 }
 
 @Composable
-private fun UsageAccessStep(granted: Boolean) {
-    val context = LocalContext.current
-    PermissionStep(
-        titleRes = R.string.onboarding_usage_title,
-        bodyRes = listOf(R.string.onboarding_usage_body, R.string.onboarding_usage_privacy),
-        howToRes = R.string.onboarding_usage_how_to,
-        optional = false,
-        granted = granted,
-        actionLabelRes = R.string.onboarding_open_settings,
-        onAction = { context.openSettings(SystemSettings.usageAccess()) },
-    )
-}
-
-@Composable
-private fun OverlayStep(granted: Boolean) {
-    val context = LocalContext.current
-    PermissionStep(
-        titleRes = R.string.onboarding_overlay_title,
-        bodyRes = listOf(R.string.onboarding_overlay_body, R.string.onboarding_overlay_privacy),
-        howToRes = R.string.onboarding_overlay_how_to,
-        optional = false,
-        granted = granted,
-        actionLabelRes = R.string.onboarding_open_settings,
-        onAction = { context.openSettings(SystemSettings.overlay(context)) },
-    )
-}
-
-@Composable
-private fun NotificationsStep(granted: Boolean, onPermissionResult: () -> Unit) {
+private fun PermissionsPage(permissions: PermissionState, onNotificationPermissionResult: () -> Unit) {
     val context = LocalContext.current
     val activity = LocalActivity.current
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { isGranted ->
+    val manufacturer = remember { DeviceManufacturer.from(Build.MANUFACTURER) }
+    var batteryInfo by rememberSaveable { mutableStateOf(false) }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         // When the user has denied twice, Android stops showing the dialog and the request fails
         // immediately. Send them to the notification settings instead.
         if (!isGranted &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             activity != null &&
-            !ActivityCompat.shouldShowRequestPermissionRationale(
-                activity,
-                Manifest.permission.POST_NOTIFICATIONS,
-            )
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.POST_NOTIFICATIONS)
         ) {
             context.openSettings(SystemSettings.appNotifications(context))
         }
-        onPermissionResult()
+        onNotificationPermissionResult()
     }
-    PermissionStep(
-        titleRes = R.string.onboarding_notifications_title,
-        bodyRes = listOf(R.string.onboarding_notifications_body),
-        howToRes = R.string.onboarding_notifications_how_to,
-        optional = true,
-        granted = granted,
-        actionLabelRes = R.string.onboarding_notifications_action,
-        onAction = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                context.openSettings(SystemSettings.appNotifications(context))
-            }
-        },
-    )
-}
-
-@Composable
-private fun BatteryStep(granted: Boolean) {
-    val context = LocalContext.current
-    val manufacturer = remember { DeviceManufacturer.from(Build.MANUFACTURER) }
-    PermissionStep(
-        titleRes = R.string.onboarding_battery_title,
-        bodyRes = listOf(R.string.onboarding_battery_body, R.string.onboarding_battery_cost),
-        howToRes = R.string.onboarding_battery_how_to,
-        optional = true,
-        granted = granted,
-        actionLabelRes = R.string.onboarding_open_settings,
-        onAction = { context.openSettings(SystemSettings.batteryOptimization()) },
-    )
-    OutlinedButton(onClick = { context.openSettings(SystemSettings.appDetails(context)) }) {
-        Text(stringResource(R.string.onboarding_battery_app_info))
-    }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.onboarding_battery_oem_title),
-                style = MaterialTheme.typography.titleMedium,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceL, Alignment.CenterVertically),
+    ) {
+        Text(text = stringResource(R.string.onboarding_permissions_title), style = MaterialTheme.typography.headlineMedium)
+        SettingsGroup {
+            PermissionRow(
+                title = stringResource(R.string.permission_usage),
+                note = stringResource(R.string.permission_usage_note),
+                icon = R.drawable.ic_eye,
+                granted = permissions.isGranted(AppPermission.USAGE_ACCESS),
+                onGrant = { context.openSettings(SystemSettings.usageAccess()) },
             )
-            manufacturer.hintRes?.let { BodyText(it) }
-            BodyText(R.string.onboarding_battery_hint_other)
+            RowDivider()
+            PermissionRow(
+                title = stringResource(R.string.permission_overlay),
+                note = stringResource(R.string.permission_overlay_note),
+                icon = R.drawable.ic_layers,
+                granted = permissions.isGranted(AppPermission.OVERLAY),
+                onGrant = { context.openSettings(SystemSettings.overlay(context)) },
+            )
+            RowDivider()
+            PermissionRow(
+                title = stringResource(R.string.permission_notifications),
+                note = stringResource(R.string.permission_optional),
+                icon = R.drawable.ic_bell,
+                granted = permissions.isGranted(AppPermission.NOTIFICATIONS),
+                onGrant = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        context.openSettings(SystemSettings.appNotifications(context))
+                    }
+                },
+            )
         }
+        // Battery: optional, but OEM battery savers kill tracking without it.
+        SettingsGroup {
+            PermissionRow(
+                title = stringResource(R.string.permission_battery),
+                note = stringResource(R.string.permission_battery_note),
+                icon = R.drawable.ic_battery,
+                granted = permissions.isGranted(AppPermission.IGNORE_BATTERY_OPTIMIZATIONS),
+                onGrant = { context.openSettings(SystemSettings.batteryOptimization()) },
+                trailingInfo = { InfoButton(onClick = { batteryInfo = true }) },
+            )
+        }
+        Text(
+            text = stringResource(R.string.onboarding_private),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (batteryInfo) {
+        val hint = manufacturer.hintRes?.let { stringResource(it) + "\n\n" }.orEmpty()
+        InfoSheet(
+            title = stringResource(R.string.permission_battery),
+            body = hint + stringResource(R.string.onboarding_battery_hint_other),
+            onDismiss = { batteryInfo = false },
+        )
     }
 }
 
@@ -255,81 +265,54 @@ private val DeviceManufacturer.hintRes: Int?
     }
 
 @Composable
-private fun PermissionStep(
-    @StringRes titleRes: Int,
-    bodyRes: List<Int>,
-    @StringRes howToRes: Int,
-    optional: Boolean,
-    granted: Boolean,
-    @StringRes actionLabelRes: Int,
-    onAction: () -> Unit,
-) {
-    StepTitle(titleRes)
-    bodyRes.forEach { BodyText(it) }
-    Text(
-        text = stringResource(
-            if (optional) R.string.onboarding_optional else R.string.onboarding_required,
-        ),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-    )
-    PermissionStatus(granted)
-    if (!granted) {
-        BodyText(howToRes)
-        Button(onClick = onAction) {
-            Text(stringResource(actionLabelRes))
+private fun PageDots(current: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = Dimens.spaceL),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spaceS, Alignment.CenterHorizontally),
+    ) {
+        OnboardingStep.entries.forEach { step ->
+            Box(
+                modifier = Modifier
+                    .size(Dimens.dot)
+                    .clip(CircleShape)
+                    .background(
+                        if (step.ordinal == current) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                    ),
+            )
         }
     }
 }
 
+@PreviewLightDark
 @Composable
-private fun PermissionStatus(granted: Boolean) {
-    Text(
-        text = stringResource(
-            if (granted) R.string.onboarding_status_allowed else R.string.onboarding_status_not_allowed,
-        ),
-        style = MaterialTheme.typography.titleMedium,
-        color = if (granted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-    )
-}
-
-@Composable
-private fun StepTitle(@StringRes textRes: Int) {
-    Text(
-        text = stringResource(textRes),
-        style = MaterialTheme.typography.headlineMedium,
-    )
-}
-
-@Composable
-private fun BodyText(@StringRes textRes: Int) {
-    Text(
-        text = stringResource(textRes),
-        style = MaterialTheme.typography.bodyLarge,
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun OnboardingUsageAccessPreview() {
+private fun OnboardingWelcomePreview() {
     UnscrollTheme {
         OnboardingContent(
-            state = OnboardingUiState(OnboardingStep.USAGE_ACCESS, PermissionState.NONE),
+            state = OnboardingUiState(OnboardingStep.WELCOME, PermissionState.NONE),
             onContinue = {},
-            onBack = {},
+            onPageChanged = {},
             onNotificationPermissionResult = {},
         )
     }
 }
 
-@Preview(showBackground = true)
+@PreviewLightDark
 @Composable
-private fun OnboardingBatteryPreview() {
+private fun OnboardingPermissionsPreview() {
     UnscrollTheme {
         OnboardingContent(
-            state = OnboardingUiState(OnboardingStep.BATTERY, PermissionState.ALL),
+            state = OnboardingUiState(
+                OnboardingStep.PERMISSIONS,
+                PermissionState(setOf(AppPermission.USAGE_ACCESS)),
+            ),
             onContinue = {},
-            onBack = {},
+            onPageChanged = {},
             onNotificationPermissionResult = {},
         )
     }

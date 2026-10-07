@@ -14,7 +14,16 @@ data class OverlaySettings(
     val showSwipes: Boolean = true,
     /** The pill also turns yellow/red by swipes in the session, whichever is further along. */
     val swipeThresholds: SwipeColorThresholds = SwipeColorThresholds(),
+    /** Apps the user hid the pill for (App detail › Timer pill). */
+    val pillHiddenFor: Set<String> = emptySet(),
+    /** Apps whose pill shows no swipe count, even with [showSwipes] on. */
+    val swipesHiddenFor: Set<String> = emptySet(),
 ) {
+    /** The global switch and the app's own switch must both be on. */
+    fun showsPillFor(packageName: String): Boolean = enabled && packageName !in pillHiddenFor
+
+    fun showsSwipesFor(packageName: String): Boolean = showSwipes && packageName !in swipesHiddenFor
+
     companion object {
         const val DEFAULT_OPACITY = 0.9f
         const val MIN_OPACITY = 0.4f
