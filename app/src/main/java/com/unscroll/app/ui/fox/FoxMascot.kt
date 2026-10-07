@@ -11,7 +11,6 @@ import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -38,7 +37,8 @@ import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.ui.theme.FoxColors
 
 /**
- * The fox mascot: a minimal geometric fox face (and tail) drawn on a Canvas in the accent color.
+ * The fox mascot: the launcher icon's geometric fox face (assets/icon/icon.svg), with an optional
+ * tail, drawn on a Canvas. Orange fur, darker inner ears, cream lower face, dark eyes and nose.
  * This file holds every part of the drawing, so it can be swapped for commissioned artwork by
  * replacing [drawFox] and keeping this API.
  *
@@ -52,7 +52,7 @@ fun FoxMascot(
     modifier: Modifier = Modifier,
     showTail: Boolean = true,
     animate: Boolean = true,
-    fur: Color = MaterialTheme.colorScheme.primary,
+    fur: Color = FoxColors.fur,
     contentDescription: String? = null,
 ) {
     val motion = rememberFoxMotion(animate)
@@ -65,9 +65,11 @@ fun FoxMascot(
         val factor = minOf(size.width / viewportWidth, size.height / VIEW)
         val dx = (size.width - viewportWidth * factor) / 2
         val dy = (size.height - VIEW * factor) / 2
+        // The drawing uses the icon's own 512 x 512 coordinates; show the box around the face.
         withTransform({
             translate(dx, dy)
             scale(factor, factor, pivot = Offset.Zero)
+            translate(-VIEW_LEFT, -VIEW_TOP)
         }) {
             drawFox(mood, fur, motion, showTail)
         }
@@ -135,13 +137,14 @@ private fun InfiniteTransition.earTwitch(): State<Float> = animateFloat(
 private fun systemAnimationsOff(context: Context): Boolean =
     Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
-// The drawing, in a 100 x 100 box for the face (120 wide with the tail).
+// The drawing, in the launcher icon's 512 x 512 coordinates (its fox group, before the icon's own
+// placement). The face fills VIEW x VIEW from (VIEW_LEFT, VIEW_TOP); the tail adds room on the right.
 
 private fun DrawScope.drawFox(mood: FoxMood, fur: Color, motion: FoxMotion, showTail: Boolean) {
     if (showTail) {
         rotate(motion.tail.value, pivot = Offset(TAIL_PIVOT_X, TAIL_PIVOT_Y)) {
-            drawPath(path(TAIL), fur)
-            drawPath(path(TAIL_TIP), FoxColors.cream)
+            drawPath(tailPath(), fur)
+            drawPath(tailTipPath(), FoxColors.cream)
         }
     }
     val earDroop = when (mood) {
@@ -150,39 +153,85 @@ private fun DrawScope.drawFox(mood: FoxMood, fur: Color, motion: FoxMotion, show
         FoxMood.CONCERNED -> EAR_DROOP
         FoxMood.SLEEPY -> EAR_DROOP / 2
     }
-    // Ears tilt outward when drooping: the left one counter-clockwise, the right one clockwise.
-    rotate(-earDroop, pivot = Offset(LEFT_EAR_PIVOT, EAR_PIVOT_Y)) {
+    // The ears are separate from the face so they can droop: the left one turns counter-clockwise,
+    // the right one clockwise. Each overlaps the face a little, so no gap opens at its base.
+    rotate(-earDroop, pivot = Offset(EAR_PIVOT_X, EAR_PIVOT_Y)) {
         drawPath(path(LEFT_EAR), fur)
-        drawPath(path(LEFT_EAR_INNER), FoxColors.cream)
+        drawPath(path(LEFT_EAR_INNER), FoxColors.innerEar)
     }
-    rotate(earDroop + motion.earTwitch.value, pivot = Offset(VIEW - LEFT_EAR_PIVOT, EAR_PIVOT_Y)) {
+    rotate(earDroop + motion.earTwitch.value, pivot = Offset(ICON - EAR_PIVOT_X, EAR_PIVOT_Y)) {
         drawPath(path(mirror(LEFT_EAR)), fur)
-        drawPath(path(mirror(LEFT_EAR_INNER)), FoxColors.cream)
+        drawPath(path(mirror(LEFT_EAR_INNER)), FoxColors.innerEar)
     }
-    drawPath(path(HEAD), fur)
-    drawPath(path(MUZZLE), FoxColors.cream)
+    drawPath(facePath(), fur)
+    drawPath(lowerFacePath(), FoxColors.cream)
     if (mood == FoxMood.HAPPY) {
         drawCircle(FoxColors.blush, radius = CHEEK_RADIUS, center = Offset(CHEEK_X, CHEEK_Y))
-        drawCircle(FoxColors.blush, radius = CHEEK_RADIUS, center = Offset(VIEW - CHEEK_X, CHEEK_Y))
+        drawCircle(FoxColors.blush, radius = CHEEK_RADIUS, center = Offset(ICON - CHEEK_X, CHEEK_Y))
     }
-    drawPath(path(NOSE), FoxColors.ink)
+    drawOval(
+        FoxColors.ink,
+        topLeft = Offset(CENTER_X - NOSE_RX, NOSE_Y - NOSE_RY),
+        size = Size(NOSE_RX * 2, NOSE_RY * 2),
+    )
     drawEyes(mood, motion.blink.value)
     drawMouth(mood)
     if (mood == FoxMood.SLEEPY) {
-        // A small "z", in the fur color so it reads on light and dark backgrounds.
+        // A small "z" between the ears, in the fur color.
         drawPath(path(SNOOZE, closed = false), fur, style = Stroke(LINE, cap = StrokeCap.Round))
     }
 }
 
+/** A bushy tail curling up behind the right cheek. */
+private fun tailPath(): Path = Path().apply {
+    moveTo(330f, 405f)
+    quadraticTo(440f, 420f, 482f, 330f)
+    quadraticTo(505f, 270f, TAIL_TIP_X, TAIL_TIP_Y)
+    quadraticTo(462f, 275f, 420f, 300f)
+    quadraticTo(380f, 322f, 350f, 330f)
+    close()
+}
+
+/** The tail's cream tip. */
+private fun tailTipPath(): Path = Path().apply {
+    moveTo(TAIL_TIP_X, TAIL_TIP_Y)
+    quadraticTo(503f, 262f, 490f, 300f)
+    quadraticTo(470f, 290f, 452f, 282f)
+    quadraticTo(475f, 255f, TAIL_TIP_X, TAIL_TIP_Y)
+    close()
+}
+
+/** The head without the ears: the icon's head outline, cut at the base of each ear. */
+private fun facePath(): Path = Path().apply {
+    moveTo(EAR_OUTER_BASE_X, EAR_OUTER_BASE_Y)
+    lineTo(200f, 190f)
+    quadraticTo(CENTER_X, 176f, 312f, 190f)
+    lineTo(ICON - EAR_OUTER_BASE_X, EAR_OUTER_BASE_Y)
+    lineTo(402f, 272f)
+    quadraticTo(392f, 342f, CENTER_X, CHIN_Y)
+    quadraticTo(120f, 342f, 110f, 272f)
+    close()
+}
+
+/** The cream lower face, as in the icon. */
+private fun lowerFacePath(): Path = Path().apply {
+    moveTo(110f, 272f)
+    quadraticTo(150f, 332f, CENTER_X, CHIN_Y)
+    quadraticTo(362f, 332f, 402f, 272f)
+    quadraticTo(332f, 304f, CENTER_X, 304f)
+    quadraticTo(180f, 304f, 110f, 272f)
+    close()
+}
+
 private fun DrawScope.drawEyes(mood: FoxMood, open: Float) {
-    val stroke = Stroke(width = LINE * 1.5f, cap = StrokeCap.Round)
-    listOf(EYE_X, VIEW - EYE_X).forEach { x ->
+    val stroke = Stroke(width = LINE * 1.3f, cap = StrokeCap.Round)
+    listOf(EYE_X, ICON - EYE_X).forEach { x ->
         when (mood) {
             // Happy: curved "^" eyes; a blink flattens them.
             FoxMood.HAPPY -> drawPath(
                 Path().apply {
-                    moveTo(x - EYE_W, EYE_Y + 2)
-                    quadraticTo(x, EYE_Y + 2 - HAPPY_EYE_LIFT * open, x + EYE_W, EYE_Y + 2)
+                    moveTo(x - EYE_HALF_WIDTH, EYE_Y + EYE_ARC_BASE)
+                    quadraticTo(x, EYE_Y + EYE_ARC_BASE - HAPPY_EYE_LIFT * open, x + EYE_HALF_WIDTH, EYE_Y + EYE_ARC_BASE)
                 },
                 FoxColors.ink,
                 style = stroke,
@@ -190,52 +239,49 @@ private fun DrawScope.drawEyes(mood: FoxMood, open: Float) {
             // Sleepy: closed, gently curved lids.
             FoxMood.SLEEPY -> drawPath(
                 Path().apply {
-                    moveTo(x - EYE_W, EYE_Y)
-                    quadraticTo(x, EYE_Y + SLEEPY_LID_DROP, x + EYE_W, EYE_Y)
+                    moveTo(x - EYE_HALF_WIDTH, EYE_Y)
+                    quadraticTo(x, EYE_Y + SLEEPY_LID_DROP, x + EYE_HALF_WIDTH, EYE_Y)
                 },
                 FoxColors.ink,
                 style = stroke,
             )
-            // Alert and concerned: open eyes, alert wider, with a highlight.
+            // Alert: the icon's open eyes. Concerned: a little smaller, under worried brows.
             FoxMood.ALERT, FoxMood.CONCERNED -> {
-                val radius = if (mood == FoxMood.ALERT) ALERT_EYE else CONCERNED_EYE
-                val height = radius * 2 * open.coerceAtLeast(BLINK_CLOSED)
-                drawOval(
-                    FoxColors.ink,
-                    topLeft = Offset(x - radius, EYE_Y - height / 2),
-                    size = Size(radius * 2, height),
-                )
+                val scale = if (mood == FoxMood.ALERT) 1f else CONCERNED_EYE_SCALE
+                val rx = EYE_RX * scale
+                val ry = EYE_RY * scale * open.coerceAtLeast(BLINK_CLOSED)
+                drawOval(FoxColors.ink, topLeft = Offset(x - rx, EYE_Y - ry), size = Size(rx * 2, ry * 2))
                 if (open > HALF) {
-                    drawCircle(FoxColors.cream, radius = HIGHLIGHT, center = Offset(x + 1.5f, EYE_Y - 1.5f))
+                    drawCircle(
+                        FoxColors.highlight,
+                        radius = HIGHLIGHT * scale,
+                        center = Offset(x + HIGHLIGHT_DX * scale, EYE_Y - HIGHLIGHT_DY * scale),
+                    )
                 }
             }
         }
     }
     if (mood == FoxMood.CONCERNED) {
         // Worried brows: the inner ends raised.
-        drawLine(FoxColors.ink, Offset(29f, 43f), Offset(41f, 39f), strokeWidth = LINE, cap = StrokeCap.Round)
-        drawLine(FoxColors.ink, Offset(71f, 43f), Offset(59f, 39f), strokeWidth = LINE, cap = StrokeCap.Round)
+        drawLine(FoxColors.ink, Offset(170f, 222f), Offset(208f, 208f), strokeWidth = LINE, cap = StrokeCap.Round)
+        drawLine(FoxColors.ink, Offset(342f, 222f), Offset(304f, 208f), strokeWidth = LINE, cap = StrokeCap.Round)
     }
 }
 
+/** A small mouth under the nose: a smile when happy, a frown when concerned, none otherwise. */
 private fun DrawScope.drawMouth(mood: FoxMood) {
-    val mouth = Path().apply {
-        when (mood) {
-            FoxMood.HAPPY -> {
-                moveTo(44f, 84f)
-                quadraticTo(50f, 89f, 56f, 84f)
-            }
-            FoxMood.CONCERNED -> {
-                moveTo(45f, 88f)
-                quadraticTo(50f, 84f, 55f, 88f)
-            }
-            FoxMood.ALERT, FoxMood.SLEEPY -> {
-                moveTo(47.5f, 86f)
-                lineTo(52.5f, 86f)
-            }
+    val mouth = when (mood) {
+        FoxMood.HAPPY -> Path().apply {
+            moveTo(242f, 409f)
+            quadraticTo(CENTER_X, 417f, 270f, 409f)
         }
+        FoxMood.CONCERNED -> Path().apply {
+            moveTo(244f, 415f)
+            quadraticTo(CENTER_X, 408f, 268f, 415f)
+        }
+        FoxMood.ALERT, FoxMood.SLEEPY -> return
     }
-    drawPath(mouth, FoxColors.ink, style = Stroke(width = LINE, cap = StrokeCap.Round))
+    drawPath(mouth, FoxColors.ink, style = Stroke(width = LINE * 0.8f, cap = StrokeCap.Round))
 }
 
 /** A polygon from x, y pairs, closed unless [closed] is false. */
@@ -251,45 +297,54 @@ private fun path(points: FloatArray, closed: Boolean = true): Path = Path().appl
 
 /** The same polygon mirrored around the face's vertical center line. */
 private fun mirror(points: FloatArray): FloatArray =
-    FloatArray(points.size) { i -> if (i % 2 == 0) VIEW - points[i] else points[i] }
+    FloatArray(points.size) { i -> if (i % 2 == 0) ICON - points[i] else points[i] }
 
-private const val VIEW = 100f
-private const val VIEW_WITH_TAIL = 120f
-private const val LINE = 2.2f
+// Coordinates: the icon's 512-unit space.
+private const val ICON = 512f
+private const val CENTER_X = ICON / 2
+private const val VIEW_LEFT = 80f
+private const val VIEW_TOP = 95f
+private const val VIEW = 352f
+private const val VIEW_WITH_TAIL = 422f
+private const val LINE = 7.7f
 private const val HALF = 0.5f
+private const val CHIN_Y = 422f
 
-private val HEAD = floatArrayOf(10f, 40f, 50f, 26f, 90f, 40f, 82f, 68f, 50f, 92f, 18f, 68f)
-private val MUZZLE = floatArrayOf(19f, 64f, 36f, 58f, 50f, 67f, 64f, 58f, 81f, 64f, 50f, 91f)
-private val LEFT_EAR = floatArrayOf(13f, 46f, 20f, 4f, 46f, 31f)
-private val LEFT_EAR_INNER = floatArrayOf(21f, 37f, 23f, 15f, 38f, 30f)
-private val NOSE = floatArrayOf(45.5f, 76f, 54.5f, 76f, 50f, 81.5f)
-
-// A curved tail behind the face, bottom right, as a polygon close to a teardrop.
-private val TAIL = floatArrayOf(
-    78f, 86f, 88f, 88f, 100f, 86f, 110f, 79f, 116f, 70f, 118f, 60f,
-    111f, 66f, 103f, 69f, 95f, 70f, 99f, 76f, 93f, 82f, 84f, 84f,
-)
-private val TAIL_TIP = floatArrayOf(118f, 60f, 116f, 70f, 110f, 79f, 106f, 72f, 111f, 66f)
-private val SNOOZE = floatArrayOf(84f, 12f, 92f, 12f, 84f, 20f, 92f, 20f)
-
-private const val TAIL_PIVOT_X = 82f
-private const val TAIL_PIVOT_Y = 85f
-private const val LEFT_EAR_PIVOT = 26f
-private const val EAR_PIVOT_Y = 38f
-private const val EAR_DROOP = 20f
+// Left ear: tip, inner base on the head's top edge, a point inside the face, and a point down the
+// head's side, so a tilted ear never opens a notch at its base. The face starts at the outer base.
+private const val EAR_OUTER_BASE_X = 107f
+private const val EAR_OUTER_BASE_Y = 236f
+private val LEFT_EAR = floatArrayOf(96f, 120f, 200f, 190f, 175f, 250f, 109f, 262f)
+private val LEFT_EAR_INNER = floatArrayOf(132f, 166f, 190f, 206f, 128f, 238f)
+private const val EAR_PIVOT_X = 153f
+private const val EAR_PIVOT_Y = 213f
+private const val EAR_DROOP = 18f
 private const val EAR_PERK = 4f
 
-private const val EYE_X = 36f
-private const val EYE_Y = 50f
-private const val EYE_W = 5f
-private const val HAPPY_EYE_LIFT = 8f
-private const val SLEEPY_LID_DROP = 4f
-private const val ALERT_EYE = 5f
-private const val CONCERNED_EYE = 4f
-private const val HIGHLIGHT = 1.4f
-private const val CHEEK_X = 28f
-private const val CHEEK_Y = 66f
-private const val CHEEK_RADIUS = 5f
+private const val TAIL_TIP_X = 488f
+private const val TAIL_TIP_Y = 215f
+private const val TAIL_PIVOT_X = 360f
+private const val TAIL_PIVOT_Y = 390f
+private val SNOOZE = floatArrayOf(300f, 112f, 330f, 112f, 300f, 142f, 330f, 142f)
+
+private const val EYE_X = 192f
+private const val EYE_Y = 252f
+private const val EYE_RX = 15f
+private const val EYE_RY = 19f
+private const val EYE_HALF_WIDTH = 17f
+private const val EYE_ARC_BASE = 7f
+private const val HAPPY_EYE_LIFT = 26f
+private const val SLEEPY_LID_DROP = 13f
+private const val CONCERNED_EYE_SCALE = 0.8f
+private const val HIGHLIGHT = 5f
+private const val HIGHLIGHT_DX = 5f
+private const val HIGHLIGHT_DY = 7f
+private const val NOSE_Y = 392f
+private const val NOSE_RX = 22f
+private const val NOSE_RY = 15f
+private const val CHEEK_X = 152f
+private const val CHEEK_Y = 292f
+private const val CHEEK_RADIUS = 17f
 
 private const val BLINK_CYCLE_MILLIS = 4_200
 private const val BLINK_AT = 3_800

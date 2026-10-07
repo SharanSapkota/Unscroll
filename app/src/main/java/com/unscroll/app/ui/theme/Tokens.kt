@@ -61,6 +61,7 @@ object Dimens {
     val pillDotMedium = 18.dp
     val pillFoxSmall = 22.dp
     val pillFoxMedium = 28.dp
+    val pillFoxInset = 2.dp
     val pillPaddingHSmall = 10.dp
     val pillPaddingHMedium = 14.dp
     val pillPaddingVSmall = 5.dp

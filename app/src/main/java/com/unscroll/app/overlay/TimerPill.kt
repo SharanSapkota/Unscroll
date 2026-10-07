@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -72,8 +73,8 @@ private fun PillLevel.content(): Color = when (this) {
 
 /**
  * The floating timer: a compact capsule with a soft shadow, the time bold, the app name and the
- * swipe count smaller ("Instagram 12:41 · 86 swipes"), or, collapsed, a tiny fox face (a small
- * dot with the fox off). Colors cross-fade between levels.
+ * swipe count smaller ("Instagram 12:41 · 86 swipes"), or, collapsed, a level-colored dot with the
+ * fox face inside (a plain dot with the fox off). Colors cross-fade between levels.
  */
 @Composable
 fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
@@ -91,16 +92,23 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
     // Room for the shadow inside the overlay window.
     Box(modifier = modifier.padding(Dimens.pillShadow)) {
         if (state.collapsed && LocalFoxSettings.current.showFox) {
-            // Still (no idle animation): it sits over other apps and must not draw attention.
-            FoxMascot(
-                mood = state.level.foxMood(),
+            // The dot keeps its level color; the app's fox face sits inside it. Still (no idle
+            // animation): it sits over other apps and must not draw attention.
+            Box(
                 modifier = Modifier
                     .alpha(state.opacity)
-                    .size(if (small) Dimens.pillFoxSmall else Dimens.pillFoxMedium),
-                showTail = false,
-                animate = false,
-                fur = background,
-            )
+                    .size(if (small) Dimens.pillFoxSmall else Dimens.pillFoxMedium)
+                    .shadow(Dimens.pillShadow, CircleShape)
+                    .background(background, CircleShape)
+                    .padding(Dimens.pillFoxInset),
+            ) {
+                FoxMascot(
+                    mood = state.level.foxMood(),
+                    modifier = Modifier.fillMaxSize(),
+                    showTail = false,
+                    animate = false,
+                )
+            }
             return@Box
         }
         if (state.collapsed) {

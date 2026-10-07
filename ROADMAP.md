@@ -111,3 +111,10 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Missing permissions are never silent: Home shows "Tracking paused: fix permissions" with a one-tap button, and the Settings checklist shows green checks for what is done (Accessibility only once scroll counting is on)
 - The Settings switch stays for turning it off on purpose; Home's pill says "Tracking off" with a tap to turn it back on. The overlay timer is on by default too
 - **Done when**: a fresh install tracks right after onboarding without touching any switch, and comes back after a reboot.
+
+## Final app icon ✅ Done (awaiting device testing)
+- Presentation only: tracking, blocking, overlay and accessibility logic unchanged
+- The launcher icon is built from `assets/icon/icon.svg` (fox face and a scroll bar with a red limit line): adaptive foreground inside the 66 dp safe zone, the dark teal gradient background, a themed monochrome layer, legacy PNGs; the old icon files are replaced
+- White fox-face notification icon for the tracking notification
+- The in-app fox (`FoxMascot`) now matches the icon's fox: same head shape and colors, all four moods kept; the collapsed pill shows it inside the level-colored dot
+- **Done when**: the icon reads clearly at 48 and 72 dp under circle, squircle, rounded-square and square masks, on light, dark and wallpaper backgrounds and as a themed icon.
