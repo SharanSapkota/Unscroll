@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -53,7 +54,9 @@ import com.unscroll.app.domain.insights.Trend
 import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.UsageSummary
 import com.unscroll.app.domain.insights.WeekComparison
+import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.TrackingStatus
 import com.unscroll.app.ui.components.AppTile
 import com.unscroll.app.ui.components.EmptyState
 import com.unscroll.app.ui.components.LoadingPlaceholder
@@ -67,6 +70,7 @@ import com.unscroll.app.ui.scroll.ScrollCountingBanner
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
 import com.unscroll.app.ui.theme.UnscrollTheme
+import com.unscroll.app.util.openSettings
 import java.time.LocalDate
 
 @Composable
@@ -76,12 +80,14 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     HomeContent(
         state = uiState,
         actions = HomeActions(
             onPeriodSelected = viewModel::selectPeriod,
             onTrackingToggle = viewModel::setTrackingEnabled,
             onOpenApp = onOpenApp,
+            onFixPermission = { context.openSettings(it.settingsIntent(context)) },
         ),
         modifier = modifier,
         banner = { ScrollCountingBanner() },
@@ -94,6 +100,7 @@ internal class HomeActions(
     val onPeriodSelected: (UsagePeriod) -> Unit = {},
     val onTrackingToggle: (Boolean) -> Unit = {},
     val onOpenApp: (String) -> Unit = {},
+    val onFixPermission: (AppPermission) -> Unit = {},
 )
 
 @Composable
@@ -114,7 +121,11 @@ internal fun HomeContent(
         contentPadding = PaddingValues(horizontal = Dimens.screenPadding, vertical = Dimens.spaceL),
         verticalArrangement = Arrangement.spacedBy(Dimens.spaceXl),
     ) {
-        item(key = "top") { TopRow(state.trackingEnabled, actions.onTrackingToggle) }
+        item(key = "top") { TopRow(state, actions) }
+        // Tracking is on but can't run: say so, with one tap to the missing permission.
+        state.permissionToFix?.let { permission ->
+            item(key = "paused") { TrackingPausedBanner(permission, actions.onFixPermission) }
+        }
         // Only shows when the system switched scroll counting off after it had been working.
         item(key = "banner") { banner() }
         if (!state.hasAnyData) {
@@ -162,7 +173,7 @@ internal fun HomeContent(
 }
 
 @Composable
-private fun TopRow(trackingEnabled: Boolean, onToggle: (Boolean) -> Unit) {
+private fun TopRow(state: HomeUiState, actions: HomeActions) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = stringResource(R.string.app_name),
@@ -171,11 +182,24 @@ private fun TopRow(trackingEnabled: Boolean, onToggle: (Boolean) -> Unit) {
                 .weight(1f)
                 .semantics { heading() },
         )
-        ProgressPill(
-            text = stringResource(if (trackingEnabled) R.string.home_tracking_on else R.string.home_tracking_off),
-            level = if (trackingEnabled) ProgressLevel.GOOD else ProgressLevel.DANGER,
-            onClick = { onToggle(!trackingEnabled) },
-        )
+        // On: tap to turn off. Off: tap to turn back on. Paused: tap to fix the permission.
+        when (state.trackingStatus) {
+            TrackingStatus.ACTIVE -> ProgressPill(
+                text = stringResource(R.string.home_tracking_on),
+                level = ProgressLevel.GOOD,
+                onClick = { actions.onTrackingToggle(false) },
+            )
+            TrackingStatus.PAUSED -> ProgressPill(
+                text = stringResource(R.string.home_tracking_paused),
+                level = ProgressLevel.DANGER,
+                onClick = { state.permissionToFix?.let(actions.onFixPermission) },
+            )
+            TrackingStatus.OFF -> ProgressPill(
+                text = stringResource(R.string.home_tracking_off),
+                level = ProgressLevel.DANGER,
+                onClick = { actions.onTrackingToggle(true) },
+            )
+        }
     }
 }
 

@@ -5,8 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
@@ -44,6 +46,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        // Tracking is on by default, so nobody has to find a switch: start the service whenever
+        // it should run and isn't running, i.e. when the app opens, when onboarding finishes and
+        // when a missing permission gets granted. Only while resumed, where Android allows starting
+        // a foreground service; if it refuses anyway, the next resume tries again.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                trackingController.startTriggers.collect { trackingController.startIfReady() }
+            }
+        }
     }
 
     override fun onResume() {
@@ -53,7 +64,6 @@ class MainActivity : ComponentActivity() {
         permissionRepository.refresh()
         // Same for the optional accessibility service (scroll counting).
         scrollCountingRepository.refresh()
-        // Brings tracking back if it was on but the service is gone, e.g. after a force stop.
-        lifecycleScope.launch { trackingController.startIfEnabled() }
+        // Starting tracking (also after a force stop) is handled by the collector in onCreate.
     }
 }

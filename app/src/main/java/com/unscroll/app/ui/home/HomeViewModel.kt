@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.goals.GoalPreferences
+import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
 import com.unscroll.app.domain.goals.DailyGoal
@@ -27,7 +28,10 @@ import com.unscroll.app.domain.insights.WeeklyReport
 import com.unscroll.app.domain.scroll.GetScrollStatsUseCase
 import com.unscroll.app.domain.scroll.ScrollStats
 import com.unscroll.app.domain.blocking.AppLimit
+import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.time.Clock
+import com.unscroll.app.domain.tracking.TrackingStartRules
+import com.unscroll.app.domain.tracking.TrackingStatus
 import com.unscroll.app.service.SessionManager
 import com.unscroll.app.service.TrackingController
 import com.unscroll.app.util.InstalledTrackedApps
@@ -54,6 +58,10 @@ data class HomeUiState(
     val isLoading: Boolean = true,
     val period: UsagePeriod = UsagePeriod.TODAY,
     val trackingEnabled: Boolean = true,
+    /** On, paused for a missing permission (red banner), or off on purpose. */
+    val trackingStatus: TrackingStatus = TrackingStatus.ACTIVE,
+    /** While paused: the missing permission the banner's button opens. */
+    val permissionToFix: AppPermission? = null,
     val todayTrend: Trend = Trend(0, 0),
     val periodUsage: PeriodUsage? = null,
     val weekComparison: WeekComparison? = null,
@@ -96,6 +104,7 @@ class HomeViewModel @Inject constructor(
     private val getWeeklyReport: GetWeeklyReportUseCase,
     private val getScrollStats: GetScrollStatsUseCase,
     scrollCounting: ScrollCountingRepository,
+    permissionRepository: PermissionRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -145,10 +154,21 @@ class HomeViewModel @Inject constructor(
     }
         .mapLatest { load(it) }
 
-    val uiState: StateFlow<HomeUiState> = combine(liveState, slowState) { state, slow ->
+    val uiState: StateFlow<HomeUiState> = combine(
+        liveState,
+        slowState,
+        permissionRepository.permissions,
+    ) { state, slow, permissions ->
         val goal = slow.goalMinutes
         val history = slow.streakHistory
+        val trackingStatus = TrackingStartRules.status(state.trackingEnabled, permissions)
         state.copy(
+            trackingStatus = trackingStatus,
+            permissionToFix = if (trackingStatus == TrackingStatus.PAUSED) {
+                TrackingStartRules.permissionToFix(permissions)
+            } else {
+                null
+            },
             goal = if (goal != null && history != null) {
                 val today = state.todayTrend.currentMillis
                 GoalProgress(goal, today, StreakRules.withToday(history, today, DailyGoal.millis(goal)))

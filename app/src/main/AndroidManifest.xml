@@ -13,7 +13,7 @@
     <!-- TrackingService keeps session tracking alive in the background. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <!-- Restart tracking after a reboot if the user turned it on. -->
+    <!-- Start tracking after a reboot or an update, unless the user turned it off. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Package visibility (Android 11+) for the tracked apps' names. Keep in sync with TrackedApps. -->

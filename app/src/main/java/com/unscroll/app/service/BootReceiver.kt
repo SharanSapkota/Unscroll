@@ -3,6 +3,7 @@ package com.unscroll.app.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.domain.ApplicationScope
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -12,8 +13,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 /**
- * Restarts tracking after a reboot or an app update if the user had it turned on. Both broadcasts
- * are allowed to start a foreground service from the background.
+ * Starts tracking after a reboot or an app update, unless the user turned it off (tracking is on
+ * by default). Both broadcasts are allowed to start a foreground service from the background;
+ * a refusal is logged by [TrackingService.start], and the app tries again when it opens.
  */
 class BootReceiver : BroadcastReceiver() {
 
@@ -21,6 +23,8 @@ class BootReceiver : BroadcastReceiver() {
     @InstallIn(SingletonComponent::class)
     interface BootReceiverEntryPoint {
         fun trackingController(): TrackingController
+
+        fun permissionRepository(): PermissionRepository
 
         @ApplicationScope
         fun applicationScope(): CoroutineScope
@@ -39,7 +43,9 @@ class BootReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         entryPoint.applicationScope().launch {
             try {
-                entryPoint.trackingController().startIfEnabled()
+                // Permissions may have changed while the phone was off or the app was updated.
+                entryPoint.permissionRepository().refresh()
+                entryPoint.trackingController().startIfReady()
             } finally {
                 pendingResult.finish()
             }
