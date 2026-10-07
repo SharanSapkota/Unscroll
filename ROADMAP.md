@@ -94,3 +94,12 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - The one logic change: the timer pill and its swipe count can be switched off per app (`OverlaySettings.pillHiddenFor`/`swipesHiddenFor`)
 - Not in this change: adding other installed apps to the tracked list (needs a user-editable tracked list; its own milestone)
 - **Done when**: every existing feature is reachable in 1–2 taps from the main screens and works as before.
+
+## Fox mascot after the redesign ✅ Done (awaiting device testing)
+- Presentation only: tracking, blocking, overlay and accessibility logic unchanged
+- A geometric fox in the accent color as the brand symbol, all drawing behind one `FoxMascot` API (swappable for commissioned art)
+- Purely reactive: it mirrors today's usage (happy, alert at 80 % of a time or swipe limit, concerned over a limit, sleepy with little use or tracking off) and never asks for anything. No points, streak pets, rewards or "come back" notifications
+- Home (peeking fox with blink, ear twitch and tail wag; tap for a short message, 20+ per mood, never the same twice in a row), Apps tab, empty states, the collapsed pill (tiny fox face) and the block screen / swipe cover (concerned fox)
+- Settings › Appearance: "Show fox" and "Fox messages", on by default, applied at once; idle animation stops with "Remove animations" and when the screen isn't visible
+- Fox adaptive app icon (foreground, background, themed monochrome) and notification icon
+- **Done when**: the fox shows the right mood on Home as usage crosses 80 % and 100 % of a limit, and switching it off hides it everywhere.

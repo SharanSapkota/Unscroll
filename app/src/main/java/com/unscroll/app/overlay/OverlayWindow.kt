@@ -15,7 +15,10 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillPositioner
 import com.unscroll.app.domain.overlay.ScreenBounds
+import com.unscroll.app.domain.fox.FoxSettings
+import com.unscroll.app.ui.fox.ProvideFoxSettings
 import com.unscroll.app.ui.theme.UnscrollTheme
+import kotlinx.coroutines.flow.Flow
 import kotlin.math.roundToInt
 
 /**
@@ -30,6 +33,8 @@ internal class OverlayWindow(
     private val onTap: () -> Unit,
     private val onMoved: (PillPosition) -> Unit,
     private val onMessageAction: (PillAction) -> Unit,
+    /** The fox settings: with the fox on, the collapsed pill is a tiny fox face. */
+    private val foxSettings: Flow<FoxSettings>,
 ) {
     private var state by mutableStateOf(initialState)
     private var swipes by mutableStateOf<PillSwipes?>(null)
@@ -56,15 +61,17 @@ internal class OverlayWindow(
         setViewTreeSavedStateRegistryOwner(owner)
         setContent {
             UnscrollTheme(darkTheme = true) {
-                OverlayContent(
-                    state = state,
-                    now = now,
-                    onTap = onTap,
-                    onDrag = ::dragBy,
-                    onDragEnd = ::dragEnded,
-                    onMessageAction = onMessageAction,
-                    swipes = swipes,
-                )
+                ProvideFoxSettings(foxSettings) {
+                    OverlayContent(
+                        state = state,
+                        now = now,
+                        onTap = onTap,
+                        onDrag = ::dragBy,
+                        onDragEnd = ::dragEnded,
+                        onMessageAction = onMessageAction,
+                        swipes = swipes,
+                    )
+                }
             }
         }
         // The pill changes size (collapsed, today's total); keep it on screen when it does.

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -37,6 +38,7 @@ import com.unscroll.app.ui.components.UnscrollCard
 import com.unscroll.app.ui.components.rememberAppLabel
 import com.unscroll.app.ui.components.rememberHaptics
 import com.unscroll.app.ui.durationText
+import com.unscroll.app.ui.fox.FoxCorner
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 
@@ -53,6 +55,7 @@ fun AppsScreen(
         onBlock = viewModel::setBlocked,
         onBlockAll = viewModel::setAllBlocked,
         modifier = modifier,
+        fox = { FoxCorner(size = Dimens.foxSmall, showTail = false) },
     )
 }
 
@@ -63,6 +66,7 @@ private fun AppsContent(
     onBlock: (String, Boolean) -> Unit,
     onBlockAll: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    fox: @Composable () -> Unit = {},
 ) {
     if (state.isLoading) {
         LoadingPlaceholder(modifier = modifier.fillMaxSize())
@@ -78,10 +82,11 @@ private fun AppsContent(
                 Text(
                     text = stringResource(R.string.nav_apps),
                     style = MaterialTheme.typography.headlineMedium,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { heading() },
+                    modifier = Modifier.semantics { heading() },
                 )
+                // A small fox peeking in next to the title.
+                fox()
+                Spacer(Modifier.weight(1f))
                 TextButton(onClick = { onBlockAll(!state.allBlocked) }) {
                     Text(stringResource(if (state.allBlocked) R.string.apps_unblock_all else R.string.apps_block_all))
                 }

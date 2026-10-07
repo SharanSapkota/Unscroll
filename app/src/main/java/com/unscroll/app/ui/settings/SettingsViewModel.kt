@@ -8,6 +8,7 @@ import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.sample.SampleDataSeeder
 import com.unscroll.app.data.scroll.ScrollCountingRepository
+import com.unscroll.app.domain.fox.FoxSettings
 import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
@@ -56,6 +57,9 @@ class SettingsViewModel @Inject constructor(
     val dynamicColor: StateFlow<Boolean> = appearancePreferences.dynamicColor
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val fox: StateFlow<FoxSettings> = appearancePreferences.fox
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FoxSettings())
+
     val permissions: StateFlow<PermissionState> = permissionRepository.permissions
 
     /** "All set" or "Fix 2 issues", and the checklist behind it. */
@@ -88,6 +92,14 @@ class SettingsViewModel @Inject constructor(
 
     fun setDynamicColor(enabled: Boolean) {
         viewModelScope.launch { appearancePreferences.setDynamicColor(enabled) }
+    }
+
+    fun setShowFox(show: Boolean) {
+        viewModelScope.launch { appearancePreferences.setShowFox(show) }
+    }
+
+    fun setFoxMessages(enabled: Boolean) {
+        viewModelScope.launch { appearancePreferences.setFoxMessages(enabled) }
     }
 
     /** After the user comes back from a system settings screen. */

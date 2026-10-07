@@ -130,3 +130,13 @@ object PillColors {
     val onMessage = Color(0xFFFFFFFF)
     val messageAccent = Color(0xFF4FD8C0)
 }
+
+/**
+ * The fox mascot's colors: its fur follows the accent (primary), so only the light and dark
+ * details are fixed here. Cream reads on teal in both modes; ink is the eyes and nose.
+ */
+object FoxColors {
+    val cream = Color(0xFFF6F1E7)
+    val ink = Color(0xFF14201D)
+    val blush = Color(0x33FF8A80)
+}

@@ -346,4 +346,107 @@
         <item quantity="one">swipe · %1$s today</item>
         <item quantity="other">swipes · %1$s today</item>
     </plurals>
+
+    <!-- Fox mascot -->
+    <string name="fox_mood_happy">happy</string>
+    <string name="fox_mood_alert">alert</string>
+    <string name="fox_mood_concerned">concerned</string>
+    <string name="fox_mood_sleepy">sleepy</string>
+    <string name="fox_description">Fox, %1$s</string>
+    <string name="fox_description_tap">Fox, %1$s. Tap for a message</string>
+    <string name="settings_show_fox">Show fox</string>
+    <string name="settings_fox_messages">Fox messages</string>
+    <string-array name="fox_messages_happy">
+        <item>Nice pace today.</item>
+        <item>You\'re doing great.</item>
+        <item>Calm and steady.</item>
+        <item>Looking good.</item>
+        <item>Your time is yours.</item>
+        <item>Easy does it. Well done.</item>
+        <item>Plenty of room today.</item>
+        <item>Nice balance so far.</item>
+        <item>Good choices add up.</item>
+        <item>You\'re in charge.</item>
+        <item>Smooth day so far.</item>
+        <item>Keep enjoying the real world.</item>
+        <item>Light scrolling, bright day.</item>
+        <item>That\'s a good rhythm.</item>
+        <item>Doing just fine.</item>
+        <item>Steady wins.</item>
+        <item>Proud of this pace.</item>
+        <item>Nice and relaxed.</item>
+        <item>Your limits are holding.</item>
+        <item>Good day for a walk.</item>
+        <item>You\'ve got this.</item>
+        <item>Love this balance.</item>
+    </string-array>
+    <string-array name="fox_messages_alert">
+        <item>Getting close to your limit.</item>
+        <item>Almost there. Your call.</item>
+        <item>Maybe a good moment to pause?</item>
+        <item>Near your limit today.</item>
+        <item>A short break could feel nice.</item>
+        <item>Heads up: limit is close.</item>
+        <item>You set this limit for a reason.</item>
+        <item>Time check: nearly done.</item>
+        <item>Nearly at your line.</item>
+        <item>Maybe one last look?</item>
+        <item>Close to today\'s limit.</item>
+        <item>A stretch might feel good.</item>
+        <item>You\'re still in charge.</item>
+        <item>Almost at your goal line.</item>
+        <item>A good stopping point is near.</item>
+        <item>Wrap up soon?</item>
+        <item>Check in with yourself.</item>
+        <item>Getting near. No rush.</item>
+        <item>A glass of water?</item>
+        <item>Your future self says thanks.</item>
+        <item>Just a gentle heads up.</item>
+    </string-array>
+    <string-array name="fox_messages_concerned">
+        <item>Past your limit. That\'s okay.</item>
+        <item>Tomorrow is a fresh start.</item>
+        <item>Time for something else?</item>
+        <item>No worries. Reset anytime.</item>
+        <item>Over the line today. It happens.</item>
+        <item>Let\'s take a breather.</item>
+        <item>Be kind to yourself.</item>
+        <item>One step away is enough.</item>
+        <item>A walk could feel nice.</item>
+        <item>You can stop any time.</item>
+        <item>It happens. Try again tomorrow.</item>
+        <item>Your limit is reached.</item>
+        <item>Maybe call a friend?</item>
+        <item>Look up and stretch.</item>
+        <item>Rest your eyes for a bit.</item>
+        <item>A small pause helps.</item>
+        <item>Every break counts.</item>
+        <item>You noticed. That matters.</item>
+        <item>Let\'s call it a day here.</item>
+        <item>Something offline?</item>
+        <item>Fresh air sounds good.</item>
+    </string-array>
+    <string-array name="fox_messages_sleepy">
+        <item>Quiet day. Nice.</item>
+        <item>Barely scrolled. Lovely.</item>
+        <item>So calm today.</item>
+        <item>Resting easy.</item>
+        <item>Not much screen time. Great.</item>
+        <item>Peaceful so far.</item>
+        <item>Hardly any scrolling.</item>
+        <item>A slow, easy day.</item>
+        <item>Enjoy the quiet.</item>
+        <item>Off to a calm start.</item>
+        <item>Low and slow today.</item>
+        <item>Very little use. Nice.</item>
+        <item>Calm screen, calm mind.</item>
+        <item>Taking it easy.</item>
+        <item>Such a light day.</item>
+        <item>Nothing to see here. Good.</item>
+        <item>A gentle start.</item>
+        <item>Quiet is good.</item>
+        <item>Restful day so far.</item>
+        <item>Easy on the eyes today.</item>
+        <item>Zzz... all calm here.</item>
+    </string-array>
 </resources>

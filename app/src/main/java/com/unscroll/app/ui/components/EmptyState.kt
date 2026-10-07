@@ -26,15 +26,22 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import com.unscroll.app.domain.fox.FoxMood
+import com.unscroll.app.ui.fox.FoxMascot
+import com.unscroll.app.ui.fox.LocalFoxSettings
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
 
-/** An icon in a soft circle and one short line. */
+/**
+ * The fox (in [mood]) and one short line. With the fox hidden in Settings, [icon] in a soft
+ * circle instead.
+ */
 @Composable
 fun EmptyState(
     @DrawableRes icon: Int,
     text: String,
     modifier: Modifier = Modifier,
+    mood: FoxMood = FoxMood.SLEEPY,
     action: @Composable () -> Unit = {},
 ) {
     Column(
@@ -44,19 +51,23 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
     ) {
-        Box(
-            modifier = Modifier
-                .size(Dimens.illustration)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(Dimens.appIcon),
-            )
+        if (LocalFoxSettings.current.showFox) {
+            FoxMascot(mood = mood, modifier = Modifier.size(Dimens.foxLarge))
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(Dimens.illustration)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(icon),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(Dimens.appIcon),
+                )
+            }
         }
         Text(
             text = text,

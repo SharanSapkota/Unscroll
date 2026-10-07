@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.goals.Streak
 import com.unscroll.app.domain.insights.AppUsage
 import com.unscroll.app.domain.insights.DayUsage
@@ -61,6 +62,7 @@ import com.unscroll.app.ui.components.ProgressPill
 import com.unscroll.app.ui.components.SectionHeader
 import com.unscroll.app.ui.components.SegmentedControl
 import com.unscroll.app.ui.durationText
+import com.unscroll.app.ui.fox.FoxCorner
 import com.unscroll.app.ui.scroll.ScrollCountingBanner
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
@@ -83,6 +85,8 @@ fun HomeScreen(
         ),
         modifier = modifier,
         banner = { ScrollCountingBanner() },
+        // The fox peeks in from the top corner; tap it for a message.
+        fox = { FoxCorner(size = Dimens.foxHome) },
     )
 }
 
@@ -98,6 +102,7 @@ internal fun HomeContent(
     actions: HomeActions,
     modifier: Modifier = Modifier,
     banner: @Composable () -> Unit = {},
+    fox: @Composable () -> Unit = {},
 ) {
     if (state.isLoading) {
         LoadingPlaceholder(modifier = modifier.fillMaxSize())
@@ -117,11 +122,12 @@ internal fun HomeContent(
                 EmptyState(
                     icon = R.drawable.ic_hourglass,
                     text = stringResource(if (state.trackingEnabled) R.string.home_empty else R.string.home_empty_off),
+                    mood = if (state.trackingEnabled) FoxMood.HAPPY else FoxMood.SLEEPY,
                 )
             }
             return@LazyColumn
         }
-        item(key = "hero") { Hero(state) }
+        item(key = "hero") { Hero(state, fox) }
         item(key = "period") {
             SegmentedControl(
                 options = UsagePeriod.entries,
@@ -173,11 +179,19 @@ private fun TopRow(trackingEnabled: Boolean, onToggle: (Boolean) -> Unit) {
     }
 }
 
+@Composable
+private fun Hero(state: HomeUiState, fox: @Composable () -> Unit) {
+    val total = state.periodUsage?.combined?.totalMillis ?: 0L
+    Row(verticalAlignment = Alignment.Top) {
+        HeroNumbers(state, total, Modifier.weight(1f))
+        fox()
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Hero(state: HomeUiState) {
-    val total = state.periodUsage?.combined?.totalMillis ?: 0L
-    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
+private fun HeroNumbers(state: HomeUiState, total: Long, modifier: Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
         Text(
             text = stringResource(state.period.heroLabelRes),
             style = MaterialTheme.typography.titleMedium,
