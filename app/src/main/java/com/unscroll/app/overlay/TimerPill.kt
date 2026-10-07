@@ -37,10 +37,10 @@ import com.unscroll.app.ui.theme.PillType
 /** Everything the pill needs to draw one frame. */
 data class TimerPillState(
     val appName: String,
-    /** Session time, already formatted ("12:41"). */
+    /** Today's total in the app, already formatted ("47:12"). */
     val elapsedText: String,
-    /** Today's total for the app, already formatted, or null to hide it. */
-    val todayText: String?,
+    /** This visit's time ("this visit 3:05"), or null to hide it. */
+    val visitText: String?,
     val level: PillLevel,
     val size: PillSize,
     val opacity: Float,
@@ -171,7 +171,7 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
                         maxLines = 1,
                     )
                 }
-                state.todayText?.let {
+                state.visitText?.let {
                     Text(
                         text = it,
                         color = content.copy(alpha = SECONDARY_ALPHA),
@@ -195,7 +195,7 @@ private fun TimerPillPreview() {
                 TimerPillState(
                     appName = "Instagram",
                     elapsedText = "12:41",
-                    todayText = "Today 1h 5m",
+                    visitText = "this visit 3:05",
                     level = level,
                     size = PillSize.MEDIUM,
                     opacity = 0.9f,

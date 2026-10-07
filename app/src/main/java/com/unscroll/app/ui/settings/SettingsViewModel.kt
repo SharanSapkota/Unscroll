@@ -109,8 +109,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { overlayPreferences.setEnabled(enabled) }
     }
 
-    fun setShowTodayTotal(show: Boolean) {
-        viewModelScope.launch { overlayPreferences.setShowTodayTotal(show) }
+    fun setShowSessionTime(show: Boolean) {
+        viewModelScope.launch { overlayPreferences.setShowSessionTime(show) }
     }
 
     fun setShowSwipes(show: Boolean) {

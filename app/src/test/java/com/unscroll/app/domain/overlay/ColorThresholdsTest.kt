@@ -6,9 +6,9 @@ import org.junit.Test
 class ColorThresholdsTest {
 
     @Test
-    fun defaults_areTenAndTwentyMinutes() {
-        assertEquals(ColorThresholds(10, 20), ColorThresholds())
-        assertEquals(ColorThresholds(10, 20), ColorThresholds().normalized())
+    fun defaults_areThirtyAndSixtyMinutesOfToday() {
+        assertEquals(ColorThresholds(30, 60), ColorThresholds())
+        assertEquals(ColorThresholds(30, 60), ColorThresholds().normalized())
     }
 
     @Test
@@ -19,8 +19,8 @@ class ColorThresholdsTest {
 
     @Test
     fun normalized_clampsToRange() {
-        assertEquals(ColorThresholds(1, 2), ColorThresholds(0, 0).normalized())
-        assertEquals(ColorThresholds(119, 120), ColorThresholds(500, 900).normalized())
+        assertEquals(ColorThresholds(5, 6), ColorThresholds(0, 0).normalized())
+        assertEquals(ColorThresholds(239, 240), ColorThresholds(500, 900).normalized())
     }
 
     @Test

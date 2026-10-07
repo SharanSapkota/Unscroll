@@ -125,3 +125,11 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Settings › Data & privacy: the same promise as a row, plus "Delete all my data" (confirmation; wipes Room and DataStore and returns to onboarding)
 - Verified before shipping: no INTERNET permission, no network/analytics/crash SDKs, no accounts, backups off
 - **Done when**: a new user sees why each permission is needed and that their data stays on the phone, and can delete everything from Settings.
+
+## Pill shows today's total ✅ Done (awaiting device testing)
+- The timer pill shows today's total in the app ("Instagram 47:12"), continuing where it left off on every visit and resetting at local midnight (also while showing)
+- The base (earlier sessions today, clipped to midnight) is read once per visit; the open session is added from the clock every second; the total never steps back on the same day
+- Optional "Show session time" ("this visit 3:05", off by default); today's swipes instead of the session's
+- Colors by today's total: with a daily limit green under 60 %, yellow to 100 %, red at the limit; without one the daily thresholds (30/60 min by default). Settings and preview updated
+- Break reminders, swipe breaks and per-session swipe limits still use the session; blocking and accessibility unchanged
+- **Done when**: opening an app twice shows the total continue from the first visit, and it turns yellow at 60 % of a daily limit.

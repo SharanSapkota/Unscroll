@@ -36,6 +36,24 @@ class RemovedPreferencesMigrationTest {
     }
 
     @Test
+    fun removesTheOldPerSessionPillThresholds_keepsTheDailyOnes() = runTest {
+        val daily = intPreferencesKey("overlay_daily_warning_minutes")
+        val old = mutablePreferencesOf(
+            booleanPreferencesKey("overlay_show_today_total") to true,
+            intPreferencesKey("overlay_warning_minutes") to 10,
+            intPreferencesKey("overlay_danger_minutes") to 20,
+            intPreferencesKey("overlay_swipe_warning") to 50,
+            intPreferencesKey("overlay_swipe_danger") to 100,
+            daily to 45,
+        )
+        assertTrue(RemovedPreferencesMigration.shouldMigrate(old))
+
+        val migrated = RemovedPreferencesMigration.migrate(old)
+
+        assertEquals(mapOf<Preferences.Key<*>, Any>(Pair(daily, 45)), migrated.asMap())
+    }
+
+    @Test
     fun nothingToRemove_doesNotMigrate() = runTest {
         assertFalse(RemovedPreferencesMigration.shouldMigrate(mutablePreferencesOf(kept to false)))
     }

@@ -107,6 +107,13 @@ interface SessionDao {
     @Query("SELECT COALESCE(SUM(scrollCount), 0) FROM sessions WHERE packageName = :packageName AND startTime >= :since")
     suspend fun swipesSince(packageName: String, since: Long): Int
 
+    /** Swipes in the app's sessions that started in [from, until) (the pill's earlier sessions today). */
+    @Query(
+        "SELECT COALESCE(SUM(scrollCount), 0) FROM sessions " +
+            "WHERE packageName = :packageName AND startTime >= :from AND startTime < :until",
+    )
+    suspend fun swipesBetween(packageName: String, from: Long, until: Long): Int
+
     /** The app's sessions that started at or after [since], newest first (for per-session swipe windows). */
     @Query(
         "SELECT startTime, endTime FROM sessions WHERE packageName = :packageName AND startTime >= :since " +
