@@ -140,3 +140,10 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Launch splash with the SplashScreen API (androidx.core:splashscreen): the fox icon on dark teal, no extra delay
 - Other illustrations were already the fox (empty states, permissions page, stop screens); the hourglass and timer drawables stay as small row icons
 - **Done when**: a fresh launch shows the fox splash, then the welcome fox animating in.
+
+## Launcher icon: fox and phone ✅ Done (awaiting device testing)
+- Presentation only, no logic changes
+- Adaptive icon from `assets/icon/icon-foreground.svg` (fox, phone with feed and red limit line) on solid #0F4142, a two-tone themed (monochrome) layer, the round icon and legacy PNGs; the old gradient background and layers are replaced
+- The foreground is drawn at 90 %: as given, the phone's corners reached outside the 66 dp safe zone and circle masks clipped one
+- Notification icon unchanged (white fox face); launcher label unchanged
+- **Done when**: the icon reads clearly at 48 and 72 dp under circle, squircle and square masks, on light, dark and wallpaper backgrounds and as a themed icon.
