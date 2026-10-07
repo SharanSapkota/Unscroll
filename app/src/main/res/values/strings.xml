@@ -1,55 +1,13 @@
 <resources>
     <string name="app_name">Unscroll</string>
 
-    <string name="nav_dashboard">Dashboard</string>
     <string name="nav_apps">Apps</string>
     <string name="nav_settings">Settings</string>
 
-
     <!-- Onboarding: shared -->
-    <string name="onboarding_step_counter">Step %1$d of %2$d</string>
-    <string name="onboarding_back">Back</string>
     <string name="onboarding_get_started">Get started</string>
-    <string name="onboarding_continue">Continue</string>
-    <string name="onboarding_skip">Skip for now</string>
-    <string name="onboarding_finish">Finish</string>
-    <string name="onboarding_open_settings">Open settings</string>
-    <string name="onboarding_status_allowed">Allowed</string>
-    <string name="onboarding_status_not_allowed">Not allowed yet</string>
-    <string name="onboarding_optional">Optional. You can skip this and turn it on later.</string>
-    <string name="onboarding_required">Required. Unscroll can\'t work without it.</string>
-
-    <!-- Onboarding: welcome -->
-    <string name="onboarding_welcome_title">Take back your time</string>
-    <string name="onboarding_welcome_body">Unscroll shows you how long you spend in Instagram, TikTok and Facebook, while you\'re spending it. You choose limits, and it adds a little friction to help you stop.</string>
-    <string name="onboarding_welcome_privacy">Private by design: everything stays on this phone. No account, no ads, no tracking.</string>
-    <string name="onboarding_welcome_next">Next, we\'ll ask for a few permissions and explain why each one is needed.</string>
-
-    <!-- Onboarding: usage access -->
-    <string name="onboarding_usage_title">See which app is open</string>
-    <string name="onboarding_usage_body">Usage Access lets Unscroll notice when Instagram, TikTok or Facebook is on your screen, so it can time your sessions.</string>
-    <string name="onboarding_usage_privacy">Unscroll only sees app names and times. It never sees what you look at, type or watch, and nothing leaves your phone.</string>
-    <string name="onboarding_usage_how_to">Tap Open settings, find Unscroll in the list, turn on \"Permit usage access\", then come back here.</string>
-
-    <!-- Onboarding: overlay -->
-    <string name="onboarding_overlay_title">Show a timer on top</string>
-    <string name="onboarding_overlay_body">Display over other apps lets Unscroll show a small timer while you scroll, and a block screen when you reach a limit you set.</string>
-    <string name="onboarding_overlay_privacy">This only lets Unscroll draw on the screen. It can\'t read anything that other apps show.</string>
-    <string name="onboarding_overlay_how_to">Tap Open settings, turn on \"Allow display over other apps\", then come back here.</string>
-
-    <!-- Onboarding: notifications -->
-    <string name="onboarding_notifications_title">Gentle reminders</string>
-    <string name="onboarding_notifications_body">Notifications let Unscroll show that it\'s running, and send nudges like break reminders.</string>
-    <string name="onboarding_notifications_how_to">Tap Allow notifications. If nothing pops up, Unscroll opens its notification settings so you can turn them on there.</string>
-    <string name="onboarding_notifications_action">Allow notifications</string>
 
     <!-- Onboarding: battery -->
-    <string name="onboarding_battery_title">Keep Unscroll running</string>
-    <string name="onboarding_battery_body">Some phones close apps in the background to save battery. When that happens, Unscroll stops timing your sessions without telling you.</string>
-    <string name="onboarding_battery_cost">Unscroll only does work while a tracked app is open and the screen is on, so turning off battery optimization costs very little battery.</string>
-    <string name="onboarding_battery_how_to">Tap Open settings, switch the list to \"All apps\", choose Unscroll and pick \"Don\'t optimize\" (or \"Unrestricted\").</string>
-    <string name="onboarding_battery_app_info">Open app info</string>
-    <string name="onboarding_battery_oem_title">Extra steps for your phone</string>
     <string name="onboarding_battery_hint_xiaomi">Xiaomi, Redmi and POCO: open App info, turn on Autostart, then set Battery saver to \"No restrictions\". Also lock Unscroll in the recent apps screen (pull its card down or long-press it).</string>
     <string name="onboarding_battery_hint_samsung">Samsung: go to Settings, then Battery, then Background usage limits. Remove Unscroll from \"Sleeping apps\" and \"Deep sleeping apps\", and add it to \"Never sleeping apps\".</string>
     <string name="onboarding_battery_hint_huawei">Huawei and Honor: go to Settings, then Battery, then App launch. Find Unscroll, switch it to \"Manage manually\" and turn on Auto-launch, Secondary launch and Run in background.</string>
@@ -62,46 +20,6 @@
     <string name="tracking_notification_title">Unscroll is tracking</string>
     <string name="tracking_notification_text">Timing your sessions in Instagram, TikTok and Facebook.</string>
 
-    <!-- Settings -->
-    <string name="settings_tracking_title">Track sessions</string>
-    <string name="settings_tracking_description">Times your sessions in Instagram, TikTok and Facebook. Unscroll only sees app names and times, and keeps everything on this phone.</string>
-
-    <!-- Dashboard -->
-    <string name="dashboard_today_label">Today</string>
-    <string name="dashboard_trend_more_than_yesterday">▲ %1$s more than this time yesterday</string>
-    <string name="dashboard_trend_less_than_yesterday">▼ %1$s less than this time yesterday</string>
-    <string name="dashboard_trend_same_as_yesterday">About the same as this time yesterday</string>
-    <string name="dashboard_tracking_off">Tracking is off. Turn it on in Settings to keep logging sessions.</string>
-    <string name="dashboard_period_today">Today</string>
-    <string name="dashboard_period_week">Week</string>
-    <string name="dashboard_period_month">Month</string>
-    <string name="dashboard_period_all_time">All time</string>
-    <string name="dashboard_all_apps">All apps</string>
-    <string name="dashboard_stat_opens">Opens</string>
-    <string name="dashboard_stat_average">Avg session</string>
-    <string name="dashboard_stat_longest">Longest</string>
-    <string name="dashboard_no_usage_in_period">No time in tracked apps in this period.</string>
-    <string name="dashboard_hours_invested_title">Hours invested</string>
-    <string name="dashboard_hours_invested_total">%1$.1f hours in total</string>
-    <string name="dashboard_hours_invested_days">That\'s %1$.1f full days of your life</string>
-    <string name="dashboard_hours_invested_books">or about %1$.1f books read</string>
-    <string name="dashboard_hours_invested_flights">or %1$.1f flights to Tokyo</string>
-    <string name="dashboard_heatmap_title">When you scroll</string>
-    <string name="dashboard_heatmap_peak">Busiest hour: %1$02d:00 to %2$02d:00</string>
-    <string name="dashboard_heatmap_hour">%1$02d:00</string>
-    <string name="dashboard_heatmap_description">Time in tracked apps for each hour of the day. Busiest hour starts at %1$02d:00.</string>
-    <string name="dashboard_week_title">Last 7 days vs the 7 before</string>
-    <string name="dashboard_week_this">Last 7 days</string>
-    <string name="dashboard_week_last">7 days before</string>
-    <string name="dashboard_week_totals">%1$s vs %2$s</string>
-    <string name="dashboard_week_more">▲ %1$s more than the week before</string>
-    <string name="dashboard_week_less">▼ %1$s less than the week before</string>
-    <string name="dashboard_week_same">About the same as the week before</string>
-    <string name="dashboard_week_description">Bar chart of daily time in tracked apps: last 7 days %1$s, the 7 days before %2$s.</string>
-    <string name="dashboard_empty_title">No sessions yet</string>
-    <string name="dashboard_empty_body">Open Instagram, TikTok or Facebook and your time will show up here.</string>
-    <string name="dashboard_empty_tracking_off">Tracking is off. Turn it on in Settings first.</string>
-
     <!-- Durations -->
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
     <string name="duration_minutes">%1$dm</string>
@@ -110,72 +28,11 @@
     <!-- Overlay timer -->
     <string name="overlay_today_total">Today %1$s</string>
 
-    <!-- Settings: overlay timer -->
-    <string name="settings_overlay_title">Floating timer</string>
-    <string name="settings_overlay_permission_missing">\"Display over other apps\" is off, so the timer can\'t appear. Turn it back on in Android settings.</string>
-    <string name="settings_overlay_enabled">Show floating timer</string>
-    <string name="settings_overlay_enabled_description">A small timer appears on top of Instagram, TikTok and Facebook while you use them. Drag it to move it; tap it to shrink it to a dot.</string>
-    <string name="settings_overlay_today_total">Show today\'s total</string>
-    <string name="settings_overlay_today_total_description">Adds your total for that app today under the session time.</string>
-    <plurals name="settings_overlay_warning_after">
-        <item quantity="one">Turn yellow after %d minute</item>
-        <item quantity="other">Turn yellow after %d minutes</item>
-    </plurals>
-    <plurals name="settings_overlay_danger_after">
-        <item quantity="one">Turn red after %d minute</item>
-        <item quantity="other">Turn red after %d minutes</item>
-    </plurals>
-    <string name="settings_overlay_size">Size</string>
-    <string name="settings_overlay_size_small">Small</string>
-    <string name="settings_overlay_size_medium">Medium</string>
-    <string name="settings_overlay_opacity">Opacity: %1$d%%</string>
-    <string name="settings_overlay_reset_position">Reset position</string>
-    <string name="settings_overlay_position_reset_done">The timer will appear at the top center next time.</string>
-    <string name="settings_overlay_preview">Preview</string>
-    <string name="settings_overlay_preview_app">Instagram</string>
-
     <!-- Common -->
     <string name="action_cancel">Cancel</string>
 
-    <!-- Apps tab: limits and blocking -->
-    <string name="apps_changes_note">Changes apply right away.</string>
-    <string name="apps_daily_limit">Daily limit</string>
-    <string name="apps_limit_none">None</string>
-    <string name="apps_limit_minutes">%1$d min</string>
-    <string name="apps_block_completely">Block completely</string>
-    <string name="apps_block_schedule">Block on a schedule</string>
-    <string name="apps_schedule_from">From %1$s</string>
-    <string name="apps_schedule_to">To %1$s</string>
-    <string name="apps_schedule_overnight">Runs overnight, into the next morning.</string>
-    <string name="apps_status_no_limits">No limits</string>
-    <string name="apps_status_allowed_now">Allowed right now</string>
-    <plurals name="apps_status_minutes_left">
-        <item quantity="one">%d min left today</item>
-        <item quantity="other">%d min left today</item>
-    </plurals>
-    <string name="apps_status_blocked_always">Blocked</string>
-    <string name="apps_status_limit_reached">Daily limit reached. Blocked until tomorrow</string>
-    <string name="apps_status_blocked_until">Blocked until %1$s</string>
-
     <!-- Block screen -->
-    <string name="block_title">%1$s is blocked</string>
-    <string name="block_reason_always">You chose to block this app completely.</string>
-    <string name="block_reason_limit">You\'ve reached your daily limit for this app.</string>
-    <string name="block_reason_schedule">This app is blocked on your schedule right now.</string>
-    <string name="block_reason_schedule_until">This app is blocked on your schedule until %1$s.</string>
-    <string name="block_used_today">Used today: %1$s</string>
-    <string name="block_go_home">Go home</string>
-    <string name="block_need_access">I need access (%1$d more minutes)</string>
-    <string-array name="block_messages">
-        <item>The feed will still be there tomorrow. This moment won\'t.</item>
-        <item>You set this limit for a reason. Trust past you.</item>
-        <item>What were you hoping to find? Maybe it\'s somewhere else.</item>
-        <item>Five minutes of boredom beats an hour of scrolling.</item>
-        <item>Look up. Is there someone nearby you could talk to?</item>
-        <item>Drink some water, stretch, then decide.</item>
-        <item>Every time you close this, it gets a little easier.</item>
-        <item>You\'re in charge here, not the algorithm.</item>
-    </string-array>
+    <string name="block_need_access">I need %1$d more minutes</string>
 
     <!-- Break screen (M7, after N swipes) -->
     <string name="break_countdown">Take a breath. %1$d s</string>
@@ -195,36 +52,8 @@
     <string name="break_channel_name">Break reminders</string>
     <string name="break_channel_description">Reminders to take a break, when the floating timer is off.</string>
 
-    <!-- Apps tab: nudges and breaks -->
-    <string name="friction_title">Nudges and breaks</string>
-    <string name="friction_show">Show</string>
-    <string name="friction_hide">Hide</string>
-    <string name="friction_nudges">Open-count nudges</string>
-    <string name="friction_nudges_description">A notification when you\'ve opened this app this many times today.</string>
-    <string name="friction_opens_value">%1$d×</string>
-    <string name="friction_breaks">Break reminders</string>
-    <string name="friction_breaks_description">A gentle reminder on the timer while you scroll.</string>
-    <string name="friction_every_minutes">Every %1$d min</string>
-    <string name="friction_limit_warnings">Limit warnings</string>
-    <string name="friction_limit_warnings_description" formatted="false">A heads-up at 80% and 100% of your daily limit.</string>
-    <string name="friction_tint">Gray tint after the limit (experimental)</string>
-    <string name="friction_tint_description">Once you\'re over your daily limit and chose to keep going, the app is dimmed with a gray layer. It doesn\'t block touches.</string>
-    <string name="friction_reset">Reset to defaults</string>
-
-    <!-- Settings: quiet hours -->
-    <string name="settings_quiet_title">Quiet hours</string>
-    <string name="settings_quiet_enabled">Silence nudges</string>
-    <string name="settings_quiet_description">No open-count nudges, break reminders or limit warnings during these hours. Blocking still applies.</string>
-
-
     <!-- Settings: debug tools -->
-    <string name="settings_debug_title">Debug tools</string>
     <string name="settings_debug_sample_data">Insert sample data</string>
-    <string name="settings_debug_sample_data_description">Adds 30 days of fake sessions so you can try the dashboard.</string>
-    <plurals name="settings_debug_sample_data_added">
-        <item quantity="one">Added %d sample session.</item>
-        <item quantity="other">Added %d sample sessions.</item>
-    </plurals>
 
     <!-- M7: optional scroll counting (accessibility service) -->
     <string name="accessibility_service_label">Unscroll swipe counter</string>
@@ -257,7 +86,6 @@
     <string name="scroll_open_accessibility">Open Accessibility settings</string>
     <string name="scroll_back">Back</string>
 
-    <string name="scroll_settings_title">Scroll counting</string>
     <string name="scroll_status_off">Off. Optionally count your swipes in tracked apps.</string>
     <string name="scroll_status_needs_consent">The swipe counter is switched on in Accessibility settings, but you haven\'t agreed in Unscroll, so nothing is counted. Review and agree, or switch it off there.</string>
     <string name="scroll_status_needs_enabling">Almost there: switch on \"Unscroll swipe counter\" in Accessibility settings.</string>
@@ -265,14 +93,11 @@
     <string name="scroll_status_needs_reenable">Swipe counting stopped. Your phone switched the service off.</string>
     <string name="scroll_set_up">Set up</string>
     <string name="scroll_review">Review and agree</string>
-    <string name="scroll_turn_off">Turn off scroll counting</string>
+    <string name="scroll_turn_off">Turn off</string>
 
     <string name="scroll_banner_title">Swipe counting stopped</string>
-    <string name="scroll_banner_body">Your phone switched off Unscroll\'s swipe counter, often to save battery. Switch it back on in Accessibility settings to keep counting.</string>
-    <string name="scroll_banner_action">Switch it back on</string>
+    <string name="scroll_banner_action">Turn back on</string>
 
-    <string name="settings_overlay_swipes">Show swipe count</string>
-    <string name="settings_overlay_swipes_description">Next to the timer, when scroll counting is on</string>
     <plurals name="overlay_swipes">
         <item quantity="one">%d swipe</item>
         <item quantity="other">%d swipes</item>
@@ -286,101 +111,239 @@
     <string name="break_done">I\'m done</string>
     <string name="break_keep_scrolling">Keep scrolling</string>
 
-    <string name="friction_swipe_break">Take a break after swipes</string>
-    <string name="friction_swipe_break_description">Shows a short break after this many swipes. Needs scroll counting (Settings).</string>
-    <string name="friction_swipes_value">%1$d swipes</string>
-
-    <string name="dashboard_swipes_title">Swipes</string>
-    <plurals name="dashboard_swipes_today">
-        <item quantity="one">%d swipe today</item>
-        <item quantity="other">%d swipes today</item>
-    </plurals>
-    <string name="dashboard_swipes_none">No swipes counted in this period.</string>
-    <string name="dashboard_swipes_total">Swipes</string>
-    <string name="dashboard_swipes_per_session">Per session</string>
-    <string name="dashboard_swipes_per_minute">Per minute</string>
-    <string name="dashboard_swipes_decimal">%1$.1f</string>
-
     <!-- M8: daily goal, streaks, weekly report, your data -->
-    <string name="goal_settings_title">Daily goal</string>
-    <string name="goal_settings_description">At most this much time a day across tracked apps. Days within it build your streak.</string>
-    <string name="goal_off">Off</string>
-    <string name="goal_card_title">Daily goal</string>
-    <string name="goal_today_of_goal">%1$s of %2$s</string>
-    <string name="goal_left_today">%1$s left today</string>
-    <string name="goal_over_today">%1$s over today\'s goal</string>
-    <string name="goal_current_streak">Current streak</string>
-    <string name="goal_best_streak">Best streak</string>
-    <plurals name="goal_days">
-        <item quantity="one">%d day</item>
-        <item quantity="other">%d days</item>
-    </plurals>
 
-    <string name="report_title">Week of %1$s</string>
-    <string name="report_trend_more">%1$s more than the week before</string>
-    <string name="report_trend_less">%1$s less than the week before</string>
-    <string name="report_trend_same">About the same as the week before</string>
-    <string name="report_daily_average">%1$s a day on average</string>
-    <string name="report_busiest_day">Busiest day: %1$s (%2$s)</string>
-    <string name="report_top_app">Most time: %1$s (%2$s)</string>
-    <plurals name="report_opens">
-        <item quantity="one">%d open</item>
-        <item quantity="other">%d opens</item>
-    </plurals>
-    <string name="report_goal_days">Within your goal on %1$d of %2$d days</string>
-
-    <string name="data_title">Your data</string>
-    <string name="data_description">Everything Unscroll records stays on this phone. Export your sessions as a CSV file, or delete your usage history. Your settings and limits stay; to remove everything, uninstall Unscroll.</string>
-    <string name="data_export">Export sessions (CSV)</string>
+    <string name="data_export">Export CSV</string>
     <string name="data_export_failed">Export failed. Try another location.</string>
     <plurals name="data_exported">
         <item quantity="one">Exported %d session.</item>
         <item quantity="other">Exported %d sessions.</item>
     </plurals>
-    <string name="data_delete">Delete usage history</string>
+    <string name="data_delete">Delete history</string>
     <string name="data_delete_confirm_title">Delete usage history?</string>
     <string name="data_delete_confirm_body">This deletes every session, swipe count, nudge log and extension log, and today\'s usage starts again from zero. Your settings, limits and goal stay. This can\'t be undone.</string>
     <string name="data_delete_confirm">Delete</string>
-    <string name="data_delete_cancel">Cancel</string>
     <plurals name="data_deleted">
         <item quantity="one">Deleted %d session.</item>
         <item quantity="other">Deleted %d sessions.</item>
     </plurals>
 
     <!-- Swipe limit (hard stop) -->
-    <string name="block_reason_swipes">You\'ve reached your swipe limit for this app.</string>
-    <string name="swipe_cover_title">Swipe limit reached</string>
-    <plurals name="swipe_cover_count">
-        <item quantity="one">%1$d swipe in %2$s</item>
-        <item quantity="other">%1$d swipes in %2$s</item>
-    </plurals>
-    <string name="swipe_cover_today">%1$s in this app today</string>
-    <string name="swipe_cover_go_home">Go home</string>
-    <string name="swipe_cover_need_access">I need access (%1$d more swipes)</string>
+    <string name="swipe_cover_title">Limit reached</string>
+    <string name="swipe_cover_need_access">I need %1$d more swipes</string>
     <string name="overlay_swipes_separator"> · %1$s</string>
     <plurals name="overlay_swipes_left">
         <item quantity="one">%d swipe left</item>
         <item quantity="other">%d swipes left</item>
     </plurals>
-    <plurals name="settings_overlay_swipe_warning_after">
-        <item quantity="one">Yellow after %d swipe</item>
-        <item quantity="other">Yellow after %d swipes</item>
+    <!-- Redesign: shared values and actions -->
+    <string name="nav_home">Home</string>
+    <string name="action_fix">Fix</string>
+    <string name="action_go_home">Go home</string>
+    <string name="action_got_it">Got it</string>
+    <string name="action_grant">Grant</string>
+    <string name="action_set">Set</string>
+    <string name="value_off">Off</string>
+    <string name="value_on">On</string>
+    <string name="value_custom">Custom</string>
+    <string name="value_done">Done</string>
+    <string name="value_every">Every %1$s</string>
+    <string name="value_percent">%1$d%%</string>
+    <string name="value_minutes_range">%1$d–%2$d min</string>
+    <string name="value_count_range">%1$d–%2$d</string>
+    <plurals name="value_swipes">
+        <item quantity="one">%d swipe</item>
+        <item quantity="other">%d swipes</item>
     </plurals>
-    <plurals name="settings_overlay_swipe_danger_after">
-        <item quantity="one">Red after %d swipe</item>
-        <item quantity="other">Red after %d swipes</item>
+    <plurals name="value_opens">
+        <item quantity="one">%d open</item>
+        <item quantity="other">%d opens</item>
     </plurals>
-    <string name="swipe_limit_title">Swipe limit</string>
-    <string name="swipe_limit_description">When you reach it, the app is covered until the limit resets.</string>
-    <string name="swipe_limit_needs_counting">Needs scroll counting (Settings › Scroll counting). Without it, swipes aren\'t counted and this limit does nothing.</string>
-    <string name="swipe_limit_custom">Custom</string>
-    <string name="swipe_limit_custom_value">Custom: %1$d</string>
-    <string name="swipe_limit_custom_title">Custom swipe limit</string>
-    <string name="swipe_limit_custom_field">Swipes</string>
-    <string name="swipe_limit_custom_set">Set</string>
-    <string name="swipe_limit_per_day">Per day</string>
-    <string name="swipe_limit_per_session">Per session</string>
-    <string name="swipe_limit_session_gap">Starts again after you stay away for</string>
-    <string name="swipe_limit_access">Allow \"I need access\"</string>
-    <string name="swipe_limit_access_description">The cover offers %1$d more swipes with one tap.</string>
+    <string name="short_minutes">%1$dm</string>
+    <string name="short_hours">%1$dh</string>
+    <string name="short_hours_minutes">%1$dh %2$dm</string>
+    <string name="period_day">Day</string>
+    <string name="period_week">Week</string>
+    <string name="period_month">Month</string>
+    <string name="period_all">All</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_more_info">More info</string>
+    <string name="cd_expand">Show</string>
+    <string name="cd_collapse">Hide</string>
+    <string name="cd_granted">Granted</string>
+
+    <!-- App status -->
+    <string name="status_no_limits">No limits</string>
+    <string name="status_allowed">Allowed now</string>
+    <string name="status_blocked">Blocked</string>
+    <string name="status_blocked_until">Blocked until %1$s</string>
+    <string name="status_limit_reached">Limit reached</string>
+    <plurals name="status_minutes_left">
+        <item quantity="one">%d min left</item>
+        <item quantity="other">%d min left</item>
+    </plurals>
+
+    <!-- Home -->
+    <string name="home_tracking_on">Tracking on</string>
+    <string name="home_tracking_off">Tracking off</string>
+    <string name="home_empty">Nothing tracked yet</string>
+    <string name="home_empty_off">Tracking is off</string>
+    <string name="home_hero_today">Today</string>
+    <string name="home_hero_week">Last 7 days</string>
+    <string name="home_hero_month">Last 30 days</string>
+    <string name="home_hero_all">All time</string>
+    <string name="home_trend_percent">%1$+d%%</string>
+    <string name="home_trend_vs_yesterday">%1$s vs yesterday</string>
+    <string name="home_trend_vs_week">%1$s vs last week</string>
+    <string name="home_goal_left">%1$s left · streak %2$d</string>
+    <string name="home_goal_over">%1$s over goal</string>
+    <string name="home_apps_title">Apps</string>
+    <plurals name="home_swipes">
+        <item quantity="one">%d swipe</item>
+        <item quantity="other">%d swipes</item>
+    </plurals>
+    <string name="home_hours_title">Hours invested</string>
+    <string name="home_hours_value">%1$.0f h</string>
+    <string name="home_hours_days">= %1$.1f days of your life</string>
+    <string name="home_hours_books">books</string>
+    <string name="home_hours_flights">flights to Tokyo</string>
+    <string name="home_number_one_decimal">%1$.1f</string>
+    <string name="home_insights">Insights</string>
+    <string name="home_heatmap_title">When you scroll</string>
+    <string name="home_heatmap_peak">%1$02d:00–%2$02d:00</string>
+    <string name="home_heatmap_hour">%1$02d</string>
+    <string name="home_heatmap_description">Time of day heatmap. Busiest hour starts at %1$d.</string>
+    <string name="home_week_title">This week vs last</string>
+    <string name="home_week_this">This week</string>
+    <string name="home_week_last">Last week</string>
+    <string name="home_week_description">Last 7 days: %1$s. The 7 days before: %2$s.</string>
+    <string name="home_swipes_title">Swipes</string>
+    <string name="home_swipes_total">total</string>
+    <string name="home_swipes_per_session">per session</string>
+    <string name="home_swipes_per_minute">per minute</string>
+    <string name="home_report_title">Week of %1$s</string>
+    <string name="home_report_average">daily avg</string>
+    <string name="home_report_busiest">busiest</string>
+    <plurals name="home_report_opens">
+        <item quantity="one">open</item>
+        <item quantity="other">opens</item>
+    </plurals>
+    <string name="home_report_top_app">Top: %1$s · %2$s</string>
+    <string name="home_report_goal_days">Goal met %1$d of %2$d days</string>
+
+    <!-- Apps tab and App detail -->
+    <string name="apps_block">Block</string>
+    <string name="apps_block_all">Block all</string>
+    <string name="apps_unblock_all">Unblock all</string>
+    <string name="detail_today_status">Today · %1$s</string>
+    <string name="detail_saved">Saved</string>
+    <string name="detail_limits">Limits</string>
+    <string name="detail_limits_info">Changes apply right away. When the daily limit is reached, the app is blocked until tomorrow. A swipe limit covers the app once you reach it, for the rest of the day or the swipe session, and only works while scroll counting is on.</string>
+    <string name="detail_daily_limit">Daily limit</string>
+    <string name="detail_swipe_limit">Swipe limit</string>
+    <string name="detail_needs_counting">Needs scroll counting</string>
+    <string name="detail_custom_minutes">Minutes</string>
+    <string name="detail_custom_swipes">Swipes</string>
+    <string name="detail_per_day">Per day</string>
+    <string name="detail_per_session">Per session</string>
+    <string name="detail_reset_after">Resets after</string>
+    <string name="detail_allow_access">Allow \"I need access\"</string>
+    <string name="detail_allow_access_hint">+%1$d swipes with one tap</string>
+    <string name="detail_blocking">Blocking</string>
+    <string name="detail_block_completely">Block completely</string>
+    <string name="detail_schedule">Schedule</string>
+    <string name="detail_schedule_overnight">Overnight</string>
+    <string name="detail_schedule_from">From</string>
+    <string name="detail_schedule_to">To</string>
+    <string name="detail_pill_nudges">Timer &amp; nudges</string>
+    <string name="detail_pill_nudges_info">The timer pill floats over the app while you use it. Nudges are notifications after a number of opens; break reminders and limit warnings show on the pill, or as notifications when the pill is off. The tint grays the screen while you are over your limit with extra time.</string>
+    <string name="detail_show_timer">Timer pill</string>
+    <string name="detail_pill_off_globally">Off in Settings</string>
+    <string name="detail_show_swipes">Swipes on pill</string>
+    <string name="detail_open_nudges">Open nudges</string>
+    <string name="detail_open_nudges_hint">A notification after this many opens a day</string>
+    <string name="detail_break_reminders">Break reminders</string>
+    <string name="detail_break_reminders_hint">A reminder during long sessions</string>
+    <string name="detail_limit_warnings">Limit warnings</string>
+    <string name="detail_tint">Gray tint</string>
+    <string name="detail_swipe_break">Swipe break</string>
+    <string name="detail_swipe_break_hint">A short breathing break after this many swipes in a session.</string>
+    <string name="detail_reset_nudges">Reset nudges</string>
+    <string name="detail_stats_title">Last 7 days</string>
+    <string name="detail_stats_description">Time per day for the last 7 days, %1$s in total.</string>
+    <string name="detail_stats_opens">opens</string>
+    <string name="detail_stats_average">avg session</string>
+    <string name="stats_longest">longest</string>
+    <string name="home_sessions_title">Sessions</string>
+
+    <!-- Settings -->
+    <string name="settings_health_ok">All set</string>
+    <plurals name="settings_health_issues">
+        <item quantity="one">Fix %d issue</item>
+        <item quantity="other">Fix %d issues</item>
+    </plurals>
+    <string name="settings_health_permissions">Permissions</string>
+    <string name="settings_group_tracking">Tracking</string>
+    <string name="settings_group_pill">Timer pill</string>
+    <string name="settings_group_notifications">Notifications</string>
+    <string name="settings_group_data">Data &amp; privacy</string>
+    <string name="settings_group_appearance">Appearance</string>
+    <string name="settings_group_debug">Debug</string>
+    <string name="settings_tracking">Tracking</string>
+    <string name="settings_daily_goal">Daily goal</string>
+    <string name="settings_scroll_counting">Scroll counting</string>
+    <string name="scroll_value_review">Review</string>
+    <string name="scroll_value_setup">Set up</string>
+    <string name="scroll_value_reenable">Stopped</string>
+    <string name="settings_pill_info">The pill shows your session time over tracked apps. It turns amber, then red, by time or swipes, whichever comes first. Drag it anywhere; tap it to shrink it to a dot.</string>
+    <string name="settings_pill_no_permission">Needs \"Display over other apps\"</string>
+    <string name="settings_pill_show">Show timer</string>
+    <string name="settings_pill_today">Today\'s total</string>
+    <string name="settings_pill_swipes">Swipe count</string>
+    <string name="settings_pill_size_small">S</string>
+    <string name="settings_pill_size_medium">M</string>
+    <string name="settings_pill_opacity">Opacity</string>
+    <string name="settings_pill_time_colors">Time colors</string>
+    <string name="settings_pill_swipe_colors">Swipe colors</string>
+    <string name="settings_pill_reset_position">Reset position</string>
+    <string name="settings_pill_preview_app">Instagram</string>
+    <string name="settings_notifications_system">Notifications</string>
+    <string name="settings_quiet_hours">Quiet hours</string>
+    <string name="settings_quiet_info">During quiet hours, open nudges, break reminders and limit warnings stay silent. Blocks and swipe limits still apply.</string>
+    <string name="settings_privacy_info">Everything Unscroll records stays on this phone: no account, no analytics, no internet. Deleting your history keeps your settings and limits; to remove everything, uninstall Unscroll.</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <plurals name="settings_debug_sample_added">
+        <item quantity="one">%d session added</item>
+        <item quantity="other">%d sessions added</item>
+    </plurals>
+
+    <!-- Permissions -->
+    <string name="permission_usage">Usage access</string>
+    <string name="permission_usage_note">See which app is open. Required.</string>
+    <string name="permission_overlay">Display over apps</string>
+    <string name="permission_overlay_note">Show the timer and blocks. Required.</string>
+    <string name="permission_notifications">Notifications</string>
+    <string name="permission_notifications_note">Nudges and reminders</string>
+    <string name="permission_battery">Battery: unrestricted</string>
+    <string name="permission_battery_note">Keeps tracking alive</string>
+    <string name="permission_accessibility">Scroll counting</string>
+    <string name="permission_accessibility_note">Switch on in Accessibility</string>
+    <string name="permission_optional">Optional</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_welcome_line">See your scrolling. Take your time back.</string>
+    <string name="onboarding_permissions_title">Three permissions</string>
+    <string name="onboarding_private">Package names and times only. Nothing leaves your phone.</string>
+    <string name="onboarding_done">Done</string>
+
+    <!-- Block screen and swipe cover -->
+    <string name="block_headline_blocked">Blocked</string>
+    <string name="block_headline_limit">Limit reached</string>
+    <string name="block_headline_swipes">Swipe limit reached</string>
+    <string name="block_headline_until">Blocked until %1$s</string>
+    <string name="block_today">today</string>
+    <plurals name="swipe_cover_label">
+        <item quantity="one">swipe · %1$s today</item>
+        <item quantity="other">swipes · %1$s today</item>
+    </plurals>
 </resources>

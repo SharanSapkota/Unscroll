@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.R
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -44,8 +44,8 @@ fun BreakScreen(
                 .fillMaxSize()
                 .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+                .padding(Dimens.spaceXl),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spaceXl, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
@@ -76,7 +76,7 @@ fun BreakScreen(
             } else {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spaceS),
                 ) {
                     Button(onClick = onDone, modifier = Modifier.fillMaxWidth(), enabled = state.canDecide) {
                         Text(stringResource(R.string.break_done))

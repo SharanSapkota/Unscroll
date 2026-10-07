@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.unscroll.app.domain.overlay.ColorThresholds
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
@@ -42,6 +43,16 @@ class OverlayPreferences @Inject constructor(
     suspend fun setShowTodayTotal(show: Boolean) = edit { it[SHOW_TODAY_TOTAL] = show }
 
     suspend fun setShowSwipes(show: Boolean) = edit { it[SHOW_SWIPES] = show }
+
+    /** Per app: show the pill for [packageName] or not. */
+    suspend fun setPillShownFor(packageName: String, shown: Boolean) = edit {
+        it[PILL_HIDDEN_FOR] = (it[PILL_HIDDEN_FOR] ?: emptySet()).toggle(packageName, hidden = !shown)
+    }
+
+    /** Per app: show the swipe count on [packageName]'s pill or not. */
+    suspend fun setSwipesShownFor(packageName: String, shown: Boolean) = edit {
+        it[SWIPES_HIDDEN_FOR] = (it[SWIPES_HIDDEN_FOR] ?: emptySet()).toggle(packageName, hidden = !shown)
+    }
 
     suspend fun setSwipeThresholds(thresholds: SwipeColorThresholds) {
         val safe = thresholds.normalized()
@@ -83,6 +94,9 @@ class OverlayPreferences @Inject constructor(
         }
     }
 
+    private fun Set<String>.toggle(packageName: String, hidden: Boolean): Set<String> =
+        if (hidden) this + packageName else this - packageName
+
     private suspend fun edit(block: (MutablePreferences) -> Unit) {
         dataStore.edit { block(it) }
     }
@@ -102,6 +116,8 @@ class OverlayPreferences @Inject constructor(
             warningAfterSwipes = this[SWIPE_WARNING] ?: SwipeColorThresholds.DEFAULT_WARNING_SWIPES,
             dangerAfterSwipes = this[SWIPE_DANGER] ?: SwipeColorThresholds.DEFAULT_DANGER_SWIPES,
         ).normalized(),
+        pillHiddenFor = this[PILL_HIDDEN_FOR] ?: emptySet(),
+        swipesHiddenFor = this[SWIPES_HIDDEN_FOR] ?: emptySet(),
     )
 
     private companion object {
@@ -114,6 +130,8 @@ class OverlayPreferences @Inject constructor(
         val SHOW_SWIPES = booleanPreferencesKey("overlay_show_swipes")
         val SWIPE_WARNING = intPreferencesKey("overlay_swipe_warning")
         val SWIPE_DANGER = intPreferencesKey("overlay_swipe_danger")
+        val PILL_HIDDEN_FOR = stringSetPreferencesKey("overlay_pill_hidden_for")
+        val SWIPES_HIDDEN_FOR = stringSetPreferencesKey("overlay_swipes_hidden_for")
 
         fun xKey(orientation: ScreenOrientation) =
             intPreferencesKey("overlay_x_${orientation.name.lowercase()}")

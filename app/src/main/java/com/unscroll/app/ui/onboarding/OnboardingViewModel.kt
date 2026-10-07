@@ -23,12 +23,10 @@ data class OnboardingUiState(
     val step: OnboardingStep,
     val permissions: PermissionState,
 ) {
-    val stepNumber: Int get() = step.ordinal + 1
-    val stepCount: Int get() = OnboardingFlow.stepCount
-    val isGranted: Boolean get() = step.permission?.let(permissions::isGranted) ?: false
+    val page: Int get() = step.ordinal
     val canContinue: Boolean get() = OnboardingFlow.canContinue(step, permissions)
     val canGoBack: Boolean get() = OnboardingFlow.previous(step) != null
-    val primaryAction: PrimaryAction get() = OnboardingFlow.primaryAction(step, permissions)
+    val primaryAction: PrimaryAction get() = OnboardingFlow.primaryAction(step)
 }
 
 @HiltViewModel
@@ -38,19 +36,19 @@ class OnboardingViewModel @Inject constructor(
     private val onboardingRepository: OnboardingRepository,
 ) : ViewModel() {
 
-    // Stored by name so the current step survives process death.
+    // Stored by name so the current page survives process death.
     private val stepName = savedStateHandle.getStateFlow<String?>(KEY_STEP, null)
 
-    /** Null until the start step is known. */
+    /** Null until the start page is known. */
     val uiState: StateFlow<OnboardingUiState?> = combine(
         stepName,
         permissionRepository.permissions,
     ) { name, permissions ->
-        name?.let { OnboardingUiState(OnboardingStep.valueOf(it), permissions) }
+        name?.let(::stepOrNull)?.let { OnboardingUiState(it, permissions) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
-        if (savedStateHandle.get<String>(KEY_STEP) == null) {
+        if (currentStep() == null) {
             viewModelScope.launch {
                 val completed = onboardingRepository.onboardingCompleted.first()
                 setStep(OnboardingFlow.startStep(completed, permissionRepository.permissions.value))
@@ -73,13 +71,20 @@ class OnboardingViewModel @Inject constructor(
         setStep(previous)
     }
 
+    /** The user swiped the pager to [page]. */
+    fun onPageChanged(page: Int) {
+        OnboardingStep.entries.getOrNull(page)?.let(::setStep)
+    }
+
     /** Called after a runtime permission dialog closes. */
     fun onPermissionResult() {
         permissionRepository.refresh()
     }
 
-    private fun currentStep(): OnboardingStep? =
-        savedStateHandle.get<String>(KEY_STEP)?.let(OnboardingStep::valueOf)
+    private fun currentStep(): OnboardingStep? = savedStateHandle.get<String>(KEY_STEP)?.let(::stepOrNull)
+
+    /** Null for a name saved by an older version with more steps. */
+    private fun stepOrNull(name: String): OnboardingStep? = OnboardingStep.entries.firstOrNull { it.name == name }
 
     private fun setStep(step: OnboardingStep) {
         savedStateHandle[KEY_STEP] = step.name

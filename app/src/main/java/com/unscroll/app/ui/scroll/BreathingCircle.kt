@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
+import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.R
 import kotlin.math.abs
 import kotlin.math.cos
@@ -46,7 +46,7 @@ internal fun BreathingCircle() {
     val label = stringResource(if (breathingIn) R.string.break_breathe_in else R.string.break_breathe_out)
     Box(
         modifier = Modifier
-            .size(220.dp)
+            .size(Dimens.breathingCircle)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {

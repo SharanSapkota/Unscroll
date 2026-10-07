@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -16,17 +16,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.unscroll.app.R
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.ui.durationText
+import com.unscroll.app.ui.theme.Dimens
+import com.unscroll.app.ui.theme.PillColors
+import com.unscroll.app.ui.theme.PillType
 import kotlinx.coroutines.delay
 
 /** Swipe info for the pill: the session count (for color, and text if shown) and swipes left near a limit. */
@@ -131,11 +132,12 @@ fun OverlayContent(
 private fun PillMessageCard(message: PillMessage, appName: String, onAction: (PillAction) -> Unit) {
     Column(
         modifier = Modifier
-            .padding(top = 6.dp)
-            .widthIn(max = 280.dp)
-            .background(Color(0xF2202124), RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(top = Dimens.spaceXs)
+            .widthIn(max = Dimens.pillMessageMaxWidth)
+            .shadow(Dimens.pillShadow, MaterialTheme.shapes.medium)
+            .background(PillColors.messageBackground, MaterialTheme.shapes.medium)
+            .padding(horizontal = Dimens.spaceL, vertical = Dimens.spaceM),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
     ) {
         Text(
             text = when (message.kind) {
@@ -143,21 +145,21 @@ private fun PillMessageCard(message: PillMessage, appName: String, onAction: (Pi
                 PillMessageKind.LIMIT_WARNING -> stringResource(R.string.overlay_limit_warning, appName)
                 PillMessageKind.LIMIT_REACHED -> stringResource(R.string.overlay_limit_reached, appName)
             },
-            color = Color.White,
-            fontSize = 14.sp,
+            color = PillColors.onMessage,
+            fontSize = PillType.message,
         )
         if (message.kind == PillMessageKind.BREAK) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
                 TextButton(onClick = { onAction(PillAction.KEEP_GOING) }) {
-                    Text(stringResource(R.string.overlay_keep_going), color = Color(0xFFA5D6A7))
+                    Text(stringResource(R.string.overlay_keep_going), color = PillColors.messageAccent)
                 }
                 TextButton(onClick = { onAction(PillAction.LEAVE) }) {
-                    Text(stringResource(R.string.overlay_leave), color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.overlay_leave), color = PillColors.onMessage, fontWeight = FontWeight.Bold)
                 }
             }
         } else {
             TextButton(onClick = { onAction(PillAction.DISMISS) }) {
-                Text(stringResource(R.string.overlay_ok), color = Color(0xFFA5D6A7))
+                Text(stringResource(R.string.overlay_ok), color = PillColors.messageAccent)
             }
         }
     }

@@ -188,7 +188,7 @@ class FrictionCoordinator @Inject constructor(
                 breaksShown[session.id] = due
                 if (!quiet) {
                     val minutes = ((now - session.startTime) / MINUTE).toInt()
-                    if (overlay.canShowMessages()) {
+                    if (overlay.canShowMessages(packageName)) {
                         messages.post(PillMessage(nextMessageId++, PillMessageKind.BREAK, packageName, minutes))
                     } else {
                         notifier.notifyBreak(packageName, minutes)
@@ -227,7 +227,7 @@ class FrictionCoordinator @Inject constructor(
     }
 
     private suspend fun showLimitWarning(packageName: String, percent: Int) {
-        if (!overlay.canShowMessages()) {
+        if (!overlay.canShowMessages(packageName)) {
             notifier.notifyLimit(packageName, percent)
             return
         }

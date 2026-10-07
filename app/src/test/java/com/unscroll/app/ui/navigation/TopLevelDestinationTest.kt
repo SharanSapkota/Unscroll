@@ -6,10 +6,15 @@ import org.junit.Test
 class TopLevelDestinationTest {
 
     @Test
-    fun bottomBar_hasDashboardAppsSettingsInOrder() {
+    fun bottomBar_hasHomeAppsSettingsInOrder() {
         assertEquals(
-            listOf("dashboard", "apps", "settings"),
+            listOf("home", "apps", "settings"),
             TopLevelDestination.entries.map { it.route },
         )
+    }
+
+    @Test
+    fun appDetailRoute_carriesThePackageName() {
+        assertEquals("app/com.instagram.android", AppDetailRoute.of("com.instagram.android"))
     }
 }

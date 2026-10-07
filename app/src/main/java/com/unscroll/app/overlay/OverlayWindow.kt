@@ -15,6 +15,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillPositioner
 import com.unscroll.app.domain.overlay.ScreenBounds
+import com.unscroll.app.ui.theme.UnscrollTheme
 import kotlin.math.roundToInt
 
 /**
@@ -54,15 +55,17 @@ internal class OverlayWindow(
         setViewTreeViewModelStoreOwner(owner)
         setViewTreeSavedStateRegistryOwner(owner)
         setContent {
-            OverlayContent(
-                state = state,
-                now = now,
-                onTap = onTap,
-                onDrag = ::dragBy,
-                onDragEnd = ::dragEnded,
-                onMessageAction = onMessageAction,
-                swipes = swipes,
-            )
+            UnscrollTheme(darkTheme = true) {
+                OverlayContent(
+                    state = state,
+                    now = now,
+                    onTap = onTap,
+                    onDrag = ::dragBy,
+                    onDragEnd = ::dragEnded,
+                    onMessageAction = onMessageAction,
+                    swipes = swipes,
+                )
+            }
         }
         // The pill changes size (collapsed, today's total); keep it on screen when it does.
         addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->

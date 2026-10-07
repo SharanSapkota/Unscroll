@@ -11,10 +11,10 @@ object PillRules {
 
     /** The pill is only ever on screen while a tracked app is in front and the user allows it. */
     fun shouldShow(
-        trackedAppInForeground: Boolean,
+        foregroundPackage: String?,
         settings: OverlaySettings,
         canDrawOverlays: Boolean,
-    ): Boolean = trackedAppInForeground && settings.enabled && canDrawOverlays
+    ): Boolean = foregroundPackage != null && settings.showsPillFor(foregroundPackage) && canDrawOverlays
 
     /** Green before the warning threshold, yellow before the danger threshold, red after. */
     fun levelFor(elapsedMillis: Long, thresholds: ColorThresholds): PillLevel {

@@ -57,100 +57,64 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun returningUserWithRevokedOverlay_startsAtOverlayStep() = runTest {
+    fun returningUserWithRevokedOverlay_startsAtPermissions() = runTest {
         onboardingRepository.completed.value = true
         grant(permissions(AppPermission.USAGE_ACCESS))
 
         val viewModel = createViewModel()
 
-        assertEquals(OnboardingStep.OVERLAY, viewModel.step())
+        assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
     }
 
     @Test
-    fun restoredStep_isKeptAfterProcessDeath() = runTest {
-        val viewModel = createViewModel(
-            SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.NOTIFICATIONS.name)),
-        )
+    fun restoredPage_isKeptAfterProcessDeath_andOldStepNamesAreIgnored() = runTest {
+        val restored = createViewModel(SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.PERMISSIONS.name)))
+        assertEquals(OnboardingStep.PERMISSIONS, restored.step())
 
-        assertEquals(OnboardingStep.NOTIFICATIONS, viewModel.step())
+        // A step saved by the old five-step onboarding starts over at the right page.
+        val old = createViewModel(SavedStateHandle(mapOf("onboarding_step" to "BATTERY")))
+        assertEquals(OnboardingStep.WELCOME, old.step())
     }
 
     @Test
-    fun usageAccessStep_blocksUntilGranted_thenContinues() = runTest {
+    fun permissionsPage_blocksUntilRequiredGranted_thenFinishes() = runTest {
         val viewModel = createViewModel()
         viewModel.onContinue()
-        assertEquals(OnboardingStep.USAGE_ACCESS, viewModel.step())
+        assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
         assertFalse(viewModel.uiState.value!!.canContinue)
 
         viewModel.onContinue()
-        assertEquals(OnboardingStep.USAGE_ACCESS, viewModel.step())
-
-        // User grants access in Settings and comes back; MainActivity refreshes.
-        grant(permissions(AppPermission.USAGE_ACCESS))
-        assertTrue(viewModel.uiState.value!!.canContinue)
-        assertTrue(viewModel.uiState.value!!.isGranted)
-
-        viewModel.onContinue()
-        assertEquals(OnboardingStep.OVERLAY, viewModel.step())
-    }
-
-    @Test
-    fun fullFlow_skippingOptionalSteps_completesOnboarding() = runTest {
-        grant(REQUIRED_ONLY)
-        val viewModel = createViewModel()
-
-        viewModel.onContinue() // welcome -> usage access
-        viewModel.onContinue() // -> overlay
-        viewModel.onContinue() // -> notifications
-        assertEquals(OnboardingStep.NOTIFICATIONS, viewModel.step())
-        assertEquals(PrimaryAction.SKIP, viewModel.uiState.value?.primaryAction)
-
-        viewModel.onContinue() // skip -> battery
-        assertEquals(OnboardingStep.BATTERY, viewModel.step())
+        assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
         assertFalse(onboardingRepository.completed.value)
 
-        viewModel.onContinue() // finish
+        grant(REQUIRED_ONLY)
+        assertTrue(viewModel.uiState.value!!.canContinue)
+        viewModel.onContinue()
         assertTrue(onboardingRepository.completed.value)
     }
 
     @Test
-    fun finish_withRevokedRequiredPermission_goesBackInsteadOfCompleting() = runTest {
-        val viewModel = createViewModel(
-            SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.BATTERY.name)),
-        )
-        grant(permissions(AppPermission.OVERLAY))
+    fun backAndSwipe_moveBetweenPages() = runTest {
+        val viewModel = createViewModel(SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.PERMISSIONS.name)))
 
-        viewModel.onContinue()
-
-        assertEquals(OnboardingStep.USAGE_ACCESS, viewModel.step())
-        assertFalse(onboardingRepository.completed.value)
-    }
-
-    @Test
-    fun onBack_goesToPreviousStep_andStopsAtWelcome() = runTest {
-        val viewModel = createViewModel(
-            SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.OVERLAY.name)),
-        )
-
-        viewModel.onBack()
-        assertEquals(OnboardingStep.USAGE_ACCESS, viewModel.step())
         viewModel.onBack()
         assertEquals(OnboardingStep.WELCOME, viewModel.step())
         viewModel.onBack()
         assertEquals(OnboardingStep.WELCOME, viewModel.step())
+
+        viewModel.onPageChanged(1)
+        assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
+        viewModel.onPageChanged(5)
+        assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
     }
 
     @Test
     fun onPermissionResult_refreshesPermissions() = runTest {
-        val viewModel = createViewModel(
-            SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.NOTIFICATIONS.name)),
-        )
-        assertFalse(viewModel.uiState.value!!.isGranted)
+        val viewModel = createViewModel(SavedStateHandle(mapOf("onboarding_step" to OnboardingStep.PERMISSIONS.name)))
+        checker.state = PermissionState.ALL
 
-        checker.state = permissions(AppPermission.NOTIFICATIONS)
         viewModel.onPermissionResult()
 
-        assertTrue(viewModel.uiState.value!!.isGranted)
-        assertEquals(PrimaryAction.CONTINUE, viewModel.uiState.value?.primaryAction)
+        assertEquals(PermissionState.ALL, viewModel.uiState.value?.permissions)
     }
 }

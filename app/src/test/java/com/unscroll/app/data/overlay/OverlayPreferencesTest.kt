@@ -69,4 +69,19 @@ class OverlayPreferencesTest {
         assertNull(preferences.position(ScreenOrientation.PORTRAIT))
         assertNull(preferences.position(ScreenOrientation.LANDSCAPE))
     }
+
+    @Test
+    fun perAppPillAndSwipeSwitches_areSavedAndUndone() = runTest {
+        val preferences = createPreferences()
+        preferences.setPillShownFor("com.instagram.android", shown = false)
+        preferences.setSwipesShownFor("com.zhiliaoapp.musically", shown = false)
+
+        val hidden = preferences.settings.first()
+        assertEquals(setOf("com.instagram.android"), hidden.pillHiddenFor)
+        assertEquals(setOf("com.zhiliaoapp.musically"), hidden.swipesHiddenFor)
+
+        preferences.setPillShownFor("com.instagram.android", shown = true)
+        preferences.setSwipesShownFor("com.zhiliaoapp.musically", shown = true)
+        assertEquals(OverlaySettings(), preferences.settings.first())
+    }
 }

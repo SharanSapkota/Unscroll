@@ -63,10 +63,25 @@ class PillRulesTest {
     @Test
     fun shouldShow_onlyWithTrackedAppEnabledAndPermission() {
         val enabled = OverlaySettings(enabled = true)
-        assertTrue(PillRules.shouldShow(true, enabled, canDrawOverlays = true))
-        assertFalse(PillRules.shouldShow(false, enabled, canDrawOverlays = true))
-        assertFalse(PillRules.shouldShow(true, enabled, canDrawOverlays = false))
-        assertFalse(PillRules.shouldShow(true, OverlaySettings(enabled = false), canDrawOverlays = true))
+        assertTrue(PillRules.shouldShow(IG, enabled, canDrawOverlays = true))
+        assertFalse(PillRules.shouldShow(null, enabled, canDrawOverlays = true))
+        assertFalse(PillRules.shouldShow(IG, enabled, canDrawOverlays = false))
+        assertFalse(PillRules.shouldShow(IG, OverlaySettings(enabled = false), canDrawOverlays = true))
+    }
+
+    @Test
+    fun shouldShow_respectsThePerAppSwitch() {
+        val hiddenForInstagram = OverlaySettings(pillHiddenFor = setOf(IG))
+        assertFalse(PillRules.shouldShow(IG, hiddenForInstagram, canDrawOverlays = true))
+        assertTrue(PillRules.shouldShow(TIKTOK, hiddenForInstagram, canDrawOverlays = true))
+    }
+
+    @Test
+    fun swipeCount_needsTheGlobalAndThePerAppSwitch() {
+        assertTrue(OverlaySettings().showsSwipesFor(IG))
+        assertFalse(OverlaySettings(swipesHiddenFor = setOf(IG)).showsSwipesFor(IG))
+        assertTrue(OverlaySettings(swipesHiddenFor = setOf(IG)).showsSwipesFor(TIKTOK))
+        assertFalse(OverlaySettings(showSwipes = false).showsSwipesFor(TIKTOK))
     }
 
     @Test
@@ -82,5 +97,10 @@ class PillRulesTest {
         assertEquals(PillLevel.DANGER, PillRules.combinedLevel(PillLevel.CALM, PillLevel.DANGER))
         assertEquals(PillLevel.WARNING, PillRules.combinedLevel(PillLevel.WARNING, PillLevel.CALM))
         assertEquals(PillLevel.WARNING, PillRules.combinedLevel(PillLevel.WARNING, null))
+    }
+
+    private companion object {
+        const val IG = "com.instagram.android"
+        const val TIKTOK = "com.zhiliaoapp.musically"
     }
 }

@@ -4,7 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.service.TrackingController
@@ -26,11 +29,15 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var scrollCountingRepository: ScrollCountingRepository
 
+    @Inject
+    lateinit var appearancePreferences: AppearancePreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {
-            UnscrollTheme {
+            val dynamicColor by appearancePreferences.dynamicColor.collectAsStateWithLifecycle(initialValue = false)
+            UnscrollTheme(dynamicColor = dynamicColor) {
                 UnscrollRoot()
             }
         }

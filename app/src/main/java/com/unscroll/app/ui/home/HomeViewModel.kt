@@ -1,8 +1,9 @@
-package com.unscroll.app.ui.dashboard
+package com.unscroll.app.ui.home
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.goals.GoalPreferences
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
@@ -25,8 +26,11 @@ import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.insights.WeeklyReport
 import com.unscroll.app.domain.scroll.GetScrollStatsUseCase
 import com.unscroll.app.domain.scroll.ScrollStats
+import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.SessionManager
+import com.unscroll.app.service.TrackingController
+import com.unscroll.app.util.InstalledTrackedApps
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import java.time.temporal.WeekFields
@@ -44,8 +48,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-data class DashboardUiState(
+data class HomeUiState(
     val isLoading: Boolean = true,
     val period: UsagePeriod = UsagePeriod.TODAY,
     val trackingEnabled: Boolean = true,
@@ -59,6 +64,8 @@ data class DashboardUiState(
     val goal: GoalProgress? = null,
     /** Last complete week, or null if nothing was tracked in it. */
     val weeklyReport: WeeklyReport? = null,
+    /** One tile per installed tracked app, the most used first. */
+    val apps: List<AppTileState> = emptyList(),
 ) {
     /** False until the first session has been logged. */
     val hasAnyData: Boolean get() = hoursInvested.totalMillis > 0
@@ -72,7 +79,7 @@ data class GoalProgress(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class DashboardViewModel @Inject constructor(
+class HomeViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val getPeriodUsage: GetPeriodUsageUseCase,
     private val getTodayTrend: GetTodayTrendUseCase,
@@ -81,6 +88,9 @@ class DashboardViewModel @Inject constructor(
     usageDataSource: UsageDataSource,
     sessionManager: SessionManager,
     trackingPreferences: TrackingPreferences,
+    private val trackingController: TrackingController,
+    limits: LimitRepository,
+    private val installedApps: InstalledTrackedApps,
     goalPreferences: GoalPreferences,
     private val getStreakHistory: GetStreakHistoryUseCase,
     private val getWeeklyReport: GetWeeklyReportUseCase,
@@ -124,16 +134,18 @@ class DashboardViewModel @Inject constructor(
             )
         }
 
-    private val liveState: Flow<DashboardUiState> = combine(
-        selectedPeriod,
-        trackingPreferences.trackingEnabled,
+    private val liveState: Flow<HomeUiState> = combine(
+        combine(selectedPeriod, trackingPreferences.trackingEnabled) { period, enabled -> period to enabled },
         usageDataSource.observeChanges(),
         refreshTicks,
         scrollCounting.countingSince,
-    ) { period, trackingEnabled, _, _, countingSince -> LoadRequest(period, trackingEnabled, countingSince) }
-        .mapLatest { load(it.period, it.trackingEnabled, it.countingSince) }
+        limits.observeLimits(),
+    ) { (period, trackingEnabled), _, _, countingSince, limitMap ->
+        LoadRequest(period, trackingEnabled, countingSince, limitMap)
+    }
+        .mapLatest { load(it) }
 
-    val uiState: StateFlow<DashboardUiState> = combine(liveState, slowState) { state, slow ->
+    val uiState: StateFlow<HomeUiState> = combine(liveState, slowState) { state, slow ->
         val goal = slow.goalMinutes
         val history = slow.streakHistory
         state.copy(
@@ -145,24 +157,33 @@ class DashboardViewModel @Inject constructor(
             },
             weeklyReport = slow.weeklyReport,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun selectPeriod(period: UsagePeriod) {
         savedStateHandle[KEY_PERIOD] = period.name
     }
 
-    private suspend fun load(period: UsagePeriod, trackingEnabled: Boolean, countingSince: Long?): DashboardUiState {
+    /** The tracking pill at the top of Home. */
+    fun setTrackingEnabled(enabled: Boolean) {
+        viewModelScope.launch { trackingController.setTrackingEnabled(enabled) }
+    }
+
+    private suspend fun load(request: LoadRequest): HomeUiState {
         val now = clock.now()
         val zone = ZoneId.systemDefault()
-        return DashboardUiState(
+        val period = request.period
+        val periodUsage = getPeriodUsage(period, now, zone)
+        val scrollStats = request.countingSince?.let { getScrollStats(period, it, now, zone) }
+        return HomeUiState(
             isLoading = false,
             period = period,
-            trackingEnabled = trackingEnabled,
+            trackingEnabled = request.trackingEnabled,
             todayTrend = getTodayTrend(now, zone),
-            periodUsage = getPeriodUsage(period, now, zone),
+            periodUsage = periodUsage,
             weekComparison = getWeekComparison(now, zone),
             hoursInvested = getHoursInvested(now),
-            scrollStats = countingSince?.let { getScrollStats(period, it, now, zone) },
+            scrollStats = scrollStats,
+            apps = HomeTiles.build(installedApps.packages(), periodUsage, scrollStats, request.limits),
         )
     }
 
@@ -172,7 +193,12 @@ class DashboardViewModel @Inject constructor(
         val weeklyReport: WeeklyReport?,
     )
 
-    private data class LoadRequest(val period: UsagePeriod, val trackingEnabled: Boolean, val countingSince: Long?)
+    private data class LoadRequest(
+        val period: UsagePeriod,
+        val trackingEnabled: Boolean,
+        val countingSince: Long?,
+        val limits: Map<String, AppLimit>,
+    )
 
     private fun ticker(intervalMillis: Long): Flow<Unit> = flow {
         while (true) {
@@ -182,7 +208,7 @@ class DashboardViewModel @Inject constructor(
     }
 
     private companion object {
-        const val KEY_PERIOD = "dashboard_period"
+        const val KEY_PERIOD = "home_period"
         const val LIVE_REFRESH_MILLIS = 1_000L
         const val IDLE_REFRESH_MILLIS = 60_000L
     }

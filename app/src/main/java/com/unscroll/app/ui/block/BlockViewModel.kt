@@ -18,7 +18,6 @@ import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
-import kotlin.random.Random
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +32,6 @@ data class BlockUiState(
     val reason: BlockReason,
     val until: Long?,
     val usedTodayMillis: Long = 0,
-    val messageIndex: Int = 0,
     /** "I need access" was tapped and the extension saved: the activity should reopen the app. */
     val accessGranted: Boolean = false,
     /** The app isn't blocked any more (the user changed its limits): the activity should close. */
@@ -60,9 +58,6 @@ class BlockViewModel @Inject constructor(
                 ?.let { name -> BlockReason.entries.firstOrNull { it.name == name } }
                 ?: BlockReason.BLOCKED_ALWAYS,
             until = savedStateHandle.get<Long>(BlockActivity.EXTRA_UNTIL)?.takeIf { it > 0 },
-            messageIndex = savedStateHandle.get<Int>(KEY_MESSAGE) ?: Random.nextInt(MESSAGE_COUNT).also {
-                savedStateHandle[KEY_MESSAGE] = it
-            },
         ),
     )
     val uiState: StateFlow<BlockUiState> = _uiState.asStateFlow()
@@ -117,11 +112,5 @@ class BlockViewModel @Inject constructor(
     private suspend fun usedToday(now: Long, zone: ZoneId): Long {
         val todayStart = startOfDay(localDate(now, zone), zone)
         return usage.appTotals(TimeRange(todayStart, now), now)[_uiState.value.packageName] ?: 0L
-    }
-
-    companion object {
-        /** Must match the number of entries in R.array.block_messages. */
-        const val MESSAGE_COUNT = 8
-        private const val KEY_MESSAGE = "block_message_index"
     }
 }

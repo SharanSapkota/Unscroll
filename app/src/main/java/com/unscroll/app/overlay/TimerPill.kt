@@ -10,24 +10,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.unscroll.app.R
 import com.unscroll.app.domain.overlay.PillLevel
 import com.unscroll.app.domain.overlay.PillSize
+import com.unscroll.app.ui.theme.Dimens
+import com.unscroll.app.ui.theme.Motion
+import com.unscroll.app.ui.theme.PillColors
+import com.unscroll.app.ui.theme.PillType
 
 /** Everything the pill needs to draw one frame. */
 data class TimerPillState(
@@ -46,113 +47,118 @@ data class TimerPillState(
     val remainingText: String? = null,
 )
 
-/** Fixed traffic-light colors: they must read the same over any app, in light or dark mode. */
+/** Fixed traffic-light colors from the theme: they must read the same over any app, light or dark. */
 private fun PillLevel.background(): Color = when (this) {
-    PillLevel.CALM -> Color(0xFF2E7D32)
-    PillLevel.WARNING -> Color(0xFFF9A825)
-    PillLevel.DANGER -> Color(0xFFC62828)
+    PillLevel.CALM -> PillColors.calm
+    PillLevel.WARNING -> PillColors.warning
+    PillLevel.DANGER -> PillColors.danger
 }
 
 private fun PillLevel.content(): Color = when (this) {
-    PillLevel.WARNING -> Color(0xFF1C1B1F)
-    PillLevel.CALM, PillLevel.DANGER -> Color.White
+    PillLevel.CALM -> PillColors.onCalm
+    PillLevel.WARNING -> PillColors.onWarning
+    PillLevel.DANGER -> PillColors.onDanger
 }
 
 /**
- * The floating timer: "Instagram 12:41" (plus today's total if enabled), or a small dot when
- * collapsed. Colors animate between levels.
+ * The floating timer: a compact capsule with a soft shadow, the time bold, the app name and the
+ * swipe count smaller ("Instagram 12:41 · 86 swipes"), or a small dot when collapsed. Colors
+ * cross-fade between levels.
  */
 @Composable
 fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
     val background by animateColorAsState(
         targetValue = state.level.background(),
-        animationSpec = tween(durationMillis = COLOR_ANIMATION_MILLIS),
+        animationSpec = tween(durationMillis = Motion.PILL_COLOR),
         label = "pillBackground",
     )
     val content by animateColorAsState(
         targetValue = state.level.content(),
-        animationSpec = tween(durationMillis = COLOR_ANIMATION_MILLIS),
+        animationSpec = tween(durationMillis = Motion.PILL_COLOR),
         label = "pillContent",
     )
-    if (state.collapsed) {
-        Box(
-            modifier = modifier
-                .alpha(state.opacity)
-                .size(if (state.size == PillSize.SMALL) 14.dp else 18.dp)
-                .background(background, CircleShape),
-        )
-        return
-    }
     val small = state.size == PillSize.SMALL
-    Row(
-        modifier = modifier
-            .alpha(state.opacity)
-            .background(background, RoundedCornerShape(50))
-            .padding(
-                horizontal = if (small) 10.dp else 14.dp,
-                vertical = if (small) 4.dp else 6.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(if (small) 6.dp else 8.dp),
-    ) {
-        Text(
-            text = state.appName,
-            color = content,
-            fontSize = if (small) 11.sp else 13.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-        )
-        Column(horizontalAlignment = Alignment.End) {
-            // "12:41 · 86 swipes"
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = state.elapsedText,
-                    color = content,
-                    fontSize = if (small) 13.sp else 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    // Monospaced digits so the pill doesn't jiggle every second.
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1,
-                )
-                state.swipesText?.let {
+    // Room for the shadow inside the overlay window.
+    Box(modifier = modifier.padding(Dimens.pillShadow)) {
+        if (state.collapsed) {
+            Box(
+                modifier = Modifier
+                    .alpha(state.opacity)
+                    .size(if (small) Dimens.pillDotSmall else Dimens.pillDotMedium)
+                    .shadow(Dimens.pillShadow, CircleShape)
+                    .background(background, CircleShape),
+            )
+            return@Box
+        }
+        Row(
+            modifier = Modifier
+                .alpha(state.opacity)
+                .shadow(Dimens.pillShadow, CircleShape)
+                .background(background, CircleShape)
+                .padding(
+                    horizontal = if (small) Dimens.pillPaddingHSmall else Dimens.pillPaddingHMedium,
+                    vertical = if (small) Dimens.pillPaddingVSmall else Dimens.pillPaddingVMedium,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(if (small) Dimens.spaceXs + Dimens.spaceXxs else Dimens.spaceS),
+        ) {
+            Text(
+                text = state.appName,
+                color = content.copy(alpha = SECONDARY_ALPHA),
+                fontSize = if (small) PillType.appNameSmall else PillType.appNameMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+            )
+            Column(horizontalAlignment = Alignment.End) {
+                // "12:41 · 86 swipes"
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = stringResource(R.string.overlay_swipes_separator, it),
+                        text = state.elapsedText,
                         color = content,
-                        fontSize = if (small) 11.sp else 13.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontSize = if (small) PillType.timeSmall else PillType.timeMedium,
+                        fontWeight = FontWeight.Bold,
+                        // Tabular digits so the pill doesn't jiggle every second.
+                        style = TextStyle(fontFeatureSettings = "tnum"),
+                        maxLines = 1,
+                    )
+                    state.swipesText?.let {
+                        Text(
+                            text = stringResource(R.string.overlay_swipes_separator, it),
+                            color = content.copy(alpha = SECONDARY_ALPHA),
+                            fontSize = if (small) PillType.detailSmall else PillType.detailMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                state.remainingText?.let {
+                    Text(
+                        text = it,
+                        color = content,
+                        fontSize = if (small) PillType.detailSmall else PillType.detailMedium,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
                 }
-            }
-            state.remainingText?.let {
-                Text(
-                    text = it,
-                    color = content,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = if (small) 10.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-            }
-            state.todayText?.let {
-                Text(
-                    text = it,
-                    color = content.copy(alpha = 0.85f),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontSize = if (small) 9.sp else 10.sp,
-                    maxLines = 1,
-                )
+                state.todayText?.let {
+                    Text(
+                        text = it,
+                        color = content.copy(alpha = SECONDARY_ALPHA),
+                        fontSize = if (small) PillType.detailSmall else PillType.detailMedium,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
 }
 
-private const val COLOR_ANIMATION_MILLIS = 600
+private const val SECONDARY_ALPHA = 0.85f
 
 @Preview
 @Composable
 private fun TimerPillPreview() {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
         PillLevel.entries.forEach { level ->
             TimerPill(
                 TimerPillState(
@@ -163,6 +169,7 @@ private fun TimerPillPreview() {
                     size = PillSize.MEDIUM,
                     opacity = 0.9f,
                     collapsed = false,
+                    swipesText = "86 swipes",
                 ),
             )
         }

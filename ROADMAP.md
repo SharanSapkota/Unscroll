@@ -61,7 +61,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - App icon, screenshots, privacy policy, Data Safety form
 - Internal testing track -> closed testing (Play requires testers for new personal accounts) -> production
 
-## M9: Swipe limit (hard stop)
+## M9: Swipe limit (hard stop) ✅ Done (awaiting device testing)
 - Swipe count on the live pill, and pill color by swipes (configurable thresholds)
 - Per-app swipe limit (off by default; 25/50/100/200/300 or custom; per day or per session with a reset gap)
 - "N swipes left" on the pill from 80 %
@@ -81,3 +81,16 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - The cover crashed the app when the limit was reached: the Compose owners were set on the ComposeView, but Compose looks them up from the window's root frame
 - One cover window at most, added and removed on the main thread, window errors logged with the block screen + Home as fallback, shown once per visit instead of on every swipe (`SwipeCoverTracker`)
 - **Done when**: reaching a swipe limit shows the cover without a crash, no touch reaches the app, and "Go home" always works.
+
+## UI/UX redesign after M9 ✅ Done (awaiting device testing)
+- Presentation only: tracking, blocking, overlay and accessibility logic unchanged (one exception, below)
+- One theme (brand teal + neutrals, status green/amber/red, bold numbers, 20–28 dp shapes, spacing and motion tokens), Material You dynamic color as an option, dark mode first
+- A small design system in `ui/components` reused everywhere; haptics, 48 dp targets, light/dark previews
+- Home replaces the Dashboard: huge total with trend chip, Day/Week/Month/All, app tiles with limit bars, hours invested, collapsible Insights, tracking pill
+- Apps tab: a control list with a Block switch per app and Block all/Unblock all; App detail: Limits, Blocking, Timer & nudges, mini stats, instant save with a snackbar
+- Settings: permission health, then Tracking, Timer pill (live preview), Notifications, Data & privacy (+ Appearance, Debug in debug builds)
+- Onboarding: two swipeable pages (welcome, permissions with Grant buttons)
+- Restyled pill, block screen and swipe cover (shared calm dark `StopScreen`)
+- The one logic change: the timer pill and its swipe count can be switched off per app (`OverlaySettings.pillHiddenFor`/`swipesHiddenFor`)
+- Not in this change: adding other installed apps to the tracked list (needs a user-editable tracked list; its own milestone)
+- **Done when**: every existing feature is reachable in 1–2 taps from the main screens and works as before.
