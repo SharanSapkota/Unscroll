@@ -37,19 +37,19 @@ class PillRulesTest {
     fun levelFor_defaultThresholds_greenYellowRed() {
         val defaults = ColorThresholds()
         assertEquals(PillLevel.CALM, PillRules.levelFor(0, defaults))
-        assertEquals(PillLevel.CALM, PillRules.levelFor(10 * minute - 1, defaults))
-        assertEquals(PillLevel.WARNING, PillRules.levelFor(10 * minute, defaults))
-        assertEquals(PillLevel.WARNING, PillRules.levelFor(20 * minute - 1, defaults))
-        assertEquals(PillLevel.DANGER, PillRules.levelFor(20 * minute, defaults))
+        assertEquals(PillLevel.CALM, PillRules.levelFor(30 * minute - 1, defaults))
+        assertEquals(PillLevel.WARNING, PillRules.levelFor(30 * minute, defaults))
+        assertEquals(PillLevel.WARNING, PillRules.levelFor(60 * minute - 1, defaults))
+        assertEquals(PillLevel.DANGER, PillRules.levelFor(60 * minute, defaults))
         assertEquals(PillLevel.DANGER, PillRules.levelFor(3 * hour, defaults))
     }
 
     @Test
     fun levelFor_customThresholds() {
-        val custom = ColorThresholds(warningAfterMinutes = 2, dangerAfterMinutes = 5)
-        assertEquals(PillLevel.CALM, PillRules.levelFor(119 * second, custom))
-        assertEquals(PillLevel.WARNING, PillRules.levelFor(2 * minute, custom))
-        assertEquals(PillLevel.DANGER, PillRules.levelFor(5 * minute, custom))
+        val custom = ColorThresholds(warningAfterMinutes = 10, dangerAfterMinutes = 15)
+        assertEquals(PillLevel.CALM, PillRules.levelFor(10 * minute - second, custom))
+        assertEquals(PillLevel.WARNING, PillRules.levelFor(10 * minute, custom))
+        assertEquals(PillLevel.DANGER, PillRules.levelFor(15 * minute, custom))
     }
 
     @Test

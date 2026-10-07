@@ -33,6 +33,9 @@ class OverlayPreferencesTest {
         assertEquals(OverlaySettings(), settings)
         // The timer is on by default (it still needs the overlay permission to show).
         assertTrue(settings.enabled)
+        // This visit's time is extra and off by default; colors follow today's total (30/60 min).
+        assertEquals(false, settings.showSessionTime)
+        assertEquals(ColorThresholds(30, 60), settings.thresholds)
     }
 
     @Test
@@ -40,7 +43,7 @@ class OverlayPreferencesTest {
         val preferences = createPreferences()
 
         preferences.setEnabled(false)
-        preferences.setShowTodayTotal(true)
+        preferences.setShowSessionTime(true)
         preferences.setThresholds(ColorThresholds(30, 5))
         preferences.setSize(PillSize.SMALL)
         preferences.setOpacity(0.1f)
@@ -48,7 +51,7 @@ class OverlayPreferencesTest {
         assertEquals(
             OverlaySettings(
                 enabled = false,
-                showTodayTotal = true,
+                showSessionTime = true,
                 thresholds = ColorThresholds(30, 31),
                 size = PillSize.SMALL,
                 opacity = OverlaySettings.MIN_OPACITY,

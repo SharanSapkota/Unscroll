@@ -6,15 +6,16 @@ import android.provider.Settings
 import android.util.Log
 import android.view.WindowManager
 import com.unscroll.app.data.appearance.AppearancePreferences
+import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.overlay.OverlayPreferences
+import com.unscroll.app.data.overlay.PillTotalsRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
-import com.unscroll.app.domain.insights.TimeRange
-import com.unscroll.app.domain.insights.UsageDataSource
-import com.unscroll.app.domain.insights.localDate
-import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillRules
+import com.unscroll.app.domain.overlay.PillToday
+import com.unscroll.app.domain.overlay.PillTodayBase
+import com.unscroll.app.domain.overlay.ShownTotal
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.SessionManager
@@ -44,13 +45,19 @@ import kotlinx.coroutines.withContext
  * Shows the pill as soon as a tracked app is in the foreground ([SessionManager.foregroundSession])
  * and removes it as soon as the user leaves, the screen turns off, the overlay is switched off,
  * or the "Display over other apps" permission is missing or revoked.
+ *
+ * The pill shows today's total for the app. Its base (earlier sessions today) is read from the
+ * database once per visit ([PillTotalsRepository]); the pill adds the open session's time from
+ * the clock every second ([PillToday]). The last total shown per app is kept as a floor, so the
+ * pill never shows less than before on the same day.
  */
 @Singleton
 class OverlayTimerManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val sessionManager: SessionManager,
     private val preferences: OverlayPreferences,
-    private val usage: UsageDataSource,
+    private val totals: PillTotalsRepository,
+    private val limits: LimitRepository,
     private val messages: OverlayMessages,
     private val scrollCounting: ScrollCountingRepository,
     private val swipeLimitEnforcer: SwipeLimitEnforcer,
@@ -64,6 +71,8 @@ class OverlayTimerManager @Inject constructor(
     private var window: OverlayWindow? = null
     private var scope: CoroutineScope? = null
     private var swipesShown: PillSwipes? = null
+    private var base: PillTodayBase? = null
+    private val shownToday = HashMap<String, ShownTotal>()
 
     suspend fun run() = withContext(Dispatchers.Main.immediate) {
         try {
@@ -75,31 +84,33 @@ class OverlayTimerManager @Inject constructor(
                     preferences.settings,
                     collapsed,
                     messages.message,
-                ) { session, settings, isCollapsed, message ->
+                    limits.observeLimits(),
+                ) { session, settings, isCollapsed, message, limitMap ->
                     // Only show a message for the app that is actually on screen.
                     val forThisApp = message?.takeIf { it.packageName == session?.packageName }
-                    OverlayInputs(session, settings, isCollapsed, forThisApp)
+                    val dailyLimit = session?.let { limitMap[it.packageName]?.settings?.dailyLimitMinutes }
+                    OverlayInputs(session, settings, isCollapsed, forThisApp, dailyLimit?.let { it * MINUTE })
                 }
-                    .collectLatest { (session, settings, isCollapsed, message) ->
+                    .collectLatest { inputs ->
+                        val session = inputs.session
                         val show = PillRules.shouldShow(
                             foregroundPackage = session?.packageName,
-                            settings = settings,
+                            settings = inputs.settings,
                             canDrawOverlays = canDrawOverlays(),
                         )
+                        if (session == null) retireBase()
                         if (!show || session == null) {
                             hide()
                             return@collectLatest
                         }
-                        val now = clock.now()
                         show(
                             OverlayUiState(
                                 appName = context.packageManager.appLabel(session.packageName),
-                                sessionStart = session.startTime,
-                                settings = settings,
-                                todayBaseMillis = if (settings.showTodayTotal) todayTotal(session, now) else null,
-                                todayBaseTime = now,
-                                collapsed = isCollapsed,
-                                message = message,
+                                today = baseFor(session),
+                                dailyLimitMillis = inputs.dailyLimitMillis,
+                                settings = inputs.settings,
+                                collapsed = inputs.collapsed,
+                                message = inputs.message,
                             ),
                         )
                         // Android sends no callback when the permission is revoked, so check.
@@ -111,6 +122,7 @@ class OverlayTimerManager @Inject constructor(
             }
         } finally {
             scope = null
+            retireBase()
             hide()
         }
     }
@@ -128,7 +140,7 @@ class OverlayTimerManager @Inject constructor(
         ) { swipes, settings, counting, limit ->
             if (!counting || swipes == null) return@combine null
             PillSwipes(
-                count = swipes.count,
+                sessionCount = swipes.count,
                 showCount = settings.showsSwipesFor(swipes.packageName),
                 remaining = limit?.takeIf { it.packageName == swipes.packageName && it.status.showRemaining }
                     ?.status?.remaining,
@@ -205,10 +217,25 @@ class OverlayTimerManager @Inject constructor(
         scope?.launch { preferences.savePosition(orientation, position) }
     }
 
-    private suspend fun todayTotal(session: ActiveSession, now: Long): Long {
+    /**
+     * The base for [session]'s pill: reused while the same session stays on screen on the same
+     * day, measured again (one query) when an app comes to the foreground or the day changes.
+     */
+    private suspend fun baseFor(session: ActiveSession): PillTodayBase {
+        val now = clock.now()
         val zone = ZoneId.systemDefault()
-        val todayStart = startOfDay(localDate(now, zone), zone)
-        return usage.appTotals(TimeRange(todayStart, now), now)[session.packageName] ?: 0L
+        val today = PillToday.dayStart(now, zone)
+        base?.let { if (it.sessionId == session.id && it.dayStart == today) return it }
+        retireBase()
+        val floor = shownToday[session.packageName]?.floorFor(today) ?: 0L
+        return totals.base(session, now, zone, floor).also { base = it }
+    }
+
+    /** The app left the screen: remember the total it showed, as the floor for its next visit. */
+    private fun retireBase() {
+        val old = base ?: return
+        shownToday[old.packageName] = PillToday.shownAt(old, clock.now(), ZoneId.systemDefault())
+        base = null
     }
 
     private fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(context)
@@ -216,6 +243,7 @@ class OverlayTimerManager @Inject constructor(
     private companion object {
         const val TAG = "OverlayTimerManager"
         const val PERMISSION_CHECK_MILLIS = 2_000L
+        const val MINUTE = 60_000L
     }
 }
 
@@ -224,4 +252,5 @@ private data class OverlayInputs(
     val settings: OverlaySettings,
     val collapsed: Boolean,
     val message: PillMessage?,
+    val dailyLimitMillis: Long?,
 )

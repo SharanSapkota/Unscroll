@@ -113,7 +113,7 @@ fun SettingsScreen(
             positionReset = positionReset,
             actions = PillActions(
                 onEnabled = viewModel::setOverlayEnabled,
-                onTodayTotal = viewModel::setShowTodayTotal,
+                onSessionTime = viewModel::setShowSessionTime,
                 onSwipes = viewModel::setShowSwipes,
                 onSize = viewModel::setPillSize,
                 onOpacity = viewModel::setOpacity,

@@ -8,6 +8,7 @@ enum class PillLevel { CALM, WARNING, DANGER }
 object PillRules {
 
     private const val MINUTE = 60_000L
+    private const val PERCENT = 100L
 
     /** The pill is only ever on screen while a tracked app is in front and the user allows it. */
     fun shouldShow(
@@ -15,6 +16,22 @@ object PillRules {
         settings: OverlaySettings,
         canDrawOverlays: Boolean,
     ): Boolean = foregroundPackage != null && settings.showsPillFor(foregroundPackage) && canDrawOverlays
+
+    /** With a daily limit: yellow from this share of it, red at 100 %. */
+    const val LIMIT_WARNING_PERCENT = 60
+
+    /**
+     * The color for today's total in an app. With a daily limit: green under 60 % of it, yellow
+     * from 60 %, red at or over 100 %. Without one: the user's absolute [thresholds].
+     */
+    fun levelForToday(todayMillis: Long, dailyLimitMillis: Long?, thresholds: ColorThresholds): PillLevel {
+        if (dailyLimitMillis == null || dailyLimitMillis <= 0) return levelFor(todayMillis, thresholds)
+        return when {
+            todayMillis >= dailyLimitMillis -> PillLevel.DANGER
+            todayMillis * PERCENT >= dailyLimitMillis * LIMIT_WARNING_PERCENT -> PillLevel.WARNING
+            else -> PillLevel.CALM
+        }
+    }
 
     /** Green before the warning threshold, yellow before the danger threshold, red after. */
     fun levelFor(elapsedMillis: Long, thresholds: ColorThresholds): PillLevel {

@@ -39,7 +39,6 @@ import com.unscroll.app.ui.components.SegmentedControl
 import com.unscroll.app.ui.components.SettingRow
 import com.unscroll.app.ui.components.SettingSwitchRow
 import com.unscroll.app.ui.components.SettingsGroup
-import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import kotlin.math.roundToInt
@@ -47,7 +46,7 @@ import kotlinx.coroutines.delay
 
 internal class PillActions(
     val onEnabled: (Boolean) -> Unit = {},
-    val onTodayTotal: (Boolean) -> Unit = {},
+    val onSessionTime: (Boolean) -> Unit = {},
     val onSwipes: (Boolean) -> Unit = {},
     val onSize: (PillSize) -> Unit = {},
     val onOpacity: (Float) -> Unit = {},
@@ -99,10 +98,10 @@ internal fun TimerPillGroup(
             onCheckedChange = actions.onEnabled,
         )
         SettingSwitchRow(
-            title = stringResource(R.string.settings_pill_today),
+            title = stringResource(R.string.settings_pill_session),
             icon = R.drawable.ic_timer,
-            checked = settings.showTodayTotal,
-            onCheckedChange = actions.onTodayTotal,
+            checked = settings.showSessionTime,
+            onCheckedChange = actions.onSessionTime,
         )
         SettingSwitchRow(
             title = stringResource(R.string.settings_pill_swipes),
@@ -154,6 +153,11 @@ internal fun TimerPillGroup(
                 },
                 valueRange = ColorThresholds.MIN_MINUTES.toFloat()..ColorThresholds.MAX_MINUTES.toFloat(),
             )
+            Text(
+                text = stringResource(R.string.settings_pill_time_colors_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             SliderLabel(
                 title = stringResource(R.string.settings_pill_swipe_colors),
                 value = stringResource(
@@ -190,8 +194,9 @@ private fun SliderLabel(title: String, value: String) {
 }
 
 /**
- * Live preview: cycles through a calm, warning and danger time for the current thresholds, so
- * every setting (colors, size, opacity, today's total, swipes) shows without opening another app.
+ * Live preview: cycles through a calm, warning and danger total for today (by the time thresholds,
+ * as for an app without a daily limit), so every setting (colors, size, opacity, session time,
+ * swipes) shows without opening another app.
  */
 @Composable
 internal fun PillPreview(settings: OverlaySettings) {
@@ -208,7 +213,7 @@ internal fun PillPreview(settings: OverlaySettings) {
             sampleIndex = (sampleIndex + 1) % sampleMinutes.size
         }
     }
-    val elapsed = sampleMinutes[sampleIndex] * MINUTE + PREVIEW_SECONDS_MILLIS
+    val today = sampleMinutes[sampleIndex] * MINUTE + PREVIEW_SECONDS_MILLIS
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -218,13 +223,13 @@ internal fun PillPreview(settings: OverlaySettings) {
         TimerPill(
             TimerPillState(
                 appName = stringResource(R.string.settings_pill_preview_app),
-                elapsedText = PillRules.formatTime(elapsed),
-                todayText = if (settings.showTodayTotal) {
-                    stringResource(R.string.overlay_today_total, durationText(elapsed + PREVIEW_TODAY_EXTRA_MILLIS))
+                elapsedText = PillRules.formatTime(today),
+                visitText = if (settings.showSessionTime) {
+                    stringResource(R.string.overlay_this_visit, PillRules.formatTime(PREVIEW_VISIT_MILLIS))
                 } else {
                     null
                 },
-                level = PillRules.levelFor(elapsed, thresholds),
+                level = PillRules.levelForToday(today, dailyLimitMillis = null, thresholds = thresholds),
                 size = settings.size,
                 opacity = settings.opacity,
                 collapsed = false,
@@ -242,7 +247,7 @@ private const val PERCENT = 100
 private const val MINUTE = 60_000L
 private const val PREVIEW_STEP_MILLIS = 2_000L
 private const val PREVIEW_SECONDS_MILLIS = 41_000L
-private const val PREVIEW_TODAY_EXTRA_MILLIS = 25 * 60_000L
+private const val PREVIEW_VISIT_MILLIS = 3 * 60_000L + 5_000L
 private const val PREVIEW_SWIPES = 86
 
 @PreviewLightDark
@@ -252,7 +257,7 @@ private fun TimerPillGroupPreview() {
         Surface {
             Column(modifier = Modifier.padding(Dimens.screenPadding)) {
                 TimerPillGroup(
-                    settings = OverlaySettings(showTodayTotal = true),
+                    settings = OverlaySettings(showSessionTime = true),
                     canDrawOverlays = false,
                     positionReset = true,
                     actions = PillActions(),

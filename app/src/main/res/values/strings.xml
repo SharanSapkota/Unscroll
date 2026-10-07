@@ -26,7 +26,7 @@
     <string name="duration_seconds">%1$ds</string>
 
     <!-- Overlay timer -->
-    <string name="overlay_today_total">Today %1$s</string>
+    <string name="overlay_this_visit">this visit %1$s</string>
 
     <!-- Common -->
     <string name="action_cancel">Cancel</string>
@@ -308,13 +308,14 @@
     <string name="settings_pill_info">The pill shows your session time over tracked apps. It turns amber, then red, by time or swipes, whichever comes first. Drag it anywhere; tap it to shrink it to a dot.</string>
     <string name="settings_pill_no_permission">Needs \"Display over other apps\"</string>
     <string name="settings_pill_show">Show timer</string>
-    <string name="settings_pill_today">Today\'s total</string>
+    <string name="settings_pill_session">Show session time</string>
     <string name="settings_pill_swipes">Swipe count</string>
     <string name="settings_pill_size_small">S</string>
     <string name="settings_pill_size_medium">M</string>
     <string name="settings_pill_opacity">Opacity</string>
-    <string name="settings_pill_time_colors">Time colors</string>
-    <string name="settings_pill_swipe_colors">Swipe colors</string>
+    <string name="settings_pill_time_colors">Time today</string>
+    <string name="settings_pill_time_colors_note">With a daily limit: yellow from 60 %, red at the limit.</string>
+    <string name="settings_pill_swipe_colors">Swipes today</string>
     <string name="settings_pill_reset_position">Reset position</string>
     <string name="settings_pill_preview_app">Instagram</string>
     <string name="settings_notifications_system">Notifications</string>

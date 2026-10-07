@@ -40,7 +40,7 @@ class OverlayPreferences @Inject constructor(
 
     suspend fun setEnabled(enabled: Boolean) = edit { it[ENABLED] = enabled }
 
-    suspend fun setShowTodayTotal(show: Boolean) = edit { it[SHOW_TODAY_TOTAL] = show }
+    suspend fun setShowSessionTime(show: Boolean) = edit { it[SHOW_SESSION_TIME] = show }
 
     suspend fun setShowSwipes(show: Boolean) = edit { it[SHOW_SWIPES] = show }
 
@@ -103,7 +103,7 @@ class OverlayPreferences @Inject constructor(
 
     private fun Preferences.toSettings() = OverlaySettings(
         enabled = this[ENABLED] ?: true,
-        showTodayTotal = this[SHOW_TODAY_TOTAL] ?: false,
+        showSessionTime = this[SHOW_SESSION_TIME] ?: false,
         thresholds = ColorThresholds(
             warningAfterMinutes = this[WARNING_MINUTES] ?: ColorThresholds.DEFAULT_WARNING_MINUTES,
             dangerAfterMinutes = this[DANGER_MINUTES] ?: ColorThresholds.DEFAULT_DANGER_MINUTES,
@@ -122,14 +122,17 @@ class OverlayPreferences @Inject constructor(
 
     private companion object {
         val ENABLED = booleanPreferencesKey("overlay_enabled")
-        val SHOW_TODAY_TOTAL = booleanPreferencesKey("overlay_show_today_total")
-        val WARNING_MINUTES = intPreferencesKey("overlay_warning_minutes")
-        val DANGER_MINUTES = intPreferencesKey("overlay_danger_minutes")
+        val SHOW_SESSION_TIME = booleanPreferencesKey("overlay_show_session_time")
+
+        // Daily thresholds. New keys: the old per-session ones meant something else and are
+        // removed by RemovedPreferencesMigration, so everyone starts from the daily defaults.
+        val WARNING_MINUTES = intPreferencesKey("overlay_daily_warning_minutes")
+        val DANGER_MINUTES = intPreferencesKey("overlay_daily_danger_minutes")
         val SIZE = stringPreferencesKey("overlay_size")
         val OPACITY = floatPreferencesKey("overlay_opacity")
         val SHOW_SWIPES = booleanPreferencesKey("overlay_show_swipes")
-        val SWIPE_WARNING = intPreferencesKey("overlay_swipe_warning")
-        val SWIPE_DANGER = intPreferencesKey("overlay_swipe_danger")
+        val SWIPE_WARNING = intPreferencesKey("overlay_daily_swipe_warning")
+        val SWIPE_DANGER = intPreferencesKey("overlay_daily_swipe_danger")
         val PILL_HIDDEN_FOR = stringSetPreferencesKey("overlay_pill_hidden_for")
         val SWIPES_HIDDEN_FOR = stringSetPreferencesKey("overlay_swipes_hidden_for")
 
