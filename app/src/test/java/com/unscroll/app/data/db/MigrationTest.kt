@@ -92,7 +92,7 @@ class MigrationTest {
                 sessions,
             )
 
-            val limit = AppLimitEntity("com.instagram.android", 30, false, false, 127, 1320, 420, null, null)
+            val limit = AppLimitEntity("com.instagram.android", 30, false, false, 127, 1320, 420)
             database.blockingDao().upsertLimit(limit)
             assertEquals(limit, database.blockingDao().getLimit("com.instagram.android"))
 

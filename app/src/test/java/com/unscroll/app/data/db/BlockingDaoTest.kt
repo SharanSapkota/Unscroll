@@ -76,7 +76,7 @@ class BlockingDaoTest {
 
     @Test
     fun deleteAllOverrides_endsTheLog_butKeepsLimits() = runTest {
-        dao.upsertLimit(AppLimitEntity(INSTAGRAM, 30, false, false, 127, 0, 0, null, null))
+        dao.upsertLimit(AppLimitEntity(INSTAGRAM, 30, false, false, 127, 0, 0))
         dao.insertOverride(BlockOverrideEntity(packageName = INSTAGRAM, grantedAt = 100, expiresAt = 400, method = "WAIT"))
 
         dao.deleteAllOverrides()

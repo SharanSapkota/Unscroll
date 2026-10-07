@@ -1,5 +1,6 @@
 package com.unscroll.app.data
 
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -30,7 +31,7 @@ class RemovedPreferencesMigrationTest {
 
         val migrated = RemovedPreferencesMigration.migrate(old)
 
-        assertEquals(mapOf(kept to true), migrated.asMap())
+        assertEquals(mapOf<Preferences.Key<*>, Any>(Pair(kept, true)), migrated.asMap())
         assertFalse(RemovedPreferencesMigration.shouldMigrate(migrated))
     }
 
