@@ -42,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.PreviewFontScale
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -57,6 +58,9 @@ import com.unscroll.app.ui.components.InfoSheet
 import com.unscroll.app.ui.components.PermissionRow
 import com.unscroll.app.ui.components.RowDivider
 import com.unscroll.app.ui.components.SettingsGroup
+import com.unscroll.app.ui.components.TrustFooter
+import com.unscroll.app.ui.components.TrustPromise
+import com.unscroll.app.ui.components.TrustSheet
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
@@ -177,6 +181,7 @@ private fun PermissionsPage(permissions: PermissionState, onNotificationPermissi
     val activity = LocalActivity.current
     val manufacturer = remember { DeviceManufacturer.from(Build.MANUFACTURER) }
     var batteryInfo by rememberSaveable { mutableStateOf(false) }
+    var trustInfo by rememberSaveable { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         // When the user has denied twice, Android stops showing the dialog and the request fails
         // immediately. Send them to the notification settings instead.
@@ -195,11 +200,13 @@ private fun PermissionsPage(permissions: PermissionState, onNotificationPermissi
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(Dimens.spaceL, Alignment.CenterVertically),
     ) {
+        // Why these permissions are safe to give, before asking for them.
+        TrustPromise(fox = true)
         Text(text = stringResource(R.string.onboarding_permissions_title), style = MaterialTheme.typography.headlineMedium)
         SettingsGroup {
             PermissionRow(
                 title = stringResource(R.string.permission_usage),
-                note = stringResource(R.string.permission_usage_note),
+                note = stringResource(R.string.onboarding_why_usage),
                 icon = R.drawable.ic_eye,
                 granted = permissions.isGranted(AppPermission.USAGE_ACCESS),
                 onGrant = { context.openSettings(SystemSettings.usageAccess()) },
@@ -207,7 +214,7 @@ private fun PermissionsPage(permissions: PermissionState, onNotificationPermissi
             RowDivider()
             PermissionRow(
                 title = stringResource(R.string.permission_overlay),
-                note = stringResource(R.string.permission_overlay_note),
+                note = stringResource(R.string.onboarding_why_overlay),
                 icon = R.drawable.ic_layers,
                 granted = permissions.isGranted(AppPermission.OVERLAY),
                 onGrant = { context.openSettings(SystemSettings.overlay(context)) },
@@ -215,7 +222,7 @@ private fun PermissionsPage(permissions: PermissionState, onNotificationPermissi
             RowDivider()
             PermissionRow(
                 title = stringResource(R.string.permission_notifications),
-                note = stringResource(R.string.permission_optional),
+                note = stringResource(R.string.onboarding_why_notifications),
                 icon = R.drawable.ic_bell,
                 granted = permissions.isGranted(AppPermission.NOTIFICATIONS),
                 onGrant = {
@@ -238,11 +245,10 @@ private fun PermissionsPage(permissions: PermissionState, onNotificationPermissi
                 trailingInfo = { InfoButton(onClick = { batteryInfo = true }) },
             )
         }
-        Text(
-            text = stringResource(R.string.onboarding_private),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        TrustFooter(onHowWeProtect = { trustInfo = true })
+    }
+    if (trustInfo) {
+        TrustSheet(onDismiss = { trustInfo = false })
     }
     if (batteryInfo) {
         val hint = manufacturer.hintRes?.let { stringResource(it) + "\n\n" }.orEmpty()
@@ -303,6 +309,7 @@ private fun OnboardingWelcomePreview() {
 }
 
 @PreviewLightDark
+@PreviewFontScale
 @Composable
 private fun OnboardingPermissionsPreview() {
     UnscrollTheme {

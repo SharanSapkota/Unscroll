@@ -35,7 +35,7 @@ Unscroll doesn't share data with anyone, because it never sends data off your ph
 
 - Turn off tracking, the overlay, nudges or the swipe counter at any time in Settings.
 - **Export:** Settings › Your data › Export sessions (CSV).
-- **Delete:** Settings › Your data › Delete usage history deletes all recorded sessions, swipe counts and logs. Uninstalling the app, or "Clear storage" in Android's App info, deletes everything, settings included.
+- **Delete:** Settings › Data & privacy › Delete history deletes all recorded sessions, swipe counts and logs. Settings › Data & privacy › Delete all my data deletes everything, settings, limits and goal included, and the app starts over like a new install. Uninstalling the app, or "Clear storage" in Android's App info, also deletes everything.
 
 ## Children
 
