@@ -76,3 +76,8 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - An open block screen closes as soon as the app is no longer blocked
 - "I need access" on the block screen and the swipe-limit cover is one tap, still logged
 - **Done when**: unblocking an app in the Apps tab lets it open right away, and a block screen showing for it disappears.
+
+## Fix after M9: swipe-limit cover crash ✅ Done (awaiting device testing)
+- The cover crashed the app when the limit was reached: the Compose owners were set on the ComposeView, but Compose looks them up from the window's root frame
+- One cover window at most, added and removed on the main thread, window errors logged with the block screen + Home as fallback, shown once per visit instead of on every swipe (`SwipeCoverTracker`)
+- **Done when**: reaching a swipe limit shows the cover without a crash, no touch reaches the app, and "Go home" always works.

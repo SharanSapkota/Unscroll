@@ -11,6 +11,9 @@ import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockReason
 import com.unscroll.app.domain.blocking.BlockSafety
+import com.unscroll.app.domain.blocking.CoverAction
+import com.unscroll.app.domain.blocking.LimitSettings
+import com.unscroll.app.domain.blocking.SwipeCoverTracker
 import com.unscroll.app.domain.blocking.SwipeLimitStatus
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
@@ -75,11 +78,15 @@ class SwipeLimitEnforcer @Inject constructor(
     private val mutex = Mutex()
     private var scope: CoroutineScope? = null
 
+    /** Show/hide rules for the cover; only touched under [mutex]. */
+    private val tracker = SwipeCoverTracker()
+
     suspend fun run() = coroutineScope {
         scope = this
         withContext(Dispatchers.Main.immediate) {
             cover.onGoHome = ::goHome
             cover.onAccessGranted = { packageName -> scope?.launch { grantAccess(packageName) } }
+            cover.onShowFailed = { packageName -> scope?.launch { showFailed(packageName) } }
         }
         try {
             launch { watchForeground() }
@@ -89,6 +96,7 @@ class SwipeLimitEnforcer @Inject constructor(
         } finally {
             scope = null
             withContext(Dispatchers.Main.immediate + NonCancellable) { cover.hide() }
+            withContext(NonCancellable) { mutex.withLock { tracker.onHidden() } }
             _foreground.value = null
         }
     }
@@ -107,11 +115,8 @@ class SwipeLimitEnforcer @Inject constructor(
             // If the app never becomes the tracked foreground app (the user left at once), take
             // the cover down again so it can't sit over the home screen.
             delay(PROVISIONAL_COVER_MILLIS)
-            if (sessionManager.foregroundSession.value?.packageName != packageName) {
-                withContext(Dispatchers.Main.immediate) {
-                    if (cover.coveredPackage == packageName) cover.hide()
-                }
-            }
+            val foreground = sessionManager.foregroundSession.value?.packageName
+            if (foreground != packageName) mutex.withLock { perform(tracker.onForeground(foreground)) }
         }
     }
 
@@ -121,9 +126,7 @@ class SwipeLimitEnforcer @Inject constructor(
             .distinctUntilChanged()
             .collect { packageName ->
                 // Left the covered app (home, Recents, another app): the cover goes with it.
-                withContext(Dispatchers.Main.immediate) {
-                    if (cover.coveredPackage != null && cover.coveredPackage != packageName) cover.hide()
-                }
+                mutex.withLock { perform(tracker.onForeground(packageName)) }
                 if (packageName == null) {
                     _foreground.value = null
                 } else {
@@ -144,12 +147,16 @@ class SwipeLimitEnforcer @Inject constructor(
         sessionManager.foregroundSession.value?.packageName?.let { evaluate(it) }
     }
 
-    /** Updates the status for [packageName] and covers it if over the limit. Returns true if covered. */
+    /**
+     * Updates the status for [packageName] and covers it if over the limit. Returns true if it is
+     * over the limit. The cover is added once per visit (see SwipeCoverTracker): more swipes or
+     * window events while it is up do nothing.
+     */
     private suspend fun evaluate(packageName: String): Boolean = mutex.withLock {
         val counting = scrollCounting.isCounting.value
         if (!counting || !BlockSafety.canBlock(packageName, context.packageName, homePackages())) {
             _foreground.value = null
-            withContext(Dispatchers.Main.immediate) { if (cover.coveredPackage == packageName) cover.hide() }
+            perform(tracker.onStatus(packageName, reached = false, canDrawOverlays = false))
             return@withLock false
         }
         val now = clock.now()
@@ -157,43 +164,58 @@ class SwipeLimitEnforcer @Inject constructor(
         val settings = limits.getLimit(packageName).settings
         val status = swipeLimits.status(packageName, settings, now, zone)
         _foreground.value = status?.let { ForegroundSwipeLimit(packageName, it) }
-        if (status == null || !status.reached) {
-            // Raised limit, extension or a new window: let the user back in.
-            withContext(Dispatchers.Main.immediate) { if (cover.coveredPackage == packageName) cover.hide() }
-            return@withLock false
-        }
-        val state = SwipeCoverState(
-            packageName = packageName,
-            appName = context.packageManager.appLabel(packageName),
-            swipes = status.used,
-            todayMillis = usedToday(packageName, now, zone),
-            accessAllowed = settings.swipeAccessAllowed,
-        )
-        coverApp(state)
-        true
+        val reached = status?.reached == true
+        // Raised limit, extension or a new window: Hide lets the user back in.
+        val action = tracker.onStatus(packageName, reached, Settings.canDrawOverlays(context))
+        perform(action, settings, status?.used ?: 0, now, zone)
+        reached
     }
 
-    private suspend fun coverApp(state: SwipeCoverState) {
-        val shown = withContext(Dispatchers.Main.immediate) {
-            if (!Settings.canDrawOverlays(context)) return@withContext false
-            try {
-                cover.show(state)
-                true
-            } catch (e: RuntimeException) {
-                // BadTokenException / SecurityException: permission revoked in between.
-                Log.w(TAG, "Swipe-limit cover not shown", e)
-                false
+    /** Carries out [action]. Call under [mutex]; the cover's window is added and removed on the main thread. */
+    private suspend fun perform(
+        action: CoverAction,
+        settings: LimitSettings = LimitSettings.NONE,
+        swipes: Int = 0,
+        now: Long = clock.now(),
+        zone: ZoneId = ZoneId.systemDefault(),
+    ) {
+        when (action) {
+            CoverAction.None -> Unit
+            CoverAction.Hide -> withContext(Dispatchers.Main.immediate) { cover.hide() }
+            is CoverAction.Fallback -> fallback(action.packageName)
+            is CoverAction.Show -> {
+                val state = SwipeCoverState(
+                    packageName = action.packageName,
+                    appName = context.packageManager.appLabel(action.packageName),
+                    swipes = swipes,
+                    todayMillis = usedToday(action.packageName, now, zone),
+                    accessAllowed = settings.swipeAccessAllowed,
+                )
+                val shown = withContext(Dispatchers.Main.immediate) { cover.show(state) }
+                if (shown) tracker.onShown(action.packageName) else perform(tracker.onShowFailed(action.packageName))
             }
         }
-        if (shown) return
-        // Fallback without the overlay permission: Home via the accessibility service, then the
-        // block screen (which can't be bypassed by switching back without it opening again).
+    }
+
+    /** A posted show() failed on the main thread. */
+    private suspend fun showFailed(packageName: String) = mutex.withLock {
+        perform(tracker.onShowFailed(packageName))
+    }
+
+    /**
+     * Without the overlay permission, or when the system refused the window: Home via the
+     * accessibility service, then the block screen (which can't be bypassed by switching back
+     * without it opening again). Once per visit.
+     */
+    private fun fallback(packageName: String) {
+        Log.i(TAG, "Swipe limit reached without a cover; falling back to the block screen")
         scrollCounting.goHomeAction?.invoke()
-        blockEnforcer.showBlockScreen(state.packageName, BlockDecision.Blocked(BlockReason.SWIPE_LIMIT_REACHED, until = null))
+        blockEnforcer.showBlockScreen(packageName, BlockDecision.Blocked(BlockReason.SWIPE_LIMIT_REACHED, until = null))
     }
 
     private fun goHome() {
         cover.hide()
+        scope?.launch { mutex.withLock { tracker.onHidden() } }
         val home = Intent(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_HOME)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
