@@ -156,7 +156,7 @@ Keep this in one `TrackedApps` file so users can later add any installed app. Us
 - `SYSTEM_ALERT_WINDOW` (overlay timer, swipe-limit cover + block screen)
 - `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SPECIAL_USE`, `POST_NOTIFICATIONS`
 - `RECEIVE_BOOT_COMPLETED` (restart tracking after reboot)
-- `com.android.vending.BILLING` (added by Play Billing, for Unscroll Plus). `INTERNET` is explicitly removed (`tools:node="remove"`).
+- `com.android.vending.BILLING` (added by Play Billing, for Unscroll Plus) and `ACCESS_NETWORK_STATE` (added by Billing's bundled telemetry transport, `com.google.android.datatransport`). `INTERNET`, which that transport also asks for, is explicitly removed (`tools:node="remove"`), so it can't send anything.
 - Optional: AccessibilityService for scroll counting (`BIND_ACCESSIBILITY_SERVICE`, M7). Opt-in, behind its own disclosure screen and in-app consent.
 
 ## Core data model

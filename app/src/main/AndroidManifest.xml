@@ -15,8 +15,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- Start tracking after a reboot or an update, unless the user turned it off. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- The privacy promise: Unscroll never goes online. No library may add INTERNET (Play Billing
-         talks to the Play Store app over IPC and doesn't need it). CI checks the merged manifest. -->
+    <!-- The privacy promise: Unscroll never goes online. No library may add INTERNET. Play Billing
+         talks to the Play Store app over IPC and doesn't need it; its bundled telemetry transport
+         (com.google.android.datatransport) asks for INTERNET and is rejected here, so it can't send
+         anything. CI checks the merged manifest. -->
     <uses-permission
         android:name="android.permission.INTERNET"
         tools:node="remove" />

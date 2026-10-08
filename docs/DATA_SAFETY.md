@@ -14,7 +14,7 @@ With "No" to collection and sharing, the listing shows **"No data collected"** a
 
 ## Things to double-check before each release
 
-- The merged manifest still has no `android.permission.INTERNET` (CI's "Merged manifest permissions" step lists every permission and fails if INTERNET appears). Play Billing adds `com.android.vending.BILLING`, which is not a data permission.
+- The merged manifest still has no `android.permission.INTERNET` (CI's "Merged manifest permissions" step lists every permission and fails if INTERNET appears). Play Billing adds `com.android.vending.BILLING`, which is not a data permission. Billing 9.1.0 also bundles Google's telemetry transport (`com.google.android.datatransport`, transport-runtime and transport-backend-cct 3.1.8), which asks for `INTERNET` (rejected by our manifest, so it can't send anything) and `ACCESS_NETWORK_STATE` (kept: a normal permission that only tells whether a network is up; it reads no user data). If INTERNET were ever allowed back, that transport could send Billing diagnostics to Google, and these answers would need a fresh look.
 - Play Billing data: check Play's current guidance on data handled by Google Play Billing before submitting. Unscroll itself sends nothing; if the form asks about "Purchase history", the answer stays "not collected" as long as purchases are never sent anywhere by the app.
 - No new library sends data (analytics, crash reporting, ads). Adding one changes these answers.
 - The CSV export is started by the user and saved where they choose, so it is not "sharing" by Play's definition.
