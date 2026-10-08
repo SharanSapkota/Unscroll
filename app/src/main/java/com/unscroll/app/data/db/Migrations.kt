@@ -2,6 +2,7 @@ package com.unscroll.app.data.db
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 
 /** v1 → v2 (M5): adds the limits and override tables. Sessions are untouched. */
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -181,4 +182,32 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+/**
+ * v7 → v8: the user's tracked apps move into Room (`tracked_apps`), so any installed app can be
+ * added. Existing users get the apps Unscroll tracked until now (Instagram, both TikTok packages,
+ * Facebook), in the same order, all active with swipe counting on. Sessions, limits and settings
+ * are untouched: they were already keyed by package name.
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `tracked_apps` (" +
+                "`packageName` TEXT NOT NULL, " +
+                "`cachedLabel` TEXT, " +
+                "`addedAt` INTEGER NOT NULL, " +
+                "`status` TEXT NOT NULL DEFAULT 'ACTIVE', " +
+                "`countSwipes` INTEGER NOT NULL DEFAULT 1, " +
+                "`removed` INTEGER NOT NULL DEFAULT 0, " +
+                "PRIMARY KEY(`packageName`))",
+        )
+        DefaultTrackedApps.packageNames.forEachIndexed { index, packageName ->
+            db.execSQL(
+                "INSERT OR IGNORE INTO `tracked_apps` (packageName, cachedLabel, addedAt, status, countSwipes, removed) " +
+                    "VALUES (?, NULL, ?, 'ACTIVE', 1, 0)",
+                arrayOf<Any>(packageName, index.toLong()),
+            )
+        }
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)

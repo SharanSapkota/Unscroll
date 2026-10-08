@@ -18,7 +18,7 @@
     <string name="tracking_channel_name">Session tracking</string>
     <string name="tracking_channel_description">Shows that Unscroll is timing your sessions.</string>
     <string name="tracking_notification_title">Unscroll is tracking</string>
-    <string name="tracking_notification_text">Timing your sessions in Instagram, TikTok and Facebook.</string>
+    <string name="tracking_notification_text">Timing your sessions in the apps you track.</string>
 
     <!-- Durations -->
     <string name="duration_hours_minutes">%1$dh %2$dm</string>
@@ -57,12 +57,12 @@
 
     <!-- M7: optional scroll counting (accessibility service) -->
     <string name="accessibility_service_label">Unscroll swipe counter</string>
-    <string name="accessibility_service_description">Counts how many times you swipe in Instagram, TikTok and Facebook, so Unscroll can show your swipe count, suggest a break, and cover the app when your swipe limit is reached. It does not read your screen, messages or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
+    <string name="accessibility_service_description">Counts how many times you swipe in the apps you track in Unscroll, so it can show your swipe count, suggest a break, and cover the app when your swipe limit is reached. It does not read your screen, messages or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
 
     <string name="scroll_disclosure_title">Count your swipes (optional)</string>
     <string name="scroll_disclosure_intro">Unscroll can count how many times you swipe in the apps you choose. You\'ll see the count on the timer and the dashboard, you can ask for a break after a number of swipes, and you can set a swipe limit that covers the app when you reach it.</string>
     <string name="scroll_disclosure_does_title">What it does</string>
-    <string name="scroll_disclosure_does_body">It uses Android\'s Accessibility Service to notice that a scroll happened in Instagram, TikTok or Facebook, and in which of these apps. It counts, and it can cover the screen when your swipe limit is reached. It doesn\'t look at any other app.</string>
+    <string name="scroll_disclosure_does_body">It uses Android\'s Accessibility Service to notice that a scroll happened in one of the apps you track in Unscroll (Instagram, TikTok and Facebook unless you change the list), and in which one. It counts, and it can cover the screen when your swipe limit is reached. It doesn\'t look at any other app.</string>
     <string name="scroll_disclosure_does_not_title">What it does not do</string>
     <string name="scroll_disclosure_does_not_body">It does not read your screen, posts, messages, usernames or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.</string>
     <string name="scroll_disclosure_optional_title">It\'s optional</string>
@@ -541,4 +541,23 @@
     </plurals>
     <string name="settings_debug_force_plus">Force Plus</string>
     <string name="settings_debug_force_plus_billing">Billing</string>
+    <!-- Add any app ("+" on the Apps tab) and the tracked list -->
+    <string name="apps_add">Add apps</string>
+    <string name="apps_not_installed">Not installed</string>
+    <string name="apps_paused_by_you">Paused</string>
+    <string name="add_apps_title">Add apps</string>
+    <string name="add_apps_search">Search apps</string>
+    <string name="add_apps_popular">Popular</string>
+    <string name="add_apps_all">All apps</string>
+    <string name="add_apps_none">No apps match.</string>
+    <string name="add_apps_add">Add</string>
+    <string name="add_apps_added">Added</string>
+    <string name="detail_tracking">Tracking</string>
+    <string name="detail_tracking_info">Paused or removed apps get no timer, limits or blocking. Their history and settings stay, and come back when you track or add the app again. \"Count swipes\" is per app because swipes register differently in some apps.</string>
+    <string name="detail_track_app">Track this app</string>
+    <string name="detail_count_swipes">Count swipes</string>
+    <string name="detail_remove">Remove from Unscroll</string>
+    <string name="detail_remove_confirm_title">Remove this app?</string>
+    <string name="detail_remove_confirm_body">Unscroll stops tracking and blocking it. Its history and settings are kept, so adding it again brings them back.</string>
+    <string name="detail_remove_confirm">Remove</string>
 </resources>

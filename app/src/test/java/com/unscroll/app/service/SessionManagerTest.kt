@@ -3,9 +3,9 @@ package com.unscroll.app.service
 import com.unscroll.app.domain.plus.TrackedAppsState
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.time.Clock
-import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
-import com.unscroll.app.domain.tracking.TrackedApps.TIKTOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK
 import com.unscroll.app.testing.FakeForegroundAppDetector
 import com.unscroll.app.testing.FakeHeartbeatStore
 import com.unscroll.app.testing.FakeScreenState
@@ -423,6 +423,28 @@ class SessionManagerTest {
         )
     }
 
+    @Test
+    fun anyAddedApp_isTrackedLikeTheDefaults() = runTest {
+        // An app added from the picker: the list comes from the repository, not from a fixed set.
+        trackedApps.current.value = TrackedAppsState(
+            apps = listOf(ADDED_APP),
+            active = setOf(ADDED_APP),
+            isPlus = true,
+            needsPick = false,
+        )
+        startTracking()
+
+        foreground(ADDED_APP, atMillis = 0)
+        assertEquals(true, swipe(ADDED_APP))
+        foreground(LAUNCHER, atMillis = 60_000)
+        advanceTo(70_000)
+        assertEquals(listOf(Session(1, ADDED_APP, 0, 60_000, scrollCount = 1)), store.sessions)
+
+        // A default that isn't in the list any more opens nothing.
+        foreground(INSTAGRAM, atMillis = 80_000)
+        assertNull(manager.currentSession.value)
+    }
+
     private fun freeTier(active: String) = TrackedAppsState(
         apps = listOf(INSTAGRAM, TIKTOK, FACEBOOK),
         active = setOf(active),
@@ -433,5 +455,6 @@ class SessionManagerTest {
     private companion object {
         const val LAUNCHER = "com.android.launcher3"
         const val BROWSER = "com.android.chrome"
+        const val ADDED_APP = "com.example.anyapp"
     }
 }

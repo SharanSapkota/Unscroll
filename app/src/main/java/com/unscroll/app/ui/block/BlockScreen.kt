@@ -11,7 +11,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.AccessExtension
 import com.unscroll.app.domain.blocking.BlockReason
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.StopScreen
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -59,7 +59,7 @@ private fun BlockScreenPreview() {
     UnscrollTheme(darkTheme = true) {
         BlockScreen(
             state = BlockUiState(
-                packageName = TrackedApps.INSTAGRAM,
+                packageName = DefaultTrackedApps.INSTAGRAM,
                 reason = BlockReason.DAILY_LIMIT_REACHED,
                 until = null,
                 usedTodayMillis = 47 * 60_000L,

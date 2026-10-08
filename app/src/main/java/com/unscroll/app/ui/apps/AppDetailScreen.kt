@@ -33,7 +33,7 @@ import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.insights.DayUsage
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
 import com.unscroll.app.ui.components.LoadingPlaceholder
 import com.unscroll.app.ui.components.MiniBarChart
@@ -56,6 +56,7 @@ fun AppDetailScreen(
     viewModel: AppDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val tracking by viewModel.tracking.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val savedText = stringResource(R.string.detail_saved)
     LaunchedEffect(viewModel) {
@@ -82,6 +83,12 @@ fun AppDetailScreen(
                 onResetFriction = viewModel::resetFriction,
             ),
             onBack = onBack,
+            tracking = tracking,
+            trackingActions = TrackingActions(
+                onTracked = viewModel::setTracked,
+                onCountSwipes = viewModel::setCountSwipes,
+                onRemove = { viewModel.remove(onRemoved = onBack) },
+            ),
         )
         SnackbarHost(
             hostState = snackbar,
@@ -98,6 +105,8 @@ internal fun AppDetailContent(
     actions: DetailActions,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    tracking: TrackingRowState = TrackingRowState(),
+    trackingActions: TrackingActions = TrackingActions(),
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.padding(start = Dimens.spaceXs)) {
@@ -123,6 +132,7 @@ internal fun AppDetailContent(
             item(key = "blocking") { BlockingSection(state.settings, actions) }
             item(key = "pill") { TimerAndNudgesSection(state, actions) }
             item(key = "stats") { MiniStats(state) }
+            if (tracking.inList) item(key = "tracking") { TrackingSection(tracking, trackingActions) }
         }
     }
 }
@@ -194,7 +204,7 @@ private fun AppDetailPreview() {
     UnscrollTheme {
         AppDetailContent(
             state = AppDetailUiState(
-                packageName = TrackedApps.INSTAGRAM,
+                packageName = DefaultTrackedApps.INSTAGRAM,
                 isLoading = false,
                 settings = LimitSettings(dailyLimitMinutes = 60, swipeLimit = 100),
                 decision = BlockDecision.Allowed(remainingMillis = 18 * 60_000L),

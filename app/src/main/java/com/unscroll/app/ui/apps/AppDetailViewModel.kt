@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.overlay.OverlayPreferences
+import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
+import com.unscroll.app.domain.apps.TrackedAppStatus
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
@@ -35,6 +37,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -59,6 +62,14 @@ data class AppDetailUiState(
     val weekLongestMillis: Long = 0,
 )
 
+/** The app's place in the tracked list: "Track this app", "Count swipes", installed or not. */
+data class TrackingRowState(
+    val inList: Boolean = true,
+    val tracked: Boolean = true,
+    val countSwipes: Boolean = true,
+    val installed: Boolean = true,
+)
+
 /**
  * App detail: every setting of one app, saved the moment it changes (no Save button, no
  * cooldown), plus a few stats. [saved] emits after each change so the screen can confirm it.
@@ -72,6 +83,7 @@ class AppDetailViewModel @Inject constructor(
     private val overlay: OverlayPreferences,
     private val usage: UsageDataSource,
     private val evaluator: BlockEvaluator,
+    private val trackedApps: TrackedAppsRepository,
     scrollCounting: ScrollCountingRepository,
     private val clock: Clock,
 ) : ViewModel() {
@@ -99,6 +111,32 @@ class AppDetailViewModel @Inject constructor(
     }
         .mapLatest { build(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppDetailUiState(packageName))
+
+    /** "Track this app", "Count swipes" and whether it is installed. */
+    val tracking: StateFlow<TrackingRowState> = trackedApps.trackedApps
+        .map { apps ->
+            apps.firstOrNull { it.packageName == packageName }?.let {
+                TrackingRowState(
+                    inList = true,
+                    tracked = it.status == TrackedAppStatus.ACTIVE,
+                    countSwipes = it.countSwipes,
+                    installed = it.installed,
+                )
+            } ?: TrackingRowState(inList = false)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackingRowState())
+
+    fun setTracked(tracked: Boolean) = save { trackedApps.setPaused(packageName, paused = !tracked) }
+
+    fun setCountSwipes(count: Boolean) = save { trackedApps.setCountSwipes(packageName, count) }
+
+    /** "Remove from Unscroll": stops tracking; history and settings stay for a later re-add. */
+    fun remove(onRemoved: () -> Unit) {
+        viewModelScope.launch {
+            trackedApps.remove(packageName)
+            onRemoved()
+        }
+    }
 
     // Limits
 
@@ -171,6 +209,7 @@ class AppDetailViewModel @Inject constructor(
                 extensionUntil = limits.activeExtensionUntil(packageName, now),
                 now = now,
                 zone = zone,
+                packageName = packageName,
             ),
             todayMillis = todayMillis,
             friction = inputs.friction ?: FrictionSettings.DEFAULT,

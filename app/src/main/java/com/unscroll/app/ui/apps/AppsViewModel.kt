@@ -11,6 +11,7 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.plus.AppTrackingStatus
 import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.plus.TrackedAppsState
 import com.unscroll.app.domain.time.Clock
@@ -34,15 +35,22 @@ data class AppRowState(
     val settings: LimitSettings,
     val decision: BlockDecision,
     val todayMillis: Long,
-    /** Free tier: not tracked (history and settings kept). Greyed out with a lock; tap opens Plus. */
-    val paused: Boolean = false,
-)
+    /**
+     * ACTIVE, or not tracked (history and settings kept), greyed out: LOCKED (free tier: a lock,
+     * tap opens Plus), PAUSED (by the user) or NOT_INSTALLED.
+     */
+    val status: AppTrackingStatus = AppTrackingStatus.ACTIVE,
+    /** The stored name, for apps that aren't installed any more. */
+    val label: String? = null,
+) {
+    val tracked: Boolean get() = status == AppTrackingStatus.ACTIVE
+}
 
 data class AppsUiState(
     val isLoading: Boolean = true,
     val apps: List<AppRowState> = emptyList(),
 ) {
-    private val activeApps: List<AppRowState> get() = apps.filterNot { it.paused }
+    private val activeApps: List<AppRowState> get() = apps.filter { it.tracked }
 
     /** "Block all" turns into "Unblock all" once every active app is blocked. */
     val allBlocked: Boolean get() = activeApps.isNotEmpty() && activeApps.all { it.settings.blockedAlways }
@@ -84,8 +92,7 @@ class AppsViewModel @Inject constructor(
     /** "Block all" / "Unblock all" for every active app shown (paused apps keep their settings). */
     fun setAllBlocked(blocked: Boolean) {
         viewModelScope.launch {
-            val apps = trackedApps.state.first()
-            apps.apps.filterNot(apps::isPaused).forEach { packageName ->
+            trackedApps.state.first().active.forEach { packageName ->
                 limits.updateLimit(packageName) { it.copy(blockedAlways = blocked) }
             }
         }
@@ -96,7 +103,8 @@ class AppsViewModel @Inject constructor(
         val zone = ZoneId.systemDefault()
         val todayStart = startOfDay(localDate(now, zone), zone)
         val usedToday = usage.appTotals(TimeRange(todayStart, now), now)
-        val rows = apps.apps.map { packageName ->
+        val rows = apps.entries.map { entry ->
+            val packageName = entry.packageName
             val settings = (stored[packageName] ?: AppLimit(packageName)).settings
             val used = usedToday[packageName] ?: 0L
             AppRowState(
@@ -108,9 +116,11 @@ class AppsViewModel @Inject constructor(
                     extensionUntil = limits.activeExtensionUntil(packageName, now),
                     now = now,
                     zone = zone,
+                    packageName = packageName,
                 ),
                 todayMillis = used,
-                paused = apps.isPaused(packageName),
+                status = apps.statusOf(packageName),
+                label = entry.label,
             )
         }
         return AppsUiState(isLoading = false, apps = rows)

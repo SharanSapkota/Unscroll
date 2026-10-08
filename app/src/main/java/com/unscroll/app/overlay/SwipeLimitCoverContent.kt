@@ -8,7 +8,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.SwipeLimitRules
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.StopScreen
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -48,7 +48,7 @@ internal fun SwipeLimitCoverContent(
 private fun SwipeLimitCoverPreview() {
     UnscrollTheme(darkTheme = true) {
         SwipeLimitCoverContent(
-            state = SwipeCoverState(TrackedApps.INSTAGRAM, "Instagram", 100, 42 * 60_000L, accessAllowed = true),
+            state = SwipeCoverState(DefaultTrackedApps.INSTAGRAM, "Instagram", 100, 42 * 60_000L, accessAllowed = true),
             onGoHome = {},
             onAccessGranted = {},
         )

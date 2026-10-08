@@ -8,9 +8,9 @@ import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.UsageSummary
 import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.scroll.ScrollStats
-import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
-import com.unscroll.app.domain.tracking.TrackedApps.TIKTOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

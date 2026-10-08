@@ -35,7 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
 import com.unscroll.app.domain.fox.FoxMood
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
 import com.unscroll.app.ui.components.LoadingPlaceholder
 import com.unscroll.app.ui.components.UnscrollCard
@@ -184,11 +184,11 @@ private fun PickAppsPreview() {
                 state = PickAppsUiState(
                     isLoading = false,
                     apps = listOf(
-                        PickApp(TrackedApps.INSTAGRAM, 12 * 3_600_000L),
-                        PickApp(TrackedApps.TIKTOK, 4 * 3_600_000L),
-                        PickApp(TrackedApps.FACEBOOK, 0),
+                        PickApp(DefaultTrackedApps.INSTAGRAM, 12 * 3_600_000L),
+                        PickApp(DefaultTrackedApps.TIKTOK, 4 * 3_600_000L),
+                        PickApp(DefaultTrackedApps.FACEBOOK, 0),
                     ),
-                    selection = listOf(TrackedApps.INSTAGRAM),
+                    selection = listOf(DefaultTrackedApps.INSTAGRAM),
                 ),
                 onToggle = {},
                 onConfirm = {},

@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.unscroll.app.data.db.UnscrollDatabase
+import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
@@ -37,7 +38,7 @@ class LimitRepositoryTest {
 
     // A Wednesday at 23:00.
     private val now = LocalDateTime.of(2026, 10, 7, 23, 0).atZone(zone).toInstant().toEpochMilli()
-    private val evaluator = BlockEvaluator(Clock { now })
+    private val evaluator = BlockEvaluator(Clock { now }, ExcludedApps.STATIC)
 
     @Before
     fun setUp() {

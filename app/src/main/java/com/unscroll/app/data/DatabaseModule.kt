@@ -6,6 +6,7 @@ import com.unscroll.app.data.db.ALL_MIGRATIONS
 import com.unscroll.app.data.db.BlockingDao
 import com.unscroll.app.data.db.FrictionDao
 import com.unscroll.app.data.db.SessionDao
+import com.unscroll.app.data.db.TrackedAppDao
 import com.unscroll.app.data.db.UnscrollDatabase
 import dagger.Module
 import dagger.Provides
@@ -34,4 +35,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFrictionDao(database: UnscrollDatabase): FrictionDao = database.frictionDao()
+
+    @Provides
+    fun provideTrackedAppDao(database: UnscrollDatabase): TrackedAppDao = database.trackedAppDao()
 }

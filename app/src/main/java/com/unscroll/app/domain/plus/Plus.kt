@@ -20,4 +20,7 @@ object PlusProduct {
 object FreeTier {
     /** How many apps a free user can track. Strings and rules all follow this one number. */
     const val FREE_APPS = 1
+
+    /** The single limit on active apps: [FREE_APPS] for free users, unlimited with Plus. */
+    fun maxActiveApps(isPlus: Boolean): Int = if (isPlus) Int.MAX_VALUE else FREE_APPS
 }

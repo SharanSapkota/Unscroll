@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.unscroll.app.ui.apps.AddAppsScreen
 import com.unscroll.app.ui.apps.AppDetailScreen
 import com.unscroll.app.ui.apps.AppDetailViewModel
 import com.unscroll.app.ui.apps.AppsScreen
@@ -48,11 +49,14 @@ private const val ROUTE_SCROLL_DISCLOSURE = "settings/scroll-disclosure"
 private const val ROUTE_RESTRICTED_HELP = "settings/restricted-setting-help"
 private const val ROUTE_PICK_APPS = "settings/pick-apps"
 
+/** The "+" picker on the Apps tab. */
+private const val ROUTE_ADD_APPS = "apps/add"
+
 /** Unscroll Plus, full screen. */
 private const val ROUTE_PLUS = "plus"
 
 /** Full-screen pages: no bottom bar. */
-private val FULL_SCREEN_ROUTES = setOf(AppDetailRoute.ROUTE, ROUTE_PLUS, ROUTE_PICK_APPS)
+private val FULL_SCREEN_ROUTES = setOf(AppDetailRoute.ROUTE, ROUTE_PLUS, ROUTE_PICK_APPS, ROUTE_ADD_APPS)
 
 @Composable
 fun UnscrollApp(modifier: Modifier = Modifier) {
@@ -60,7 +64,7 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val haptics = rememberHaptics()
-    // App detail, Plus and the free-app pick are full-screen pages: no bottom bar.
+    // App detail, Plus, the free-app pick and the add-apps picker are full-screen pages: no bottom bar.
     val showBottomBar = currentDestination?.route !in FULL_SCREEN_ROUTES
     val openApp: (String) -> Unit = { navController.navigate(AppDetailRoute.of(it)) }
     val openPlus: () -> Unit = { navController.navigate(ROUTE_PLUS) { launchSingleTop = true } }
@@ -115,7 +119,16 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
             popExitTransition = { fadeOut(tween(Motion.SHORT)) },
         ) {
             composable(TopLevelDestination.HOME.route) { HomeScreen(onOpenApp = openApp) }
-            composable(TopLevelDestination.APPS.route) { AppsScreen(onOpenApp = openApp, onOpenPlus = openPlus) }
+            composable(TopLevelDestination.APPS.route) {
+                AppsScreen(
+                    onOpenApp = openApp,
+                    onOpenPlus = openPlus,
+                    onAddApps = { navController.navigate(ROUTE_ADD_APPS) { launchSingleTop = true } },
+                )
+            }
+            composable(ROUTE_ADD_APPS) {
+                AddAppsScreen(onBack = { navController.popBackStack() }, onOpenPlus = openPlus)
+            }
             composable(TopLevelDestination.SETTINGS.route) {
                 SettingsScreen(
                     onScrollCountingSetUp = { navController.navigate(ROUTE_SCROLL_DISCLOSURE) },

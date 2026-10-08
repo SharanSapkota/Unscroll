@@ -15,13 +15,16 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 
 | Data | Why |
 |---|---|
-| Which tracked app (Instagram, TikTok, Facebook) was open, and when each session started and ended | Session timer, dashboard, limits, nudges |
+| Which tracked app was open (Instagram, TikTok and Facebook by default, plus any app you add), and when each session started and ended | Session timer, dashboard, limits, nudges |
+| The apps you track: package name, name, when you added it, and your per-app switches | So Unscroll tracks only the apps you chose |
 | How many times you swiped in a session (only if you turn on the optional swipe counter) | Swipe count, swipe stats, "take a break after N swipes" |
 | Sent nudges and "I need access" extensions | So nudges aren't repeated, and to log extensions |
 | Your settings: limits, schedules, goal, overlay, quiet hours, consent choices | So the app works the way you set it up |
 | Whether you have Unscroll Plus (as last reported by Google Play), and which app you picked as your free app | So Plus keeps working offline, and so the right apps are tracked |
 
 ## Permissions and what they are used for
+
+- **Seeing your installed apps:** the "Add apps" list reads the apps that have an icon in your app drawer (Android's launcher query, not "all packages"), on the phone, only while the list is open. Only the apps you add are saved.
 
 - **Usage access:** to see which app is in the foreground and measure time. Only app package names and timestamps are read.
 - **Display over other apps:** to show the floating timer and the break and block screens.

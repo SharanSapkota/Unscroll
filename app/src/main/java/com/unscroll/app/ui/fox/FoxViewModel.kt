@@ -15,8 +15,8 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.time.Clock
-import com.unscroll.app.util.InstalledTrackedApps
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
@@ -25,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -42,7 +43,7 @@ class FoxViewModel @Inject constructor(
     private val swipeLimits: SwipeLimitRepository,
     private val usage: UsageDataSource,
     private val scrollCounting: ScrollCountingRepository,
-    private val installedApps: InstalledTrackedApps,
+    private val trackedApps: TrackedAppsSource,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -77,7 +78,8 @@ class FoxViewModel @Inject constructor(
         val zone = ZoneId.systemDefault()
         val todayStart = startOfDay(localDate(now, zone), zone)
         val today = usage.appTotals(TimeRange(todayStart, now), now)
-        val apps = installedApps.packages().map { packageName ->
+        // Only the apps being tracked right now (any app the user added).
+        val apps = trackedApps.state.first().active.map { packageName ->
             val settings = (inputs.limits[packageName] ?: AppLimit(packageName)).settings
             val swipeStatus = if (inputs.counting) swipeLimits.status(packageName, settings, now, zone) else null
             FoxAppUsage(

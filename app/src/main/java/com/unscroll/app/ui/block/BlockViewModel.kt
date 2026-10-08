@@ -100,6 +100,7 @@ class BlockViewModel @Inject constructor(
             extensionUntil = limits.activeExtensionUntil(state.packageName, now),
             now = now,
             zone = zone,
+            packageName = state.packageName,
         )
         val swipeLimitReached = state.reason == BlockReason.SWIPE_LIMIT_REACHED &&
             swipeLimits.status(state.packageName, settings, now, zone)?.reached == true

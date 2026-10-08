@@ -3,6 +3,7 @@ package com.unscroll.app.data.plus
 import android.app.Activity
 import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.plus.EntitlementRules
+import com.unscroll.app.domain.plus.FreeTier
 import com.unscroll.app.domain.plus.LaunchResult
 import com.unscroll.app.domain.plus.OfferResult
 import com.unscroll.app.domain.plus.PlusCheck
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -46,6 +48,12 @@ class EntitlementRepository @Inject constructor(
     /** Plus on or off. Debug builds can force it; release builds always follow Billing. */
     val isPlus: Flow<Boolean> = combine(preferences.cachedPlus, preferences.debugOverride) { cached, override -> effective(cached, override) }
         .distinctUntilChanged()
+
+    /**
+     * How many apps can be active at once: the single provider of the free-tier limit
+     * ([FreeTier.maxActiveApps]), used when tracking, picking and adding apps.
+     */
+    val maxActiveApps: Flow<Int> = isPlus.map { FreeTier.maxActiveApps(it) }
 
     /** Plus ended on this phone and the user hasn't dismissed the notice yet. */
     val plusEnded: Flow<Boolean> = preferences.plusEnded

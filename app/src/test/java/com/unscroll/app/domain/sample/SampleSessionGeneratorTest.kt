@@ -1,6 +1,6 @@
 package com.unscroll.app.domain.sample
 
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlin.random.Random
@@ -16,7 +16,7 @@ class SampleSessionGeneratorTest {
     @Test
     fun generatesPlentyOfSessionsForTrackedAppsOnly() {
         assertTrue(sessions.size > 100)
-        assertTrue(sessions.all { TrackedApps.isTracked(it.packageName) })
+        assertTrue(sessions.all { it.packageName in DefaultTrackedApps.packageNames })
     }
 
     @Test

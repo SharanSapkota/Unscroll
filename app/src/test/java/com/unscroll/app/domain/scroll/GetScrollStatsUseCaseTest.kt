@@ -2,8 +2,8 @@ package com.unscroll.app.domain.scroll
 
 import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.session.Session
-import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
 import com.unscroll.app.testing.FakeUsageDataSource
 import java.time.LocalDateTime
 import java.time.ZoneId

@@ -55,7 +55,7 @@ import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.UsageSummary
 import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.permission.AppPermission
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.domain.tracking.TrackingStatus
 import com.unscroll.app.ui.components.AppTile
 import com.unscroll.app.ui.components.EmptyState
@@ -316,8 +316,8 @@ private fun HomePreview() {
         period = UsagePeriod.TODAY,
         combined = UsageSummary(3_900_000, 14, 278_000, 1_200_000),
         apps = listOf(
-            AppUsage(TrackedApps.INSTAGRAM, UsageSummary(2_700_000, 9, 300_000, 1_200_000)),
-            AppUsage(TrackedApps.TIKTOK, UsageSummary(1_200_000, 5, 240_000, 600_000)),
+            AppUsage(DefaultTrackedApps.INSTAGRAM, UsageSummary(2_700_000, 9, 300_000, 1_200_000)),
+            AppUsage(DefaultTrackedApps.TIKTOK, UsageSummary(1_200_000, 5, 240_000, 600_000)),
         ),
         hourly = List(24) { hour -> if (hour in 8..23) hour * 20_000L else 0L },
     )
@@ -335,9 +335,9 @@ private fun HomePreview() {
                 hoursInvested = GetHoursInvestedUseCase.calculate(212 * 3_600_000L),
                 goal = GoalProgress(60, 3_900_000, Streak(current = 3, best = 9, todayOnTrack = false)),
                 apps = listOf(
-                    AppTileState(TrackedApps.INSTAGRAM, 2_700_000, swipes = 240, limitProgress = 0.9f, blocked = false),
-                    AppTileState(TrackedApps.TIKTOK, 1_200_000, swipes = 80, limitProgress = null, blocked = false),
-                    AppTileState(TrackedApps.FACEBOOK, 0, swipes = 0, limitProgress = null, blocked = true),
+                    AppTileState(DefaultTrackedApps.INSTAGRAM, 2_700_000, swipes = 240, limitProgress = 0.9f, blocked = false),
+                    AppTileState(DefaultTrackedApps.TIKTOK, 1_200_000, swipes = 80, limitProgress = null, blocked = false),
+                    AppTileState(DefaultTrackedApps.FACEBOOK, 0, swipes = 0, limitProgress = null, blocked = true),
                 ),
             ),
             actions = HomeActions(),

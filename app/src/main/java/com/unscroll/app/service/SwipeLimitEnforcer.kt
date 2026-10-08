@@ -2,15 +2,14 @@ package com.unscroll.app.service
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.provider.Settings
 import android.util.Log
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.blocking.SwipeLimitRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
+import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockReason
-import com.unscroll.app.domain.blocking.BlockSafety
 import com.unscroll.app.domain.blocking.CoverAction
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.SwipeCoverTracker
@@ -62,6 +61,7 @@ data class ForegroundSwipeLimit(val packageName: String, val status: SwipeLimitS
 @Singleton
 class SwipeLimitEnforcer @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val excludedApps: ExcludedApps,
     private val sessionManager: SessionManager,
     private val limits: LimitRepository,
     private val swipeLimits: SwipeLimitRepository,
@@ -157,7 +157,7 @@ class SwipeLimitEnforcer @Inject constructor(
      */
     private suspend fun evaluate(packageName: String): Boolean = mutex.withLock {
         val counting = scrollCounting.isCounting.value
-        if (!counting || !BlockSafety.canBlock(packageName, context.packageName, homePackages())) {
+        if (!counting || excludedApps.isExcluded(packageName) || !trackedApps.countsSwipes(packageName)) {
             _foreground.value = null
             perform(tracker.onStatus(packageName, reached = false, canDrawOverlays = false))
             return@withLock false
@@ -245,13 +245,6 @@ class SwipeLimitEnforcer @Inject constructor(
         return usage.appTotals(TimeRange(todayStart, now), now)[packageName] ?: 0L
     }
 
-    private fun homePackages(): Set<String> {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        return context.packageManager
-            .queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-            .mapNotNull { it.activityInfo?.packageName }
-            .toSet()
-    }
 
     private companion object {
         const val TAG = "SwipeLimitEnforcer"

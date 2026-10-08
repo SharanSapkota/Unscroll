@@ -1,5 +1,6 @@
 package com.unscroll.app.domain.blocking
 
+import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -30,8 +31,14 @@ sealed interface BlockDecision {
  *
  * Order matters: "Block completely" wins, then the schedule, then the daily limit. An extension
  * granted from the block screen only lifts the daily limit.
+ *
+ * Safety first: an excluded app (Unscroll, a home screen, Settings, the phone, emergency apps, the
+ * Play Store; see AppExclusions) is never blocked, whatever its stored settings say.
  */
-class BlockEvaluator @Inject constructor(private val clock: Clock) {
+class BlockEvaluator @Inject constructor(
+    private val clock: Clock,
+    private val excludedApps: ExcludedApps,
+) {
 
     fun evaluate(
         settings: LimitSettings,
@@ -39,7 +46,9 @@ class BlockEvaluator @Inject constructor(private val clock: Clock) {
         extensionUntil: Long? = null,
         now: Long = clock.now(),
         zone: ZoneId = ZoneId.systemDefault(),
+        packageName: String? = null,
     ): BlockDecision {
+        if (packageName != null && excludedApps.isExcluded(packageName)) return BlockDecision.Allowed(remainingMillis = null)
         if (settings.blockedAlways) return BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, until = null)
 
         val time = Instant.ofEpochMilli(now).atZone(zone)
