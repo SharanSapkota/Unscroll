@@ -8,11 +8,17 @@ class AppGateTest {
     @Test
     fun notCompleted_showsOnboarding() {
         assertEquals(AppDestination.ONBOARDING, AppGate.resolve(false))
+        assertEquals(AppDestination.ONBOARDING, AppGate.resolve(false, needsPick = true))
     }
 
     @Test
     fun completed_showsMain_evenIfAPermissionIsRevokedLater() {
         // Revoked permissions pause tracking and show a banner on Home instead.
         assertEquals(AppDestination.MAIN, AppGate.resolve(true))
+    }
+
+    @Test
+    fun completed_withMoreAppsThanTheFreeTier_picksFirst() {
+        assertEquals(AppDestination.PICK_APPS, AppGate.resolve(true, needsPick = true))
     }
 }

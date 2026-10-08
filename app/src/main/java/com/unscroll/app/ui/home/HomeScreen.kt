@@ -66,6 +66,7 @@ import com.unscroll.app.ui.components.SectionHeader
 import com.unscroll.app.ui.components.SegmentedControl
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.fox.FoxCorner
+import com.unscroll.app.ui.plus.PlusEndedBanner
 import com.unscroll.app.ui.scroll.ScrollCountingBanner
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
@@ -90,7 +91,12 @@ fun HomeScreen(
             onFixPermission = { context.openSettings(it.settingsIntent(context)) },
         ),
         modifier = modifier,
-        banner = { ScrollCountingBanner() },
+        banner = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
+                PlusEndedBanner()
+                ScrollCountingBanner()
+            }
+        },
         // The fox peeks in from the top corner; tap it for a message.
         fox = { FoxCorner(size = Dimens.foxHome) },
     )

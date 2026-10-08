@@ -26,6 +26,20 @@ jobs:
       - name: Lint, unit tests, debug build
         run: ./gradlew lint test assembleDebug --stacktrace
 
+      # The privacy promise relies on there being no INTERNET permission. List every permission in
+      # the merged manifest (libraries included, e.g. Play Billing) and where each came from.
+      - name: Merged manifest permissions
+        run: |
+          manifest=$(find app/build/intermediates -name AndroidManifest.xml -path '*merged_manifest*' -path '*debug*' | head -n 1)
+          echo "Merged manifest: $manifest"
+          tr '\n' ' ' < "$manifest" | grep -o '<uses-permission[^>]*>' | sed 's/  */ /g' | sort -u
+          echo "--- Permission sources (manifest merger report) ---"
+          grep -A3 'uses-permission' app/build/outputs/logs/manifest-merger-debug-report.txt || true
+          if grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo "::error::The merged manifest has the INTERNET permission; the privacy promise says it doesn't."
+            exit 1
+          fi
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4

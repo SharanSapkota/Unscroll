@@ -147,3 +147,15 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - The foreground is drawn at 90 %: as given, the phone's corners reached outside the 66 dp safe zone and circle masks clipped one
 - Notification icon unchanged (white fox face); launcher label unchanged
 - **Done when**: the icon reads clearly at 48 and 72 dp under circle, squircle and square masks, on light, dark and wallpaper backgrounds and as a themed icon.
+
+## Freemium: Unscroll Plus ✅ Done (awaiting device testing)
+- Free: 1 tracked app (`FreeTier.FREE_APPS`, one constant) with everything included: timer, limits, swipe limit, blocking, stats, fox. Plus (monthly subscription `unscroll_plus_monthly`, base plan `monthly`) only unlocks tracking every app
+- The price is set in Play Console (EUR 0.67/month) and never hardcoded: the paywall shows the price Play Billing returns, in the user's currency
+- Google Play Billing Library 9.1.0 is the only payment system: no accounts, no backend. `EntitlementRepository` asks Billing on app start, on every resume and on purchase updates, acknowledges purchases, handles pending, cancelled/expired, grace period and Billing unavailable (keeps the last known state, cached in DataStore), and never crashes
+- "Pick your free app" after onboarding (and for existing users with more tracked apps than the free tier); the others are paused: history and settings kept, no tracking, pill, limits or blocking. Apps tab: paused apps greyed out with a lock and a "Plus" badge; tapping one opens the paywall
+- Plus ends: the picked app (or the most used, remembered) stays; nothing is deleted; a calm "Plus ended. 1 app stays free." banner on Home with a neutral fox. Resubscribing resumes the paused apps with their settings and history
+- Paywall: the fox, "Unscroll Plus", "{price} / month", 3 bullets (unlimited apps, supports an independent app, cancel anytime), "Your data stays with you, always. We only charge to support the people who build Unscroll…", Continue, renewal terms, Restore purchases, Not now, privacy policy and terms links; loading and Billing-unavailable states; no urgency or pre-selection
+- Settings › Unscroll Plus: Free/Plus, the free app (change it), Manage subscription, Restore purchases. Debug builds only: "Force Plus" (Billing / Plus / Free); release builds ignore it
+- Privacy promise kept true: the manifest removes `INTERNET` even if a library asks for it, CI lists every permission in the merged manifest and fails on INTERNET; trust sheet gains "No accounts. Purchases are handled by Google Play. We never see your usage data."; privacy policy, data safety, store listing (pricing and subscription disclosure), terms and release steps updated
+- Not in this change: the "+" to add other apps (not built yet), so the paywall is reached from paused apps, the pick screen and Settings
+- **Done when**: a fresh install picks one app and tracks only it; buying Plus (license tester) tracks every app; letting it lapse shows the banner, keeps the picked app and pauses the rest without losing history; resubscribing resumes them.

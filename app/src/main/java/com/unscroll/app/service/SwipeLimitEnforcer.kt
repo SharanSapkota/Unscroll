@@ -19,6 +19,7 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.overlay.SwipeCoverState
 import com.unscroll.app.overlay.SwipeLimitCover
@@ -68,6 +69,7 @@ class SwipeLimitEnforcer @Inject constructor(
     private val usage: UsageDataSource,
     private val blockEnforcer: BlockEnforcer,
     private val cover: SwipeLimitCover,
+    private val trackedApps: TrackedAppsSource,
     private val clock: Clock,
 ) {
     private val _foreground = MutableStateFlow<ForegroundSwipeLimit?>(null)
@@ -111,7 +113,8 @@ class SwipeLimitEnforcer @Inject constructor(
     fun onAppWindow(packageName: String) {
         val running = scope ?: return
         running.launch {
-            if (!evaluate(packageName)) return@launch
+            // A paused app (free tier) gets no limits; everything else keys off its sessions.
+            if (!trackedApps.isActive(packageName) || !evaluate(packageName)) return@launch
             // If the app never becomes the tracked foreground app (the user left at once), take
             // the cover down again so it can't sit over the home screen.
             delay(PROVISIONAL_COVER_MILLIS)

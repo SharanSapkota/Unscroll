@@ -145,6 +145,7 @@
     <string name="action_fix">Fix</string>
     <string name="action_go_home">Go home</string>
     <string name="action_got_it">Got it</string>
+    <string name="action_done">Done</string>
     <string name="action_grant">Grant</string>
     <string name="action_set">Set</string>
     <string name="value_off">Off</string>
@@ -321,7 +322,7 @@
     <string name="settings_notifications_system">Notifications</string>
     <string name="settings_quiet_hours">Quiet hours</string>
     <string name="settings_quiet_info">During quiet hours, open nudges, break reminders and limit warnings stay silent. Blocks and swipe limits still apply.</string>
-    <string name="settings_privacy_info">Everything Unscroll records stays on this phone: no account, no analytics, no internet. \"Delete history\" keeps your settings and limits; \"Delete all my data\" removes everything.</string>
+    <string name="settings_privacy_info">Everything Unscroll records stays on this phone: no account, no analytics, no internet permission. Unscroll Plus is bought through Google Play, which never gets your usage data. \"Delete history\" keeps your settings and limits; \"Delete all my data\" removes everything.</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <plurals name="settings_debug_sample_added">
         <item quantity="one">%d session added</item>
@@ -344,14 +345,16 @@
     <string name="onboarding_welcome_title">Unscroll</string>
     <string name="onboarding_welcome_line">Stop doomscrolling.</string>
     <string name="onboarding_permissions_title">Three permissions</string>
-    <!-- Trust (onboarding and Settings › Data & privacy). Keep these true: no INTERNET permission,
-         no analytics or crash SDKs, no accounts, backups off. -->
+    <!-- Trust (onboarding and Settings › Data & privacy). Keep these true: no INTERNET permission
+         (the manifest removes it, CI checks the merged manifest), no analytics or crash SDKs, no
+         accounts, backups off. Play Billing only talks to the Play Store app and gets no usage data. -->
     <string name="trust_headline">Your data stays on your phone.</string>
     <string name="trust_line">No accounts. No tracking. No selling. Unscroll only counts your time so you can get it back.</string>
     <string name="trust_footer">We\'re here to get you out of the doomscroll. You can trust us.</string>
     <string name="trust_how">How we protect your data</string>
-    <string name="trust_bullet_device">Everything is stored only on this device.</string>
+    <string name="trust_bullet_device">Everything Unscroll records is stored only on this device.</string>
     <string name="trust_bullet_never">We never see or collect your usage.</string>
+    <string name="trust_bullet_purchases">No accounts. Purchases are handled by Google Play. We never see your usage data.</string>
     <string name="trust_bullet_delete">You can delete all your data any time in Settings.</string>
     <string name="onboarding_why_usage">To see how long you spend in each app.</string>
     <string name="onboarding_why_overlay">To show the timer and the limit screen.</string>
@@ -374,6 +377,7 @@
     <string name="fox_mood_alert">alert</string>
     <string name="fox_mood_concerned">concerned</string>
     <string name="fox_mood_sleepy">sleepy</string>
+    <string name="fox_mood_neutral">calm</string>
     <string name="fox_description">Fox, %1$s</string>
     <string name="fox_description_tap">Fox, %1$s. Tap for a message</string>
     <string name="settings_show_fox">Show fox</string>
@@ -471,4 +475,70 @@
         <item>Easy on the eyes today.</item>
         <item>Zzz... all calm here.</item>
     </string-array>
+    <!-- Unscroll Plus. The price is never written here: it comes from Play Billing (ProductDetails)
+         in the user's currency. The free-tier count comes from FreeTier.FREE_APPS. -->
+    <string name="plus_title">Unscroll Plus</string>
+    <string name="plus_price_monthly">%1$s / month</string>
+    <string name="plus_price_loading">Loading price…</string>
+    <string name="plus_billing_unavailable">Google Play isn\'t available right now. Everything keeps working; try again later.</string>
+    <string name="plus_try_again">Try again</string>
+    <plurals name="plus_bullet_apps">
+        <item quantity="one">Unlimited apps, not just one</item>
+        <item quantity="other">Unlimited apps, not just %d</item>
+    </plurals>
+    <string name="plus_bullet_support">Supports an independent app</string>
+    <string name="plus_bullet_cancel">Cancel anytime in Google Play</string>
+    <string name="plus_why">Your data stays with you, always. We only charge to support the people who build Unscroll, so it can keep helping you get your time back.</string>
+    <string name="plus_continue">Continue</string>
+    <string name="plus_renewal_terms">Billed monthly through Google Play. Renews automatically until you cancel.</string>
+    <string name="plus_thanks">You have Plus. Thank you for supporting Unscroll.</string>
+    <string name="plus_restore">Restore purchases</string>
+    <string name="plus_not_now">Not now</string>
+    <string name="plus_privacy_policy">Privacy policy</string>
+    <string name="plus_terms">Terms</string>
+    <string name="plus_message_restored">Plus is active. Thank you!</string>
+    <string name="plus_message_nothing">No Plus subscription found for this Google account.</string>
+    <string name="plus_message_pending">Payment pending. Plus starts once Google Play confirms it.</string>
+    <string name="plus_message_failed">The purchase didn\'t go through. You can try again.</string>
+    <string name="plus_badge">Plus</string>
+    <plurals name="plus_ended_banner">
+        <item quantity="one">Plus ended. %d app stays free.</item>
+        <item quantity="other">Plus ended. %d apps stay free.</item>
+    </plurals>
+    <!-- Hosted copies of docs/PRIVACY_POLICY.md and docs/TERMS.md. Replace with the final public
+         pages before release (docs/RELEASE.md). -->
+    <string name="url_privacy_policy" translatable="false">https://github.com/SharanSapkota/Unscroll/blob/main/docs/PRIVACY_POLICY.md</string>
+    <string name="url_terms" translatable="false">https://github.com/SharanSapkota/Unscroll/blob/main/docs/TERMS.md</string>
+
+    <!-- Pick your free app(s) -->
+    <plurals name="pick_title">
+        <item quantity="one">Pick your free app</item>
+        <item quantity="other">Pick your %d free apps</item>
+    </plurals>
+    <plurals name="pick_line">
+        <item quantity="one">Unscroll tracks it fully: timer, limits, blocking and stats. The others pause, and their history stays.</item>
+        <item quantity="other">Unscroll tracks them fully: timer, limits, blocking and stats. The others pause, and their history stays.</item>
+    </plurals>
+    <string name="pick_continue">Continue</string>
+    <string name="pick_paused_note">You can change it later in Settings.</string>
+    <string name="pick_all_with_plus">Track them all with Plus</string>
+    <string name="pick_recent">%1$s in the last 30 days</string>
+    <string name="apps_paused">Paused · history kept</string>
+    <string name="apps_paused_description">Paused. Unscroll Plus tracks this app.</string>
+
+    <!-- Settings › Unscroll Plus -->
+    <string name="settings_plus_on">Plus</string>
+    <string name="settings_plus_free">Free</string>
+    <string name="settings_plus_manage">Manage subscription</string>
+    <string name="settings_plus_restoring">Checking…</string>
+    <plurals name="settings_plus_info">
+        <item quantity="one">Free tracks one app with everything included. Plus tracks every app. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
+        <item quantity="other">Free tracks %d apps with everything included. Plus tracks every app. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
+    </plurals>
+    <plurals name="settings_free_apps">
+        <item quantity="one">Free app</item>
+        <item quantity="other">Free apps</item>
+    </plurals>
+    <string name="settings_debug_force_plus">Force Plus</string>
+    <string name="settings_debug_force_plus_billing">Billing</string>
 </resources>

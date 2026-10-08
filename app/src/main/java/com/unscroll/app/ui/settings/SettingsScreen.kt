@@ -29,6 +29,7 @@ import com.unscroll.app.R
 import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.plus.FreeTier
 import com.unscroll.app.ui.components.RowDivider
 import com.unscroll.app.ui.components.SectionHeader
 import com.unscroll.app.ui.components.SettingRow
@@ -42,8 +43,8 @@ import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
 
 /**
- * Settings: permission health at the top, then four groups (Tracking, Timer pill, Notifications,
- * Data & privacy), plus Appearance (the fox; dynamic color on Android 12+) and debug tools in
+ * Settings: permission health at the top, then Unscroll Plus and four groups (Tracking, Timer pill,
+ * Notifications, Data & privacy), plus Appearance (the fox; dynamic color on Android 12+) and debug tools in
  * debug builds. Details open in bottom sheets, never more than one level deep.
  */
 @Composable
@@ -51,6 +52,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     onScrollCountingSetUp: () -> Unit = {},
     onRestrictedSettingHelp: () -> Unit = {},
+    onOpenPlus: () -> Unit = {},
+    onPickApps: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val trackingEnabled by viewModel.trackingEnabled.collectAsStateWithLifecycle()
@@ -93,6 +96,12 @@ fun SettingsScreen(
                 onClick = { checklistOpen = true },
             )
         }
+
+        SectionHeader(
+            title = stringResource(R.string.plus_title),
+            info = pluralStringResource(R.plurals.settings_plus_info, FreeTier.FREE_APPS, FreeTier.FREE_APPS),
+        )
+        PlusGroup(onOpenPlus = onOpenPlus, onPickApps = onPickApps)
 
         SectionHeader(title = stringResource(R.string.settings_group_tracking))
         TrackingGroup(
@@ -172,6 +181,7 @@ fun SettingsScreen(
                     showChevron = false,
                     onClick = viewModel::insertSampleData,
                 )
+                PlusDebugRow()
             }
         }
     }

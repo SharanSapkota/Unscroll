@@ -145,7 +145,7 @@ private fun SpeechBubble(text: String, foxSize: Dp) {
 @get:ArrayRes
 val FoxMood.messagesRes: Int
     get() = when (this) {
-        FoxMood.HAPPY -> R.array.fox_messages_happy
+        FoxMood.HAPPY, FoxMood.NEUTRAL -> R.array.fox_messages_happy
         FoxMood.ALERT -> R.array.fox_messages_alert
         FoxMood.CONCERNED -> R.array.fox_messages_concerned
         FoxMood.SLEEPY -> R.array.fox_messages_sleepy
@@ -157,6 +157,7 @@ val FoxMood.labelRes: Int
         FoxMood.ALERT -> R.string.fox_mood_alert
         FoxMood.CONCERNED -> R.string.fox_mood_concerned
         FoxMood.SLEEPY -> R.string.fox_mood_sleepy
+        FoxMood.NEUTRAL -> R.string.fox_mood_neutral
     }
 
 private const val BUBBLE_MILLIS = 4_500L

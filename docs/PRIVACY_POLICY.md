@@ -7,6 +7,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 ## Summary
 
 - Unscroll has **no account, no servers, no analytics, no ads and no internet permission**. It can't send your data anywhere.
+- Unscroll Plus (optional subscription) is bought through **Google Play**. Unscroll never sees your payment details, and Google Play never gets your usage data.
 - Everything Unscroll records is stored only on your phone, in the app's private storage, and is deleted when you uninstall the app.
 - Unscroll never reads what is on your screen: no posts, messages, usernames, text or images.
 
@@ -18,6 +19,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 | How many times you swiped in a session (only if you turn on the optional swipe counter) | Swipe count, swipe stats, "take a break after N swipes" |
 | Sent nudges and "I need access" extensions | So nudges aren't repeated, and to log extensions |
 | Your settings: limits, schedules, goal, overlay, quiet hours, consent choices | So the app works the way you set it up |
+| Whether you have Unscroll Plus (as last reported by Google Play), and which app you picked as your free app | So Plus keeps working offline, and so the right apps are tracked |
 
 ## Permissions and what they are used for
 
@@ -26,6 +28,10 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 - **Notifications** (optional): nudges and break reminders.
 - **Accessibility service** (optional, off by default, needs your explicit consent in the app): counts scroll gestures in the tracked apps. It can't read screen content (`canRetrieveWindowContent` is off) and only receives scroll and window-change events from the tracked apps.
 - **Run at startup** and a foreground service: to keep tracking after a restart.
+
+## Purchases (Unscroll Plus)
+
+Unscroll Plus is a monthly subscription sold through Google Play Billing. The purchase happens in Google Play's own screens, under your Google account and [Google's privacy policy](https://policies.google.com/privacy). The app asks Google Play, through the Play Store app on your phone, whether you have an active subscription; it never sends anything itself, and it gives Google Play no usage data. Unscroll has no account and no server, so we never receive your name, email or payment details. If Plus ends, nothing is deleted.
 
 ## Sharing
 

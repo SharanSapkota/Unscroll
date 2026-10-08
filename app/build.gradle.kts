@@ -70,6 +70,8 @@ dependencies {
     // The launch splash with the fox on every Android version (SplashScreen API backport).
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
+    // Unscroll Plus: Google Play Billing is the only payment system (no accounts, no backend).
+    implementation(libs.play.billing)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

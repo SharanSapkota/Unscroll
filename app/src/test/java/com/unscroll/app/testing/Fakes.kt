@@ -8,14 +8,18 @@ import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.plus.TrackedAppsSource
+import com.unscroll.app.domain.plus.TrackedAppsState
 import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.session.SessionStore
 import com.unscroll.app.domain.tracking.ForegroundAppDetector
 import com.unscroll.app.domain.tracking.ScreenStateSource
+import com.unscroll.app.domain.tracking.TrackedApps
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class FakePermissionChecker(var state: PermissionState = PermissionState.NONE) : PermissionChecker {
@@ -125,4 +129,19 @@ class FakeUsageDataSource(val sessions: MutableList<Session> = mutableListOf()) 
     override suspend fun firstSessionStart(): Long? = sessions.minOfOrNull { it.startTime }
 
     override fun observeChanges(): Flow<Unit> = changes.map { }
+}
+
+/** Active apps under test control. Every tracked app is active by default (like Plus). */
+class FakeTrackedAppsSource(
+    initial: TrackedAppsState = TrackedAppsState(
+        apps = TrackedApps.packageNames.toList(),
+        active = TrackedApps.packageNames,
+        isPlus = true,
+        needsPick = false,
+    ),
+) : TrackedAppsSource {
+    val current = MutableStateFlow(initial)
+    override val state: Flow<TrackedAppsState> = current
+
+    override suspend fun isActive(packageName: String): Boolean = packageName in state.first().active
 }
