@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -24,9 +25,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -35,7 +36,8 @@ import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockReason
 import com.unscroll.app.domain.blocking.LimitSettings
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.plus.AppTrackingStatus
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
 import com.unscroll.app.ui.components.LoadingPlaceholder
 import com.unscroll.app.ui.components.UnscrollCard
@@ -51,6 +53,7 @@ import com.unscroll.app.ui.theme.UnscrollTheme
 fun AppsScreen(
     onOpenApp: (String) -> Unit,
     onOpenPlus: () -> Unit,
+    onAddApps: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AppsViewModel = hiltViewModel(),
 ) {
@@ -59,6 +62,7 @@ fun AppsScreen(
         state = uiState,
         onOpenApp = onOpenApp,
         onOpenPlus = onOpenPlus,
+        onAddApps = onAddApps,
         onBlock = viewModel::setBlocked,
         onBlockAll = viewModel::setAllBlocked,
         modifier = modifier,
@@ -71,6 +75,7 @@ private fun AppsContent(
     state: AppsUiState,
     onOpenApp: (String) -> Unit,
     onOpenPlus: () -> Unit,
+    onAddApps: () -> Unit,
     onBlock: (String, Boolean) -> Unit,
     onBlockAll: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -98,17 +103,23 @@ private fun AppsContent(
                 TextButton(onClick = { onBlockAll(!state.allBlocked) }) {
                     Text(stringResource(if (state.allBlocked) R.string.apps_unblock_all else R.string.apps_block_all))
                 }
+                IconButton(onClick = onAddApps) {
+                    Icon(painter = painterResource(R.drawable.ic_add), contentDescription = stringResource(R.string.apps_add))
+                }
             }
         }
         items(state.apps, key = { it.packageName }) { app ->
-            if (app.paused) {
-                PausedAppRow(app = app, onClick = onOpenPlus)
-            } else {
-                AppRow(
+            when (app.status) {
+                AppTrackingStatus.ACTIVE -> AppRow(
                     app = app,
                     onClick = { onOpenApp(app.packageName) },
                     onBlock = { onBlock(app.packageName, it) },
                 )
+                // Over the free tier: Plus tracks it.
+                AppTrackingStatus.LOCKED -> PausedAppRow(app = app, onClick = onOpenPlus)
+                // Paused by the user, or uninstalled: App detail can resume or remove it.
+                AppTrackingStatus.PAUSED, AppTrackingStatus.NOT_INSTALLED ->
+                    PausedAppRow(app = app, onClick = { onOpenApp(app.packageName) })
             }
         }
     }
@@ -131,7 +142,7 @@ private fun AppRow(app: AppRowState, onClick: () -> Unit, onBlock: (Boolean) -> 
             AppIcon(app.packageName)
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = rememberAppLabel(app.packageName),
+                    text = app.label ?: rememberAppLabel(app.packageName),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -157,13 +168,22 @@ private fun AppRow(app: AppRowState, onClick: () -> Unit, onBlock: (Boolean) -> 
 }
 
 /**
- * A paused app (free tier): greyed out, a lock and a "Plus" badge. Its history and settings are
- * kept; tapping opens Unscroll Plus.
+ * An app that isn't tracked right now, greyed out; its history and settings are kept. Free tier
+ * (LOCKED): a lock and a "Plus" badge, tapping opens Unscroll Plus. Paused by the user or not
+ * installed: the reason, tapping opens App detail.
  */
 @Composable
 private fun PausedAppRow(app: AppRowState, onClick: () -> Unit) {
-    val pausedLabel = stringResource(R.string.apps_paused_description)
-    UnscrollCard(onClick = onClick, modifier = Modifier.semantics { contentDescription = pausedLabel }) {
+    val locked = app.status == AppTrackingStatus.LOCKED
+    val statusText = when (app.status) {
+        AppTrackingStatus.NOT_INSTALLED -> stringResource(R.string.apps_not_installed)
+        AppTrackingStatus.PAUSED -> stringResource(R.string.apps_paused_by_you)
+        else -> stringResource(R.string.apps_paused)
+    }
+    // Locked rows read as "Paused. Unscroll Plus tracks this app."; the others read their texts.
+    val lockedLabel = stringResource(R.string.apps_paused_description)
+    val semantics = if (locked) Modifier.semantics { contentDescription = lockedLabel } else Modifier
+    UnscrollCard(onClick = onClick, modifier = semantics) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -175,25 +195,27 @@ private fun PausedAppRow(app: AppRowState, onClick: () -> Unit) {
             AppIcon(app.packageName, modifier = Modifier.alpha(PAUSED_ALPHA))
             Column(modifier = Modifier.weight(1f).alpha(PAUSED_ALPHA)) {
                 Text(
-                    text = rememberAppLabel(app.packageName),
+                    text = app.label ?: rememberAppLabel(app.packageName),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = stringResource(R.string.apps_paused),
+                    text = statusText,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
             }
-            Icon(
-                painter = painterResource(R.drawable.ic_lock),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(Dimens.iconSmall),
-            )
-            PlusBadge()
+            if (locked) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_lock),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(Dimens.iconSmall),
+                )
+                PlusBadge()
+            }
         }
     }
 }
@@ -209,22 +231,37 @@ private fun AppsPreview() {
                 isLoading = false,
                 apps = listOf(
                     AppRowState(
-                        TrackedApps.INSTAGRAM,
+                        DefaultTrackedApps.INSTAGRAM,
                         LimitSettings(dailyLimitMinutes = 60),
                         BlockDecision.Allowed(32 * 60_000L),
                         28 * 60_000L,
                     ),
                     AppRowState(
-                        TrackedApps.TIKTOK,
+                        DefaultTrackedApps.TIKTOK,
                         LimitSettings(blockedAlways = true),
                         BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, null),
                         0,
                     ),
-                    AppRowState(TrackedApps.FACEBOOK, LimitSettings(), BlockDecision.Allowed(null), 0, paused = true),
+                    AppRowState(
+                        DefaultTrackedApps.FACEBOOK,
+                        LimitSettings(),
+                        BlockDecision.Allowed(null),
+                        0,
+                        status = AppTrackingStatus.LOCKED,
+                    ),
+                    AppRowState(
+                        "com.example.video",
+                        LimitSettings(),
+                        BlockDecision.Allowed(null),
+                        0,
+                        status = AppTrackingStatus.NOT_INSTALLED,
+                        label = "Video",
+                    ),
                 ),
             ),
             onOpenApp = {},
             onOpenPlus = {},
+            onAddApps = {},
             onBlock = { _, _ -> },
             onBlockAll = {},
         )

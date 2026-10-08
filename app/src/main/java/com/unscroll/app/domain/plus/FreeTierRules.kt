@@ -1,5 +1,23 @@
 package com.unscroll.app.domain.plus
 
+import com.unscroll.app.domain.apps.TrackedApp
+import com.unscroll.app.domain.apps.TrackedAppStatus
+
+/** How an app in the tracked list is doing, for the Apps tab. */
+enum class AppTrackingStatus {
+    /** Tracked: timer, limits, blocking, nudges. */
+    ACTIVE,
+
+    /** Paused by the user ("Track this app" off). */
+    PAUSED,
+
+    /** Over the free tier: kept, but only tracked with Plus. */
+    LOCKED,
+
+    /** Uninstalled from the phone: kept, not tracked. */
+    NOT_INSTALLED,
+}
+
 /**
  * Which tracked apps are active. Paused apps keep their history and settings, but get no tracking,
  * pill, limits or blocking until the user picks them again or gets Plus.
@@ -12,8 +30,24 @@ data class TrackedAppsState(
     val isPlus: Boolean,
     /** A free user with more apps than the free tier who hasn't picked yet. */
     val needsPick: Boolean,
+    /** Every app in the user's tracked list (removed ones and never-installed defaults hidden). */
+    val entries: List<TrackedApp> = emptyList(),
 ) {
     fun isPaused(packageName: String): Boolean = packageName !in active
+
+    fun statusOf(packageName: String): AppTrackingStatus {
+        val entry = entries.firstOrNull { it.packageName == packageName }
+        return when {
+            entry != null && !entry.installed -> AppTrackingStatus.NOT_INSTALLED
+            entry?.status == TrackedAppStatus.PAUSED -> AppTrackingStatus.PAUSED
+            packageName in active -> AppTrackingStatus.ACTIVE
+            else -> AppTrackingStatus.LOCKED
+        }
+    }
+
+    /** Swipes count only in active apps with "Count swipes" on. */
+    fun countsSwipes(packageName: String): Boolean =
+        packageName in active && entries.firstOrNull { it.packageName == packageName }?.countSwipes != false
 
     val paused: List<String> get() = apps.filter(::isPaused)
 }

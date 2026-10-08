@@ -1,9 +1,9 @@
 package com.unscroll.app.domain.goals
 
-import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.insights.TimeRange
+import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.session.Session
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
 import com.unscroll.app.testing.FakeUsageDataSource
 import java.time.LocalDate
 import java.time.LocalDateTime

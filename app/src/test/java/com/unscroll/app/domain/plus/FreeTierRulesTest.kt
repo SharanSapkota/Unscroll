@@ -1,9 +1,9 @@
 package com.unscroll.app.domain.plus
 
-import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
-import com.unscroll.app.domain.tracking.TrackedApps.TIKTOK
-import com.unscroll.app.domain.tracking.TrackedApps.TIKTOK_ASIA
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK_ASIA
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

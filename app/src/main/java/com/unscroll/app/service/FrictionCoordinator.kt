@@ -3,14 +3,13 @@ package com.unscroll.app.service
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.util.Log
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.friction.NudgeKind
 import com.unscroll.app.data.friction.QuietHoursPreferences
+import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.blocking.BlockDecision
-import com.unscroll.app.domain.blocking.BlockSafety
 import com.unscroll.app.domain.friction.BreakReminders
 import com.unscroll.app.domain.friction.NudgeRules
 import com.unscroll.app.domain.insights.TimeRange
@@ -53,6 +52,7 @@ import kotlinx.coroutines.withContext
 @Singleton
 class FrictionCoordinator @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val excludedApps: ExcludedApps,
     private val sessionManager: SessionManager,
     private val blockEnforcer: BlockEnforcer,
     private val friction: FrictionRepository,
@@ -248,17 +248,9 @@ class FrictionCoordinator @Inject constructor(
 
     // --- Safety ---------------------------------------------------------------------------------
 
-    /** Never for non-tracked apps, Unscroll itself, launchers, Settings, the dialer or emergency apps. */
-    private fun isSafe(packageName: String): Boolean =
-        BlockSafety.canBlock(packageName, context.packageName, homePackages())
+    /** Never for Unscroll itself, launchers, Settings, the dialer, emergency apps or the Play Store. */
+    private fun isSafe(packageName: String): Boolean = !excludedApps.isExcluded(packageName)
 
-    private fun homePackages(): Set<String> {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-        return context.packageManager
-            .queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
-            .mapNotNull { it.activityInfo?.packageName }
-            .toSet()
-    }
 
     private companion object {
         const val TAG = "FrictionCoordinator"

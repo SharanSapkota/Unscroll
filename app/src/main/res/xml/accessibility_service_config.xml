@@ -3,9 +3,10 @@
     Opt-in scroll counting (M7). Privacy limits, enforced by Android itself:
     - canRetrieveWindowContent="false": the service gets no screen text, content descriptions or
       view hierarchy. It only uses each event's type and package name.
-    - Only scroll and window-change events, and only from the tracked apps. packageNames must match
-      TrackedApps.packageNames (AccessibilityConfigTest checks this; the service also sets the list
-      from TrackedApps when it connects).
+    - Only scroll and window-change events, and only from the tracked apps. packageNames lists the
+      default apps (DefaultTrackedApps; AccessibilityConfigTest checks this) so the limit holds from
+      the first event; the service replaces it with the user's tracked list (TrackedAppsRepository)
+      when it connects and whenever the list changes, and drops events from any other app.
 
     isAccessibilityTool="false": Unscroll is a digital-wellbeing app, not a tool that helps people
     with disabilities use their device (like a screen reader or switch access). Claiming otherwise

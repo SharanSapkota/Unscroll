@@ -10,8 +10,9 @@ import androidx.room.RoomDatabase
         BlockOverrideEntity::class,
         AppFrictionEntity::class,
         NudgeLogEntity::class,
+        TrackedAppEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 abstract class UnscrollDatabase : RoomDatabase() {
@@ -20,6 +21,8 @@ abstract class UnscrollDatabase : RoomDatabase() {
     abstract fun blockingDao(): BlockingDao
 
     abstract fun frictionDao(): FrictionDao
+
+    abstract fun trackedAppDao(): TrackedAppDao
 
     companion object {
         const val NAME = "unscroll.db"

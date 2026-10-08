@@ -2,7 +2,7 @@ package com.unscroll.app.domain.sample
 
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import java.time.ZoneId
 import kotlin.random.Random
 
@@ -17,9 +17,9 @@ data class SampleSession(val packageName: String, val startTime: Long, val endTi
 object SampleSessionGenerator {
 
     private val apps = listOf(
-        TrackedApps.INSTAGRAM,
-        TrackedApps.TIKTOK,
-        TrackedApps.FACEBOOK,
+        DefaultTrackedApps.INSTAGRAM,
+        DefaultTrackedApps.TIKTOK,
+        DefaultTrackedApps.FACEBOOK,
     )
 
     // Relative weight of each hour of the day: quiet at night, busy at lunch and in the evening.

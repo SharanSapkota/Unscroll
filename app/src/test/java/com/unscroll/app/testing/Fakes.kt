@@ -14,9 +14,9 @@ import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.session.SessionStore
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.domain.tracking.ForegroundAppDetector
 import com.unscroll.app.domain.tracking.ScreenStateSource
-import com.unscroll.app.domain.tracking.TrackedApps
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -134,8 +134,8 @@ class FakeUsageDataSource(val sessions: MutableList<Session> = mutableListOf()) 
 /** Active apps under test control. Every tracked app is active by default (like Plus). */
 class FakeTrackedAppsSource(
     initial: TrackedAppsState = TrackedAppsState(
-        apps = TrackedApps.packageNames.toList(),
-        active = TrackedApps.packageNames,
+        apps = DefaultTrackedApps.packageNames,
+        active = DefaultTrackedApps.packageNames.toSet(),
         isPlus = true,
         needsPick = false,
     ),
@@ -144,4 +144,6 @@ class FakeTrackedAppsSource(
     override val state: Flow<TrackedAppsState> = current
 
     override suspend fun isActive(packageName: String): Boolean = packageName in state.first().active
+
+    override suspend fun countsSwipes(packageName: String): Boolean = state.first().countsSwipes(packageName)
 }

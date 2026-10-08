@@ -8,4 +8,7 @@ interface TrackedAppsSource {
 
     /** Whether [packageName] is tracked right now. Waits for the first state. */
     suspend fun isActive(packageName: String): Boolean
+
+    /** Whether swipes in [packageName] are counted: tracked, active and "Count swipes" on. */
+    suspend fun countsSwipes(packageName: String): Boolean
 }

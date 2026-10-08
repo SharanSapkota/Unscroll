@@ -6,6 +6,7 @@
 ## Full description (draft)
 Doomscrolling steals hours you never get back. Unscroll shows you exactly how much time you spend on social media, while you spend it.
 
+- Any app: Instagram, TikTok and Facebook out of the box; add YouTube, Reddit or any other app you can't put down
 - Live timer: a floating clock ticks on screen while you scroll, changing color the longer you stay
 - App blocking: block apps entirely, on a schedule, or after your daily limit
 - Hours invested: see how many hours and days you've given each app
@@ -39,7 +40,7 @@ Shown on its own screen (Settings › Scroll counting › Set up) before the use
 > **Count your swipes (optional)**
 > Unscroll can count how many times you swipe in the apps you choose. You'll see the count on the timer and the dashboard, you can ask for a break after a number of swipes, and you can set a swipe limit that covers the app when you reach it.
 >
-> **What it does:** It uses Android's Accessibility Service to notice that a scroll happened in Instagram, TikTok or Facebook, and in which of these apps. It counts, and it can cover the screen when your swipe limit is reached. It doesn't look at any other app.
+> **What it does:** It uses Android's Accessibility Service to notice that a scroll happened in one of the apps you track in Unscroll (Instagram, TikTok and Facebook unless you change the list), and in which one. It counts, and it can cover the screen when your swipe limit is reached. It doesn't look at any other app.
 >
 > **What it does not do:** It does not read your screen, posts, messages, usernames or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.
 >

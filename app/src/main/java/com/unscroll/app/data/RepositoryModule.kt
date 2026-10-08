@@ -1,5 +1,8 @@
 package com.unscroll.app.data
 
+import com.unscroll.app.data.apps.AndroidExcludedApps
+import com.unscroll.app.data.apps.AndroidInstalledApps
+import com.unscroll.app.data.apps.InstalledApps
 import com.unscroll.app.data.onboarding.DataStoreOnboardingRepository
 import com.unscroll.app.data.onboarding.OnboardingRepository
 import com.unscroll.app.data.permission.AndroidPermissionChecker
@@ -10,6 +13,7 @@ import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.session.SessionRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
 import com.unscroll.app.data.usage.UsageRepository
+import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.session.HeartbeatStore
@@ -47,4 +51,10 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindTrackedAppsSource(impl: TrackedAppsRepository): TrackedAppsSource
+
+    @Binds
+    abstract fun bindInstalledApps(impl: AndroidInstalledApps): InstalledApps
+
+    @Binds
+    abstract fun bindExcludedApps(impl: AndroidExcludedApps): ExcludedApps
 }

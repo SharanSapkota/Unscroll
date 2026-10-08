@@ -1,8 +1,8 @@
 package com.unscroll.app.domain.scroll
 
 import com.unscroll.app.domain.time.Clock
-import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -11,7 +11,8 @@ import org.junit.Test
 class SwipeDetectorTest {
 
     private var now = 0L
-    private val detector = SwipeDetector(Clock { now })
+    private val counted = setOf(INSTAGRAM, FACEBOOK, ANY_APP)
+    private val detector = SwipeDetector(Clock { now }, isCounted = { it in counted })
 
     /** Feeds scroll events at the given times and returns how many swipes they made. */
     private fun swipes(vararg times: Long, packageName: String = INSTAGRAM, screenOn: Boolean = true): Int =
@@ -81,5 +82,16 @@ class SwipeDetectorTest {
     @Test
     fun clockGoingBackwards_countsAsANewSwipe() {
         assertEquals(2, swipes(5_000, 4_000))
+    }
+
+    @Test
+    fun anyAddedApp_isCounted_whenTheRepositorySaysSo() {
+        // Nothing is hardcoded: an added app counts like Instagram.
+        assertEquals(1, swipes(1_000, packageName = ANY_APP))
+        assertEquals(0, swipes(5_000, packageName = "com.example.notcounted"))
+    }
+
+    private companion object {
+        const val ANY_APP = "com.example.anyapp"
     }
 }

@@ -9,7 +9,6 @@ import com.unscroll.app.domain.session.SessionSwipes
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.domain.tracking.ForegroundAppDetector
 import com.unscroll.app.domain.tracking.ScreenStateSource
-import com.unscroll.app.domain.tracking.TrackedApps
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -30,7 +29,8 @@ import kotlinx.coroutines.withContext
  * Turns foreground-app and screen changes into logged sessions. Pure Kotlin: Android specifics
  * live behind [ForegroundAppDetector], [ScreenStateSource], [SessionStore] and [HeartbeatStore].
  *
- * - A session opens when a tracked app comes to the foreground.
+ * - A session opens when a tracked app comes to the foreground. Any package works: the tracked list
+ *   is the user's, from [TrackedAppsSource], not a fixed set.
  * - Leaving the app closes it [DEBOUNCE_MILLIS] later, ending at the moment the user left. Coming
  *   back to the same app within that window keeps the same session.
  * - Switching straight to another tracked app closes the old session and opens a new one.
@@ -112,7 +112,8 @@ class SessionManager @Inject constructor(
     suspend fun onForegroundApp(packageName: String?) = mutex.withLock {
         val now = clock.now()
         val current = _currentSession.value
-        val tracked = packageName?.takeIf { TrackedApps.isTracked(it) && trackedApps.isActive(it) }
+        // Only apps in the user's tracked list (TrackedAppsRepository), and only while active.
+        val tracked = packageName?.takeIf { trackedApps.isActive(it) }
         when {
             current == null -> if (tracked != null) open(tracked, now)
             // Still in, or back in, the same app: keep the session.

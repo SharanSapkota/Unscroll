@@ -23,12 +23,13 @@
         android:name="android.permission.INTERNET"
         tools:node="remove" />
 
-    <!-- Package visibility (Android 11+) for the tracked apps' names. Keep in sync with TrackedApps. -->
+    <!-- Package visibility (Android 11+): every app with a launcher icon, so the user can add any
+         of them, plus home screens (never blocked). No QUERY_ALL_PACKAGES. -->
     <queries>
-        <package android:name="com.instagram.android" />
-        <package android:name="com.zhiliaoapp.musically" />
-        <package android:name="com.ss.android.ugc.trill" />
-        <package android:name="com.facebook.katana" />
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
         <!-- Home screens, so they can never be blocked. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

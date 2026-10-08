@@ -54,6 +54,7 @@ class MigrationTest {
                         if (version >= 4) MIGRATION_3_4.migrate(db)
                         if (version >= 5) MIGRATION_4_5.migrate(db)
                         if (version >= 6) MIGRATION_5_6.migrate(db)
+                        if (version >= 7) MIGRATION_6_7.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -402,6 +403,39 @@ class MigrationTest {
             // Sessions and the extension log are untouched.
             assertEquals(2, database.sessionDao().observeRecent(10).first().size)
             assertEquals(listOf("PHRASE"), dao.observeOverridesSince(0).first().map { it.method })
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate7To8_addsTrackedApps_withTheDefaults_keepingSessions() = runTest {
+        createDatabase(version = 7)
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = database.trackedAppDao()
+            assertEquals(
+                listOf(
+                    "com.instagram.android",
+                    "com.zhiliaoapp.musically",
+                    "com.ss.android.ugc.trill",
+                    "com.facebook.katana",
+                ),
+                dao.observeAll().first().map { it.packageName },
+            )
+            assertEquals(
+                TrackedAppEntity("com.instagram.android", cachedLabel = null, addedAt = 0, status = "ACTIVE", countSwipes = true, removed = false),
+                dao.get("com.instagram.android"),
+            )
+            assertEquals(2, database.sessionDao().observeRecent(10).first().size)
+
+            // Any package can be added, and removing only hides it.
+            dao.upsert(TrackedAppEntity("com.example.video", cachedLabel = "Video", addedAt = 100))
+            dao.setRemoved("com.example.video", removed = true)
+            assertEquals(true, dao.get("com.example.video")?.removed)
         } finally {
             database.close()
         }

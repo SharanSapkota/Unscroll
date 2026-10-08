@@ -1,5 +1,6 @@
 package com.unscroll.app.domain.blocking
 
+import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.time.Clock
 import java.time.DayOfWeek
 import java.time.DayOfWeek.MONDAY
@@ -15,7 +16,7 @@ class BlockEvaluatorTest {
 
     private val zone = ZoneId.of("Europe/Berlin")
     private var now = at("2026-10-05T12:00") // A Monday.
-    private val evaluator = BlockEvaluator(Clock { now })
+    private val evaluator = BlockEvaluator(Clock { now }, ExcludedApps.STATIC)
 
     private fun at(text: String): Long =
         LocalDateTime.parse(text).atZone(zone).toInstant().toEpochMilli()
@@ -158,5 +159,31 @@ class BlockEvaluatorTest {
 
     private companion object {
         const val MINUTE = 60_000L
+    }
+
+    @Test
+    fun excludedApps_areNeverBlocked_whateverTheirSettingsSay() {
+        val everything = LimitSettings(blockedAlways = true, dailyLimitMinutes = 1)
+        listOf(
+            "com.unscroll.app",
+            "com.android.settings",
+            "com.google.android.dialer",
+            "com.android.vending",
+            "com.android.systemui",
+            "com.google.android.apps.messaging",
+            "com.android.emergency",
+        ).forEach { packageName ->
+            assertEquals(
+                packageName,
+                BlockDecision.Allowed(remainingMillis = null),
+                evaluator.evaluate(everything, usedTodayMillis = 60 * 60_000L, packageName = packageName),
+            )
+        }
+    }
+
+    @Test
+    fun anyAddedApp_isBlockedLikeTheDefaults() {
+        val decision = evaluator.evaluate(LimitSettings(blockedAlways = true), usedTodayMillis = 0, packageName = "com.example.anyapp")
+        assertEquals(BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, until = null), decision)
     }
 }

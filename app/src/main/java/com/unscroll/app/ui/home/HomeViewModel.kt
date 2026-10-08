@@ -8,6 +8,7 @@ import com.unscroll.app.data.goals.GoalPreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
+import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.goals.DailyGoal
 import com.unscroll.app.domain.goals.GetStreakHistoryUseCase
 import com.unscroll.app.domain.goals.Streak
@@ -25,16 +26,15 @@ import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.insights.WeeklyReport
+import com.unscroll.app.domain.permission.AppPermission
+import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.scroll.GetScrollStatsUseCase
 import com.unscroll.app.domain.scroll.ScrollStats
-import com.unscroll.app.domain.blocking.AppLimit
-import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.domain.tracking.TrackingStartRules
 import com.unscroll.app.domain.tracking.TrackingStatus
 import com.unscroll.app.service.SessionManager
 import com.unscroll.app.service.TrackingController
-import com.unscroll.app.util.InstalledTrackedApps
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import java.time.temporal.WeekFields
@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -98,7 +99,7 @@ class HomeViewModel @Inject constructor(
     trackingPreferences: TrackingPreferences,
     private val trackingController: TrackingController,
     limits: LimitRepository,
-    private val installedApps: InstalledTrackedApps,
+    private val trackedApps: TrackedAppsSource,
     goalPreferences: GoalPreferences,
     private val getStreakHistory: GetStreakHistoryUseCase,
     private val getWeeklyReport: GetWeeklyReportUseCase,
@@ -188,6 +189,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { trackingController.setTrackingEnabled(enabled) }
     }
 
+    /** Every installed app in the user's tracked list, in the order they were added. */
+    private suspend fun installedTracked(): List<String> =
+        trackedApps.state.first().entries.filter { it.installed }.map { it.packageName }
+
     private suspend fun load(request: LoadRequest): HomeUiState {
         val now = clock.now()
         val zone = ZoneId.systemDefault()
@@ -203,7 +208,7 @@ class HomeViewModel @Inject constructor(
             weekComparison = getWeekComparison(now, zone),
             hoursInvested = getHoursInvested(now),
             scrollStats = scrollStats,
-            apps = HomeTiles.build(installedApps.packages(), periodUsage, scrollStats, request.limits),
+            apps = HomeTiles.build(installedTracked(), periodUsage, scrollStats, request.limits),
         )
     }
 

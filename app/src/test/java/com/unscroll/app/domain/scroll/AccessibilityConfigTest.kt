@@ -1,6 +1,6 @@
 package com.unscroll.app.domain.scroll
 
-import com.unscroll.app.domain.tracking.TrackedApps
+import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
@@ -37,8 +37,9 @@ class AccessibilityConfigTest {
     }
 
     @Test
-    fun packageNames_matchTrackedApps() {
-        assertEquals(TrackedApps.packageNames, attr("packageNames").split(',').map { it.trim() }.toSet())
+    fun packageNames_matchTheDefaultApps() {
+        // The service replaces this list with the user's tracked apps when it connects.
+        assertEquals(DefaultTrackedApps.packageNames.toSet(), attr("packageNames").split(',').map { it.trim() }.toSet())
     }
 
     @Test

@@ -3,8 +3,8 @@ package com.unscroll.app.domain.goals
 import com.unscroll.app.domain.insights.GetWeeklyReportUseCase
 import com.unscroll.app.domain.insights.TrendDirection
 import com.unscroll.app.domain.session.Session
-import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
-import com.unscroll.app.domain.tracking.TrackedApps.INSTAGRAM
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
+import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
 import com.unscroll.app.testing.FakeUsageDataSource
 import java.time.DayOfWeek
 import java.time.LocalDate

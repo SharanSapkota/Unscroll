@@ -113,4 +113,14 @@ class PillTodayTest {
         // A zero limit counts as no limit.
         assertEquals(PillLevel.CALM, PillRules.levelForToday(29 * minute, 0, defaults))
     }
+
+    @Test
+    fun anyAddedApp_getsTheSameTotalAndColors() {
+        // Nothing in the pill is tied to a package: an app added from the picker works the same.
+        val added = base.copy(packageName = "com.example.anyapp")
+        val total = PillToday.totalMillis(added, at(14, 15, 12), zone)
+        assertEquals(PillToday.totalMillis(base, at(14, 15, 12), zone), total)
+        assertEquals(PillLevel.WARNING, PillRules.levelForToday(total, 60 * minute, ColorThresholds()))
+        assertEquals(PillLevel.DANGER, PillRules.levelForToday(total, 45 * minute, ColorThresholds()))
+    }
 }

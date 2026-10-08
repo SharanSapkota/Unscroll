@@ -46,7 +46,7 @@ object HomeTiles {
                     blocked = settings?.blockedAlways == true,
                 )
             }
-            // Most used first; ties keep the TrackedApps order.
+            // Most used first; ties keep the tracked list order.
             .sortedWith(compareByDescending<Pair<Int, AppTileState>> { it.second.millis }.thenBy { it.first })
             .map { it.second }
     }
