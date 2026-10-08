@@ -1,6 +1,7 @@
 package com.unscroll.app.service
 
 import com.unscroll.app.domain.ApplicationScope
+import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.SessionStore
@@ -39,6 +40,8 @@ import kotlinx.coroutines.withContext
  * - Swipes reported by the optional accessibility service ([onSwipe]) are added to the session
  *   whose app is on screen. This class is the only writer of sessions, scroll counts included, so
  *   the service and TrackingService never fight over a session.
+ * - Only active apps ([TrackedAppsSource]) are tracked. A paused app (free tier) opens no session,
+ *   so it gets no pill, limits or blocking, and an open session ends when its app gets paused.
  */
 @Singleton
 class SessionManager @Inject constructor(
@@ -46,6 +49,7 @@ class SessionManager @Inject constructor(
     private val screenState: ScreenStateSource,
     private val store: SessionStore,
     private val heartbeatStore: HeartbeatStore,
+    private val trackedApps: TrackedAppsSource,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
@@ -86,6 +90,9 @@ class SessionManager @Inject constructor(
                 launch {
                     screenState.isScreenOn.collect { isOn -> if (!isOn) onScreenOff() }
                 }
+                launch {
+                    trackedApps.state.collect { apps -> onAppsChanged(apps.active) }
+                }
                 detector.foregroundApp.collect { onForegroundApp(it) }
             }
         } finally {
@@ -105,7 +112,7 @@ class SessionManager @Inject constructor(
     suspend fun onForegroundApp(packageName: String?) = mutex.withLock {
         val now = clock.now()
         val current = _currentSession.value
-        val tracked = packageName?.takeIf(TrackedApps::isTracked)
+        val tracked = packageName?.takeIf { TrackedApps.isTracked(it) && trackedApps.isActive(it) }
         when {
             current == null -> if (tracked != null) open(tracked, now)
             // Still in, or back in, the same app: keep the session.
@@ -122,6 +129,12 @@ class SessionManager @Inject constructor(
     suspend fun onScreenOff() = mutex.withLock {
         val current = _currentSession.value ?: return@withLock
         close(current, endTime = leftAt ?: clock.now())
+    }
+
+    /** The active apps changed (picked, Plus ended or started): end a session whose app got paused. */
+    private suspend fun onAppsChanged(active: Set<String>) = mutex.withLock {
+        val current = _currentSession.value ?: return@withLock
+        if (current.packageName !in active) close(current, endTime = leftAt ?: clock.now())
     }
 
     /**

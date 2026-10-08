@@ -31,8 +31,10 @@ import com.unscroll.app.ui.fox.LocalFoxSettings
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 
-// The privacy promise. Every sentence here must stay true: the app has no INTERNET permission,
-// no analytics or crash-reporting SDKs, no accounts, and app backups are off.
+// The privacy promise. Every sentence here must stay true: the app has no INTERNET permission
+// (removed in the manifest, checked on the merged manifest in CI), no analytics or crash-reporting
+// SDKs, no accounts, and app backups are off. Unscroll Plus goes through Google Play Billing, which
+// talks to the Play Store app on the phone and never gets usage data.
 
 /**
  * "Your data stays on your phone." and one muted line. With [fox] (onboarding), the happy fox sits
@@ -77,7 +79,7 @@ fun TrustFooter(onHowWeProtect: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** The three facts behind the promise, in a bottom sheet. */
+/** The facts behind the promise, in a bottom sheet. */
 @Composable
 fun TrustSheet(onDismiss: () -> Unit) {
     UnscrollSheet(title = stringResource(R.string.trust_how), onDismiss = onDismiss) {
@@ -93,6 +95,7 @@ private fun TrustBullets() {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceM)) {
         TrustBullet(R.string.trust_bullet_device)
         TrustBullet(R.string.trust_bullet_never)
+        TrustBullet(R.string.trust_bullet_purchases)
         TrustBullet(R.string.trust_bullet_delete)
     }
 }

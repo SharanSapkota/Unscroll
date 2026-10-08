@@ -15,6 +15,9 @@ enum class FoxMood {
 
     /** Very little usage today, or tracking is off. */
     SLEEPY,
+
+    /** Calm and plain, for neutral news ("Plus ended"). Never chosen from usage. */
+    NEUTRAL,
 }
 
 /** Today's usage of one tracked app, against its limits (null: no such limit). */

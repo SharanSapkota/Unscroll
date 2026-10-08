@@ -14,6 +14,20 @@ Doomscrolling steals hours you never get back. Unscroll shows you exactly how mu
 - Swipe counter and swipe limit (optional): see how many times you swipe, and cover the app when you hit the limit you set
 - Private by design: all your data stays on your phone. No account. No tracking.
 
+**Pricing (in the full description; the price itself is set in Play Console, never in the app):**
+> Free for 1 app, with every feature included. Unscroll Plus: {price}/month for unlimited apps, cancel anytime in Google Play.
+>
+> Your data stays with you. We only charge to support the people who build Unscroll.
+
+The "1" follows `FreeTier.FREE_APPS`. Play shows the local price on the listing ("Offers in-app purchases"); don't write a price in the text, so it never disagrees with the user's currency.
+
+## Subscription disclosure (Play subscriptions policy)
+Shown on the in-app paywall next to "Continue", and in the full description:
+
+> Unscroll Plus is a monthly subscription for {price}, billed through Google Play. It renews automatically until you cancel. Cancel anytime in Google Play › Payments & subscriptions › Subscriptions; you keep Plus until the end of the paid month. If Plus ends, nothing is deleted: your free app stays tracked and the others are paused, with their history kept.
+
+In the app: the paywall shows the price Play returns ("{price} / month"), "Billed monthly through Google Play. Renews automatically until you cancel.", "Restore purchases", "Not now", and links to the privacy policy and terms ([docs/TERMS.md](docs/TERMS.md)). No countdowns, trials or pre-selected options. Settings › Unscroll Plus has "Manage subscription" (the Play subscriptions page for `unscroll_plus_monthly`) and "Restore purchases".
+
 ## Permission disclosures to prepare
 - Usage access: to detect which app is open and measure time
 - Display over other apps: to show the live timer and block screen
@@ -38,6 +52,8 @@ Store listing sentence (for the full description, near the feature list):
 
 ## Checklist
 - Privacy policy URL (required): draft in docs/PRIVACY_POLICY.md
+- Terms URL (linked from the paywall): draft in docs/TERMS.md
+- Subscription `unscroll_plus_monthly` with base plan `monthly` in Play Console (see docs/RELEASE.md)
 - Data Safety form: no data collected or shared (answers in docs/DATA_SAFETY.md)
 - Accessibility API declaration form (draft in docs/ACCESSIBILITY_DECLARATION.md, plus a short video of the disclosure and the feature)
 - 4-8 screenshots, 512x512 icon, 1024x500 feature graphic

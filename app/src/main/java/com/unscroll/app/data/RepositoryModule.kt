@@ -4,10 +4,14 @@ import com.unscroll.app.data.onboarding.DataStoreOnboardingRepository
 import com.unscroll.app.data.onboarding.OnboardingRepository
 import com.unscroll.app.data.permission.AndroidPermissionChecker
 import com.unscroll.app.data.permission.PermissionChecker
+import com.unscroll.app.data.plus.BillingGateway
+import com.unscroll.app.data.plus.PlayBillingGateway
+import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.session.SessionRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
 import com.unscroll.app.data.usage.UsageRepository
 import com.unscroll.app.domain.insights.UsageDataSource
+import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.session.HeartbeatStore
 import com.unscroll.app.domain.session.SessionStore
 import dagger.Binds
@@ -37,4 +41,10 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindUsageDataSource(impl: UsageRepository): UsageDataSource
+
+    @Binds
+    abstract fun bindBillingGateway(impl: PlayBillingGateway): BillingGateway
+
+    @Binds
+    abstract fun bindTrackedAppsSource(impl: TrackedAppsRepository): TrackedAppsSource
 }

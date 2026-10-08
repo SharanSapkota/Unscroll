@@ -10,6 +10,13 @@ Steps to take Unscroll from CI-green to Google Play. Items marked **(manual)** c
 - [ ] **Icon:** the adaptive icon (`mipmap-anydpi/ic_launcher.xml`, with a monochrome layer for themed icons) is in place. Export a 512×512 PNG for the store listing **(manual)**.
 - [ ] **Store assets (manual):** 4–8 phone screenshots (Dashboard, the timer over an app, the block screen, Apps limits, Settings), and a 1024×500 feature graphic. Text is in [STORE_LISTING.md](../STORE_LISTING.md).
 - [ ] **Privacy policy:** publish [PRIVACY_POLICY.md](PRIVACY_POLICY.md) at a public URL **(manual)** and enter it in the Play Console.
+- [ ] **Terms:** publish [TERMS.md](TERMS.md) at a public URL **(manual)**. Point `url_privacy_policy` and `url_terms` in `strings.xml` at the final pages (they point at the repo's docs for now).
+- [ ] **Unscroll Plus (manual, Play Console › Monetize › Subscriptions):**
+  - Create the subscription `unscroll_plus_monthly` (the id in `PlusProduct.PRODUCT_ID`) with an auto-renewing base plan `monthly` (`PlusProduct.BASE_PLAN_ID`), billing period 1 month.
+  - Price: EUR 0.67, and let Play convert it (or set local prices) for other countries. The app never hardcodes it: the paywall shows the price Play returns.
+  - Turn on the grace period and account hold defaults. No free trial or intro offer is needed: the paywall only offers the base plan.
+  - Add license testers (Setup › License testing) to buy with test cards; test subscriptions renew every few minutes, which is handy for checking "Plus ended".
+  - A merchant account must be linked before the product can be activated.
 - [ ] **Data safety form:** answers in [DATA_SAFETY.md](DATA_SAFETY.md).
 - [ ] **Permission declarations:**
   - **Accessibility API:** [ACCESSIBILITY_DECLARATION.md](ACCESSIBILITY_DECLARATION.md), plus a short video.
@@ -28,4 +35,5 @@ Steps to take Unscroll from CI-green to Google Play. Items marked **(manual)** c
 - [ ] CI green on `main` (`./gradlew lint test assembleDebug`).
 - [ ] Manual test steps from the milestone PRs re-run on at least one OEM device with aggressive battery management.
 - [ ] Room migrations: install the new build over the previous release with real data. Data must be kept.
-- [ ] Re-check the Data safety answers if any library or permission changed.
+- [ ] Re-check the Data safety answers if any library or permission changed. CI's "Merged manifest permissions" step lists every permission in the merged manifest.
+- [ ] Unscroll Plus on a license-tester account: buy, restore on a second device, cancel and let it lapse (the "Plus ended" banner, the free app stays tracked), resubscribe (paused apps resume).

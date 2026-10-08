@@ -12,6 +12,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.permission.PermissionRepository
+import com.unscroll.app.data.plus.EntitlementRepository
+import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.service.TrackingController
 import com.unscroll.app.ui.UnscrollRoot
@@ -35,6 +37,12 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var appearancePreferences: AppearancePreferences
+
+    @Inject
+    lateinit var entitlement: EntitlementRepository
+
+    @Inject
+    lateinit var trackedApps: TrackedAppsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The fox splash (Theme.Unscroll.Starting) stays only until the first frame: no delay.
@@ -67,6 +75,9 @@ class MainActivity : ComponentActivity() {
         permissionRepository.refresh()
         // Same for the optional accessibility service (scroll counting).
         scrollCountingRepository.refresh()
+        // Plus may have started, ended or renewed while away; a tracked app may have been installed.
+        entitlement.refresh()
+        trackedApps.refresh()
         // Starting tracking (also after a force stop) is handled by the collector in onCreate.
     }
 }

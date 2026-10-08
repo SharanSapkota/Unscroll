@@ -148,7 +148,7 @@ private fun DrawScope.drawFox(mood: FoxMood, fur: Color, motion: FoxMotion, show
         }
     }
     val earDroop = when (mood) {
-        FoxMood.HAPPY -> 0f
+        FoxMood.HAPPY, FoxMood.NEUTRAL -> 0f
         FoxMood.ALERT -> -EAR_PERK
         FoxMood.CONCERNED -> EAR_DROOP
         FoxMood.SLEEPY -> EAR_DROOP / 2
@@ -246,8 +246,8 @@ private fun DrawScope.drawEyes(mood: FoxMood, open: Float) {
                 style = stroke,
             )
             // Alert: the icon's open eyes. Concerned: a little smaller, under worried brows.
-            FoxMood.ALERT, FoxMood.CONCERNED -> {
-                val scale = if (mood == FoxMood.ALERT) 1f else CONCERNED_EYE_SCALE
+            FoxMood.ALERT, FoxMood.CONCERNED, FoxMood.NEUTRAL -> {
+                val scale = if (mood == FoxMood.CONCERNED) CONCERNED_EYE_SCALE else 1f
                 val rx = EYE_RX * scale
                 val ry = EYE_RY * scale * open.coerceAtLeast(BLINK_CLOSED)
                 drawOval(FoxColors.ink, topLeft = Offset(x - rx, EYE_Y - ry), size = Size(rx * 2, ry * 2))
@@ -279,7 +279,7 @@ private fun DrawScope.drawMouth(mood: FoxMood) {
             moveTo(244f, 415f)
             quadraticTo(CENTER_X, 408f, 268f, 415f)
         }
-        FoxMood.ALERT, FoxMood.SLEEPY -> return
+        FoxMood.ALERT, FoxMood.SLEEPY, FoxMood.NEUTRAL -> return
     }
     drawPath(mouth, FoxColors.ink, style = Stroke(width = LINE * 0.8f, cap = StrokeCap.Round))
 }

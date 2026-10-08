@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -19,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -39,12 +43,14 @@ import com.unscroll.app.ui.components.rememberAppLabel
 import com.unscroll.app.ui.components.rememberHaptics
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.fox.FoxCorner
+import com.unscroll.app.ui.plus.PlusBadge
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 
 @Composable
 fun AppsScreen(
     onOpenApp: (String) -> Unit,
+    onOpenPlus: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: AppsViewModel = hiltViewModel(),
 ) {
@@ -52,6 +58,7 @@ fun AppsScreen(
     AppsContent(
         state = uiState,
         onOpenApp = onOpenApp,
+        onOpenPlus = onOpenPlus,
         onBlock = viewModel::setBlocked,
         onBlockAll = viewModel::setAllBlocked,
         modifier = modifier,
@@ -63,6 +70,7 @@ fun AppsScreen(
 private fun AppsContent(
     state: AppsUiState,
     onOpenApp: (String) -> Unit,
+    onOpenPlus: () -> Unit,
     onBlock: (String, Boolean) -> Unit,
     onBlockAll: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -93,11 +101,15 @@ private fun AppsContent(
             }
         }
         items(state.apps, key = { it.packageName }) { app ->
-            AppRow(
-                app = app,
-                onClick = { onOpenApp(app.packageName) },
-                onBlock = { onBlock(app.packageName, it) },
-            )
+            if (app.paused) {
+                PausedAppRow(app = app, onClick = onOpenPlus)
+            } else {
+                AppRow(
+                    app = app,
+                    onClick = { onOpenApp(app.packageName) },
+                    onBlock = { onBlock(app.packageName, it) },
+                )
+            }
         }
     }
 }
@@ -144,6 +156,50 @@ private fun AppRow(app: AppRowState, onClick: () -> Unit, onBlock: (Boolean) -> 
     }
 }
 
+/**
+ * A paused app (free tier): greyed out, a lock and a "Plus" badge. Its history and settings are
+ * kept; tapping opens Unscroll Plus.
+ */
+@Composable
+private fun PausedAppRow(app: AppRowState, onClick: () -> Unit) {
+    val pausedLabel = stringResource(R.string.apps_paused_description)
+    UnscrollCard(onClick = onClick, modifier = Modifier.semantics { contentDescription = pausedLabel }) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Dimens.touchTarget + Dimens.spaceL)
+                .padding(horizontal = Dimens.spaceL, vertical = Dimens.spaceM),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spaceL),
+        ) {
+            AppIcon(app.packageName, modifier = Modifier.alpha(PAUSED_ALPHA))
+            Column(modifier = Modifier.weight(1f).alpha(PAUSED_ALPHA)) {
+                Text(
+                    text = rememberAppLabel(app.packageName),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.apps_paused),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            Icon(
+                painter = painterResource(R.drawable.ic_lock),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(Dimens.iconSmall),
+            )
+            PlusBadge()
+        }
+    }
+}
+
+private const val PAUSED_ALPHA = 0.5f
+
 @PreviewLightDark
 @Composable
 private fun AppsPreview() {
@@ -164,10 +220,11 @@ private fun AppsPreview() {
                         BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, null),
                         0,
                     ),
-                    AppRowState(TrackedApps.FACEBOOK, LimitSettings(), BlockDecision.Allowed(null), 5 * 60_000L),
+                    AppRowState(TrackedApps.FACEBOOK, LimitSettings(), BlockDecision.Allowed(null), 0, paused = true),
                 ),
             ),
             onOpenApp = {},
+            onOpenPlus = {},
             onBlock = { _, _ -> },
             onBlockAll = {},
         )

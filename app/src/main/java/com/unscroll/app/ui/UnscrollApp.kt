@@ -36,6 +36,8 @@ import com.unscroll.app.ui.components.rememberHaptics
 import com.unscroll.app.ui.home.HomeScreen
 import com.unscroll.app.ui.navigation.AppDetailRoute
 import com.unscroll.app.ui.navigation.TopLevelDestination
+import com.unscroll.app.ui.plus.PaywallScreen
+import com.unscroll.app.ui.plus.PickAppsScreen
 import com.unscroll.app.ui.scroll.AccessibilityDisclosureScreen
 import com.unscroll.app.ui.scroll.RestrictedSettingHelpScreen
 import com.unscroll.app.ui.settings.SettingsScreen
@@ -44,6 +46,13 @@ import com.unscroll.app.ui.theme.Motion
 /** Sub-screens of Settings (M7). They keep the Settings tab selected. */
 private const val ROUTE_SCROLL_DISCLOSURE = "settings/scroll-disclosure"
 private const val ROUTE_RESTRICTED_HELP = "settings/restricted-setting-help"
+private const val ROUTE_PICK_APPS = "settings/pick-apps"
+
+/** Unscroll Plus, full screen. */
+private const val ROUTE_PLUS = "plus"
+
+/** Full-screen pages: no bottom bar. */
+private val FULL_SCREEN_ROUTES = setOf(AppDetailRoute.ROUTE, ROUTE_PLUS, ROUTE_PICK_APPS)
 
 @Composable
 fun UnscrollApp(modifier: Modifier = Modifier) {
@@ -51,9 +60,10 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
     val haptics = rememberHaptics()
-    // App detail is a full-screen page: no bottom bar.
-    val showBottomBar = currentDestination?.route != AppDetailRoute.ROUTE
+    // App detail, Plus and the free-app pick are full-screen pages: no bottom bar.
+    val showBottomBar = currentDestination?.route !in FULL_SCREEN_ROUTES
     val openApp: (String) -> Unit = { navController.navigate(AppDetailRoute.of(it)) }
+    val openPlus: () -> Unit = { navController.navigate(ROUTE_PLUS) { launchSingleTop = true } }
 
     Scaffold(
         modifier = modifier,
@@ -105,11 +115,20 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
             popExitTransition = { fadeOut(tween(Motion.SHORT)) },
         ) {
             composable(TopLevelDestination.HOME.route) { HomeScreen(onOpenApp = openApp) }
-            composable(TopLevelDestination.APPS.route) { AppsScreen(onOpenApp = openApp) }
+            composable(TopLevelDestination.APPS.route) { AppsScreen(onOpenApp = openApp, onOpenPlus = openPlus) }
             composable(TopLevelDestination.SETTINGS.route) {
                 SettingsScreen(
                     onScrollCountingSetUp = { navController.navigate(ROUTE_SCROLL_DISCLOSURE) },
                     onRestrictedSettingHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
+                    onOpenPlus = openPlus,
+                    onPickApps = { navController.navigate(ROUTE_PICK_APPS) },
+                )
+            }
+            composable(ROUTE_PLUS) { PaywallScreen(onClose = { navController.popBackStack() }) }
+            composable(ROUTE_PICK_APPS) {
+                PickAppsScreen(
+                    onDone = { navController.popBackStack() },
+                    onPlus = { navController.navigate(ROUTE_PLUS) { popUpTo(ROUTE_PICK_APPS) { inclusive = true } } },
                 )
             }
             composable(

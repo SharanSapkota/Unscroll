@@ -1,5 +1,6 @@
 package com.unscroll.app.service
 
+import com.unscroll.app.domain.plus.TrackedAppsState
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.domain.tracking.TrackedApps.FACEBOOK
@@ -9,6 +10,7 @@ import com.unscroll.app.testing.FakeForegroundAppDetector
 import com.unscroll.app.testing.FakeHeartbeatStore
 import com.unscroll.app.testing.FakeScreenState
 import com.unscroll.app.testing.FakeSessionStore
+import com.unscroll.app.testing.FakeTrackedAppsSource
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -25,6 +27,7 @@ class SessionManagerTest {
     private val screen = FakeScreenState()
     private val store = FakeSessionStore()
     private val heartbeats = FakeHeartbeatStore()
+    private val trackedApps = FakeTrackedAppsSource()
 
     private lateinit var manager: SessionManager
     private lateinit var trackingJob: Job
@@ -33,7 +36,7 @@ class SessionManagerTest {
     private fun TestScope.startTracking() {
         // The fake clock is the test scheduler's virtual time.
         val clock = Clock { testScheduler.currentTime }
-        manager = SessionManager(detector, screen, store, heartbeats, clock, backgroundScope)
+        manager = SessionManager(detector, screen, store, heartbeats, trackedApps, clock, backgroundScope)
         trackingJob = backgroundScope.launch { manager.run() }
         runCurrent()
     }
@@ -383,6 +386,49 @@ class SessionManagerTest {
         screenOff(atMillis = 6_000)
         assertNull(manager.swipes.value)
     }
+
+    @Test
+    fun pausedApp_freeTier_opensNoSession() = runTest {
+        trackedApps.current.value = freeTier(active = INSTAGRAM)
+        startTracking()
+
+        foreground(TIKTOK, atMillis = 0)
+        advanceTo(10_000)
+        assertNull(manager.currentSession.value)
+        assertEquals(false, swipe(TIKTOK))
+
+        foreground(INSTAGRAM, atMillis = 20_000)
+        assertEquals(listOf(session(1, INSTAGRAM, 20_000, null)), store.sessions)
+    }
+
+    @Test
+    fun appPausedWhileOpen_endsItsSession_andResumingTracksItAgain() = runTest {
+        startTracking()
+        foreground(TIKTOK, atMillis = 0)
+
+        // Plus ended while TikTok was on screen, and Instagram is the free app.
+        advanceTo(30_000)
+        trackedApps.current.value = freeTier(active = INSTAGRAM)
+        runCurrent()
+        assertNull(manager.currentSession.value)
+        assertEquals(listOf(session(1, TIKTOK, 0, 30_000)), store.sessions)
+
+        // Plus again: the next visit is tracked, the earlier session is kept as it was.
+        trackedApps.current.value = FakeTrackedAppsSource().current.value
+        foreground(LAUNCHER, atMillis = 40_000)
+        foreground(TIKTOK, atMillis = 50_000)
+        assertEquals(
+            listOf(session(1, TIKTOK, 0, 30_000), session(2, TIKTOK, 50_000, null)),
+            store.sessions,
+        )
+    }
+
+    private fun freeTier(active: String) = TrackedAppsState(
+        apps = listOf(INSTAGRAM, TIKTOK, FACEBOOK),
+        active = setOf(active),
+        isPlus = false,
+        needsPick = false,
+    )
 
     private companion object {
         const val LAUNCHER = "com.android.launcher3"

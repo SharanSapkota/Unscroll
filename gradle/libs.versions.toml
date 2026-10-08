@@ -5,6 +5,7 @@ ksp = "2.2.20-2.0.2"
 hilt = "2.57.1"
 coreKtx = "1.16.0"
 coreSplashscreen = "1.0.1"
+playBilling = "9.1.0"
 activityCompose = "1.10.1"
 composeBom = "2025.09.00"
 navigationCompose = "2.9.0"
@@ -22,6 +23,7 @@ androidxTestExtJunit = "1.2.1"
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
+play-billing = { group = "com.android.billingclient", name = "billing", version.ref = "playBilling" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
