@@ -54,6 +54,8 @@ fun SettingsScreen(
     onRestrictedSettingHelp: () -> Unit = {},
     onOpenPlus: () -> Unit = {},
     onPickApps: () -> Unit = {},
+    onSectionSetUp: () -> Unit = {},
+    onSectionInspector: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val trackingEnabled by viewModel.trackingEnabled.collectAsStateWithLifecycle()
@@ -110,6 +112,8 @@ fun SettingsScreen(
             scrollStatus = scrollStatus,
             onScrollCountingSetUp = onScrollCountingSetUp,
             onRestrictedHelp = onRestrictedSettingHelp,
+            onSectionSetUp = onSectionSetUp,
+            onOpenPlus = onOpenPlus,
         )
 
         SectionHeader(
@@ -182,6 +186,11 @@ fun SettingsScreen(
                     onClick = viewModel::insertSampleData,
                 )
                 PlusDebugRow()
+                SettingRow(
+                    title = stringResource(R.string.inspector_title),
+                    icon = R.drawable.ic_bug,
+                    onClick = onSectionInspector,
+                )
             }
         }
     }

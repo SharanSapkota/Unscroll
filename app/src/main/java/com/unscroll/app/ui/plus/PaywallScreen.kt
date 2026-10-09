@@ -104,6 +104,7 @@ private fun PaywallContent(
                 verticalArrangement = Arrangement.spacedBy(Dimens.spaceM),
             ) {
                 Bullet(pluralStringResource(R.plurals.plus_bullet_apps, FreeTier.FREE_APPS, FreeTier.FREE_APPS))
+                Bullet(stringResource(R.string.plus_bullet_sections))
                 Bullet(stringResource(R.string.plus_bullet_support))
                 Bullet(stringResource(R.string.plus_bullet_cancel))
             }

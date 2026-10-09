@@ -19,4 +19,5 @@ With "No" to collection and sharing, the listing shows **"No data collected"** a
 - No new library sends data (analytics, crash reporting, ads). Adding one changes these answers.
 - "Add apps" reads the launchable apps on the phone to show the picker; nothing about installed apps leaves the device, and only the apps the user adds are stored. The manifest uses the launcher intent in `<queries>`, not `QUERY_ALL_PACKAGES`, so no Play declaration is needed.
 - The CSV export is started by the user and saved where they choose, so it is not "sharing" by Play's definition.
+- Section blocking (optional, Unscroll Plus) reads technical screen identifiers (view IDs, class names, selected state, window class) on the device to tell short-video sections from chat. Nothing is stored beyond the user's settings and nothing leaves the device, so the answers stay "no data collected or shared". It never reads text or content descriptions (`SectionPrivacyGuardTest`).
 - The Accessibility API declaration is filed separately: [ACCESSIBILITY_DECLARATION.md](ACCESSIBILITY_DECLARATION.md).

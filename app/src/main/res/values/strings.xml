@@ -349,11 +349,12 @@
          (the manifest removes it, CI checks the merged manifest), no analytics or crash SDKs, no
          accounts, backups off. Play Billing only talks to the Play Store app and gets no usage data. -->
     <string name="trust_headline">Your data stays on your phone.</string>
-    <string name="trust_line">No accounts. No tracking. No selling. Unscroll only counts your time so you can get it back.</string>
+    <string name="trust_line">No accounts. No tracking. No selling. Unscroll only looks at how you use the apps you choose, so you can get your time back.</string>
     <string name="trust_footer">We\'re here to get you out of the doomscroll. You can trust us.</string>
     <string name="trust_how">How we protect your data</string>
     <string name="trust_bullet_device">Everything Unscroll records is stored only on this device.</string>
     <string name="trust_bullet_never">We never see or collect your usage.</string>
+    <string name="trust_bullet_content">Unscroll never reads your messages, posts or anything you type.</string>
     <string name="trust_bullet_purchases">No accounts. Purchases are handled by Google Play. We never see your usage data.</string>
     <string name="trust_bullet_delete">You can delete all your data any time in Settings.</string>
     <string name="onboarding_why_usage">To see how long you spend in each app.</string>
@@ -486,6 +487,7 @@
         <item quantity="one">Unlimited apps, not just one</item>
         <item quantity="other">Unlimited apps, not just %d</item>
     </plurals>
+    <string name="plus_bullet_sections">Block only Reels, For You or Shorts, keep chat</string>
     <string name="plus_bullet_support">Supports an independent app</string>
     <string name="plus_bullet_cancel">Cancel anytime in Google Play</string>
     <string name="plus_why">Your data stays with you, always. We only charge to support the people who build Unscroll, so it can keep helping you get your time back.</string>
@@ -532,8 +534,8 @@
     <string name="settings_plus_manage">Manage subscription</string>
     <string name="settings_plus_restoring">Checking…</string>
     <plurals name="settings_plus_info">
-        <item quantity="one">Free tracks one app with everything included. Plus tracks every app. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
-        <item quantity="other">Free tracks %d apps with everything included. Plus tracks every app. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
+        <item quantity="one">Free tracks one app with the timer, limits, blocking and stats included. Plus tracks every app and adds section blocking. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
+        <item quantity="other">Free tracks %d apps with the timer, limits, blocking and stats included. Plus tracks every app and adds section blocking. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
     </plurals>
     <plurals name="settings_free_apps">
         <item quantity="one">Free app</item>
@@ -562,4 +564,61 @@
     <string name="detail_remove_confirm_title">Remove this app?</string>
     <string name="detail_remove_confirm_body">Unscroll stops tracking and blocking it. Its history and settings are kept, so adding it again brings them back.</string>
     <string name="detail_remove_confirm">Remove</string>
+
+    <!-- Section blocking (Unscroll Plus, opt-in accessibility service) -->
+    <string name="section_service_label">Unscroll section blocking</string>
+    <string name="section_service_description">Checks which section of the apps you choose is open (for example Reels or chat), so Unscroll can cover only the short-video section. It only looks at technical screen identifiers, never at your messages, posts or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
+    <string name="section_title">Section blocking</string>
+    <string name="section_name_reels">Reels</string>
+    <string name="section_name_for_you">For You</string>
+    <string name="section_name_shorts">Shorts</string>
+    <string name="section_cover_title_reels">Reels are blocked.</string>
+    <string name="section_cover_title_for_you">For You is blocked.</string>
+    <string name="section_cover_title_shorts">Shorts are blocked.</string>
+    <string name="section_cover_open_chat">Chat is open.</string>
+    <string name="section_cover_open_rest">Everything else is open.</string>
+    <string name="section_cover_back_chat">Take me back to chat</string>
+    <string name="section_cover_back">Take me back</string>
+    <string name="section_disclosure_title">Block only short videos</string>
+    <string name="section_disclosure_intro">Unscroll checks which section of the app is open to block short videos. It never reads your messages or content and sends nothing anywhere.</string>
+    <string name="section_disclosure_does_title">What it does</string>
+    <string name="section_disclosure_does_body">It uses an Android accessibility service to see which part of an app you chose is open, like Reels, the For You feed or Shorts, and covers only that part. Chat, search, profiles and everything else keep working. To tell the sections apart it looks only at technical identifiers of the screen: the names of its building blocks, which tab is selected, and the app\'s screen name.</string>
+    <string name="section_disclosure_does_not_title">What it never does</string>
+    <string name="section_disclosure_does_not_body">It never reads your messages, posts, captions, comments, usernames or anything you type. It doesn\'t store what was on screen and sends nothing anywhere: Unscroll has no account and no internet access. It never taps or types for you; it can only go Back or Home when you ask it to.</string>
+    <string name="section_disclosure_optional_title">Optional</string>
+    <string name="section_disclosure_optional_body">Section blocking is part of Unscroll Plus and off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android\'s Accessibility settings.</string>
+    <string name="section_disclosure_next">Next: Android opens Accessibility settings. Tap \"Unscroll section blocking\" and turn it on.</string>
+    <string name="section_status_off">Off. Cover only Reels, For You or Shorts and keep chat open.</string>
+    <string name="section_status_needs_consent">Turned on in Android settings, but you haven\'t agreed in Unscroll yet. Nothing is checked until you do.</string>
+    <string name="section_status_needs_enabling">Almost there: turn on \"Unscroll section blocking\" in Accessibility settings.</string>
+    <string name="section_status_active">On. Choose the apps in Apps › an app › Section blocking.</string>
+    <string name="section_status_no_apps">On, but no app is chosen yet. Choose them in Apps › an app › Section blocking.</string>
+    <string name="section_status_turned_off">Turned off. Nothing is checked or covered.</string>
+    <string name="section_status_needs_reenable">Android switched section blocking off. Turn it back on in Accessibility settings.</string>
+    <string name="section_turn_off">Turn off section blocking</string>
+    <string name="section_turn_on">Turn on section blocking</string>
+    <string name="section_withdraw">Stop and remove consent</string>
+    <string name="section_panel_note">If Unscroll can\'t tell which section is open, nothing is blocked. Back, Home and Recents always work.</string>
+    <string name="section_banner_title">Section blocking stopped</string>
+    <string name="section_block_app">Block %1$s</string>
+    <string name="section_detail_info">Covers only %1$s. Chat, search, profiles and everything else keep working. If Unscroll can\'t tell which section is open, nothing is blocked.</string>
+    <string name="section_detail_set_up">Set up section blocking</string>
+    <string name="section_detail_enable_service">Turn on the service in Accessibility settings</string>
+    <string name="section_detail_turned_off">Section blocking is turned off in Settings</string>
+    <string name="section_detail_not_ready">Not ready for this app yet</string>
+    <string name="section_detail_needs_limit">Set a daily limit above</string>
+    <string name="section_mode_always">Always</string>
+    <string name="section_mode_after_limit">After limit</string>
+
+    <!-- Section Inspector (debug builds only) -->
+    <string name="inspector_title">Section Inspector</string>
+    <string name="inspector_switch">Log screen identifiers</string>
+    <string name="inspector_needs_service">Set up section blocking first (consent and the service on)</string>
+    <string name="inspector_how">Open a tracked app and move between its screens. Each new screen is logged to logcat with the tag SectionInspector: the package, the window class, and every visible view\'s ID, class and selected state. Never text. Tap \"Mark\" on the floating button to tag what you see; run adb logcat -s SectionInspector to read it.</string>
+    <string name="inspector_mark">Mark</string>
+    <string name="inspector_label_reels">Reels</string>
+    <string name="inspector_label_chat">Chat</string>
+    <string name="inspector_label_home">Home</string>
+    <string name="inspector_label_search">Search</string>
+    <string name="inspector_label_other">Other</string>
 </resources>

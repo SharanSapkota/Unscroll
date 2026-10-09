@@ -68,6 +68,7 @@ import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.fox.FoxCorner
 import com.unscroll.app.ui.plus.PlusEndedBanner
 import com.unscroll.app.ui.scroll.ScrollCountingBanner
+import com.unscroll.app.ui.section.SectionBlockingBanner
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -95,6 +96,7 @@ fun HomeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
                 PlusEndedBanner()
                 ScrollCountingBanner()
+                SectionBlockingBanner()
             }
         },
         // The fox peeks in from the top corner; tap it for a message.

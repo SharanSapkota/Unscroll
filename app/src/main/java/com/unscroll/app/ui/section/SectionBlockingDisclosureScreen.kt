@@ -1,4 +1,4 @@
-package com.unscroll.app.ui.scroll
+package com.unscroll.app.ui.section
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,10 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,26 +19,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.tooling.preview.Preview
-import com.unscroll.app.ui.theme.Dimens
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.unscroll.app.R
+import com.unscroll.app.ui.scroll.DisclosureBlock
+import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
 
 /**
- * The prominent disclosure for the accessibility service, shown before the user is ever sent to
- * Accessibility settings. Nothing is counted until the user taps "I agree" here.
+ * The prominent disclosure for section blocking, shown before the user is ever sent to
+ * Accessibility settings for its service. Nothing is read until the user taps "I agree".
  */
 @Composable
-fun AccessibilityDisclosureScreen(
+fun SectionBlockingDisclosureScreen(
     onFinished: () -> Unit,
     onRestrictedHelp: () -> Unit,
-    viewModel: ScrollCountingViewModel = hiltViewModel(),
+    viewModel: SectionBlockingViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    AccessibilityDisclosureContent(
+    SectionBlockingDisclosureContent(
         onAgree = {
             viewModel.agree()
             context.openSettings(SystemSettings.accessibility())
@@ -54,7 +54,7 @@ fun AccessibilityDisclosureScreen(
 }
 
 @Composable
-private fun AccessibilityDisclosureContent(
+private fun SectionBlockingDisclosureContent(
     onAgree: () -> Unit,
     onDecline: () -> Unit,
     onRestrictedHelp: () -> Unit,
@@ -67,29 +67,26 @@ private fun AccessibilityDisclosureContent(
         verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
     ) {
         Text(
-            text = stringResource(R.string.scroll_disclosure_title),
+            text = stringResource(R.string.section_disclosure_title),
             style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() },
         )
-        Text(
-            text = stringResource(R.string.scroll_disclosure_intro),
-            style = MaterialTheme.typography.bodyLarge,
+        Text(text = stringResource(R.string.section_disclosure_intro), style = MaterialTheme.typography.bodyLarge)
+        DisclosureBlock(
+            title = stringResource(R.string.section_disclosure_does_title),
+            body = stringResource(R.string.section_disclosure_does_body),
         )
         DisclosureBlock(
-            title = stringResource(R.string.scroll_disclosure_does_title),
-            body = stringResource(R.string.scroll_disclosure_does_body),
-        )
-        DisclosureBlock(
-            title = stringResource(R.string.scroll_disclosure_does_not_title),
-            body = stringResource(R.string.scroll_disclosure_does_not_body),
+            title = stringResource(R.string.section_disclosure_does_not_title),
+            body = stringResource(R.string.section_disclosure_does_not_body),
             highlight = true,
         )
         DisclosureBlock(
-            title = stringResource(R.string.scroll_disclosure_optional_title),
-            body = stringResource(R.string.scroll_disclosure_optional_body),
+            title = stringResource(R.string.section_disclosure_optional_title),
+            body = stringResource(R.string.section_disclosure_optional_body),
         )
         Text(
-            text = stringResource(R.string.scroll_disclosure_next),
+            text = stringResource(R.string.section_disclosure_next),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -105,37 +102,10 @@ private fun AccessibilityDisclosureContent(
     }
 }
 
+@PreviewLightDark
 @Composable
-internal fun DisclosureBlock(title: String, body: String, highlight: Boolean = false) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (highlight) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            },
-            contentColor = if (highlight) {
-                MaterialTheme.colorScheme.onSecondaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(Dimens.spaceL),
-            verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
-        ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            Text(text = body, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-@Preview(showBackground = true, heightDp = 1200)
-@Composable
-private fun AccessibilityDisclosurePreview() {
+private fun SectionBlockingDisclosurePreview() {
     UnscrollTheme {
-        AccessibilityDisclosureContent(onAgree = {}, onDecline = {}, onRestrictedHelp = {})
+        Surface { SectionBlockingDisclosureContent(onAgree = {}, onDecline = {}, onRestrictedHelp = {}) }
     }
 }

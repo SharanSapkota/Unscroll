@@ -9,7 +9,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 - Unscroll has **no account, no servers, no analytics, no ads and no internet permission**. It can't send your data anywhere.
 - Unscroll Plus (optional subscription) is bought through **Google Play**. Unscroll never sees your payment details, and Google Play never gets your usage data.
 - Everything Unscroll records is stored only on your phone, in the app's private storage, and is deleted when you uninstall the app.
-- Unscroll never reads what is on your screen: no posts, messages, usernames, text or images.
+- Unscroll never reads the content of your screen: no posts, messages, usernames, text or images. The optional section blocking (Unscroll Plus) only looks at technical identifiers of the screen, like the names of its views and which tab is selected, to tell short videos from chat; it stores none of them.
 
 ## What Unscroll records on your phone
 
@@ -19,7 +19,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 | The apps you track: package name, name, when you added it, and your per-app switches | So Unscroll tracks only the apps you chose |
 | How many times you swiped in a session (only if you turn on the optional swipe counter) | Swipe count, swipe stats, "take a break after N swipes" |
 | Sent nudges and "I need access" extensions | So nudges aren't repeated, and to log extensions |
-| Your settings: limits, schedules, goal, overlay, quiet hours, consent choices | So the app works the way you set it up |
+| Your settings: limits, schedules, goal, overlay, quiet hours, consent choices, and which apps' short-video sections you block | So the app works the way you set it up |
 | Whether you have Unscroll Plus (as last reported by Google Play), and which app you picked as your free app | So Plus keeps working offline, and so the right apps are tracked |
 
 ## Permissions and what they are used for
@@ -30,6 +30,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 - **Display over other apps:** to show the floating timer and the break and block screens.
 - **Notifications** (optional): nudges and break reminders.
 - **Accessibility service** (optional, off by default, needs your explicit consent in the app): counts scroll gestures in the tracked apps. It can't read screen content (`canRetrieveWindowContent` is off) and only receives scroll and window-change events from the tracked apps.
+- **Section blocking accessibility service** (optional, off by default, Unscroll Plus, needs your explicit consent on its own screen in the app): a second, separate service that checks which section of an app you chose is open (for example Instagram Reels or chat) so Unscroll can cover only the short-video section. It reads only technical identifiers: the app's package name and screen (activity) name, and for each visible view its ID, its type and whether it is selected. It never reads text, content descriptions, messages, captions, comments or usernames, stores nothing about what was on screen, and sends nothing anywhere. The only actions it performs are Back and Home, when you tap "Take me back" or "Go home" on its cover.
 - **Run at startup** and a foreground service: to keep tracking after a restart.
 
 ## Purchases (Unscroll Plus)
@@ -42,7 +43,7 @@ Unscroll doesn't share data with anyone, because it never sends data off your ph
 
 ## Your choices
 
-- Turn off tracking, the overlay, nudges or the swipe counter at any time in Settings.
+- Turn off tracking, the overlay, nudges, the swipe counter or section blocking at any time in Settings.
 - **Export:** Settings › Your data › Export sessions (CSV).
 - **Delete:** Settings › Data & privacy › Delete history deletes all recorded sessions, swipe counts and logs. Settings › Data & privacy › Delete all my data deletes everything, settings, limits and goal included, and the app starts over like a new install. Uninstalling the app, or "Clear storage" in Android's App info, also deletes everything.
 

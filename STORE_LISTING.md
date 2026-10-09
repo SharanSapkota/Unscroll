@@ -13,10 +13,11 @@ Doomscrolling steals hours you never get back. Unscroll shows you exactly how mu
 - Insights: time-of-day heatmap, number of opens, longest sessions, weekly trends
 - Friction, not guilt: a live timer, limits, and gentle nudges that actually work
 - Swipe counter and swipe limit (optional): see how many times you swipe, and cover the app when you hit the limit you set
+- Section blocking (optional, Unscroll Plus): block only Reels, TikTok's For You feed or YouTube Shorts while chat, search and profiles keep working
 - Private by design: all your data stays on your phone. No account. No tracking.
 
 **Pricing (in the full description; the price itself is set in Play Console, never in the app):**
-> Free for 1 app, with every feature included. Unscroll Plus: {price}/month for unlimited apps, cancel anytime in Google Play.
+> Free for 1 app, with the timer, limits, blocking and stats included. Unscroll Plus: {price}/month for unlimited apps and section blocking (block only Reels, For You or Shorts), cancel anytime in Google Play.
 >
 > Your data stays with you. We only charge to support the people who build Unscroll.
 
@@ -33,6 +34,7 @@ In the app: the paywall shows the price Play returns ("{price} / month"), "Bille
 - Usage access: to detect which app is open and measure time
 - Display over other apps: to show the live timer and block screen
 - Accessibility (optional, M7): to count scroll gestures in the tracked apps; no screen content is read or stored. Full wording below; Play declaration draft in docs/ACCESSIBILITY_DECLARATION.md.
+- Accessibility, second service (optional, Unscroll Plus): section blocking checks which section of a chosen app is open using technical identifiers only (view IDs, class names, selected tab, screen name), never text or messages, and covers only the short-video section. Its own disclosure below.
 
 ## Accessibility prominent disclosure (in-app, required)
 Shown on its own screen (Settings › Scroll counting › Set up) before the user is sent to Accessibility settings, and only acted on after an explicit "I agree" tap. Keep the app's `scroll_disclosure_*` strings and this text in sync:
@@ -51,11 +53,28 @@ Shown on its own screen (Settings › Scroll counting › Set up) before the use
 Store listing sentence (for the full description, near the feature list):
 > Unscroll's optional swipe counter uses the Accessibility Service API to count scroll gestures in the apps you choose to track, and to cover an app when the swipe limit you set is reached. It never reads your screen content or messages, and no data leaves your phone.
 
+## Section blocking prominent disclosure (in-app, required)
+Shown on its own screen (Settings › Tracking › Section blocking › Set up, or App detail › Section blocking) before the user is sent to Accessibility settings for the second service, and only acted on after an explicit "I agree" tap. Keep the app's `section_disclosure_*` strings and this text in sync:
+
+> **Block only short videos**
+> Unscroll checks which section of the app is open to block short videos. It never reads your messages or content and sends nothing anywhere.
+>
+> **What it does:** It uses an Android accessibility service to see which part of an app you chose is open, like Reels, the For You feed or Shorts, and covers only that part. Chat, search, profiles and everything else keep working. To tell the sections apart it looks only at technical identifiers of the screen: the names of its building blocks, which tab is selected, and the app's screen name.
+>
+> **What it never does:** It never reads your messages, posts, captions, comments, usernames or anything you type. It doesn't store what was on screen and sends nothing anywhere: Unscroll has no account and no internet access. It never taps or types for you; it can only go Back or Home when you ask it to.
+>
+> **Optional:** Section blocking is part of Unscroll Plus and off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android's Accessibility settings.
+>
+> [I agree] [No thanks]
+
+Store listing sentence (for the full description):
+> Unscroll's optional section blocking (Unscroll Plus) uses the Accessibility Service API to tell which section of an app you chose is open, so it can cover only Reels, For You or Shorts. It looks only at technical screen identifiers, never at your messages or content, and no data leaves your phone.
+
 ## Checklist
 - Privacy policy URL (required): draft in docs/PRIVACY_POLICY.md
 - Terms URL (linked from the paywall): draft in docs/TERMS.md
 - Subscription `unscroll_plus_monthly` with base plan `monthly` in Play Console (see docs/RELEASE.md)
 - Data Safety form: no data collected or shared (answers in docs/DATA_SAFETY.md)
-- Accessibility API declaration form (draft in docs/ACCESSIBILITY_DECLARATION.md, plus a short video of the disclosure and the feature)
+- Accessibility API declaration form (draft in docs/ACCESSIBILITY_DECLARATION.md, covering both services, plus a short video of each disclosure and feature)
 - 4-8 screenshots, 512x512 icon, 1024x500 feature graphic
 - Do not use "Instagram", "TikTok", or "Facebook" in the title

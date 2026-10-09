@@ -15,6 +15,7 @@ import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
+import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.service.TrackingController
 import com.unscroll.app.ui.UnscrollRoot
 import com.unscroll.app.ui.fox.ProvideFoxSettings
@@ -34,6 +35,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var scrollCountingRepository: ScrollCountingRepository
+
+    @Inject
+    lateinit var sectionBlockingRepository: SectionBlockingRepository
 
     @Inject
     lateinit var appearancePreferences: AppearancePreferences
@@ -73,8 +77,9 @@ class MainActivity : ComponentActivity() {
         // Users grant special access in Settings, and Android sends no callback. Re-check whenever
         // they come back.
         permissionRepository.refresh()
-        // Same for the optional accessibility service (scroll counting).
+        // Same for the optional accessibility services (scroll counting, section blocking).
         scrollCountingRepository.refresh()
+        sectionBlockingRepository.refresh()
         // Plus may have started, ended or renewed while away; a tracked app may have been installed.
         entitlement.refresh()
         trackedApps.refresh()

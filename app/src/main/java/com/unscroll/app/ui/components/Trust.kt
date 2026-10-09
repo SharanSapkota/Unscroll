@@ -95,6 +95,7 @@ private fun TrustBullets() {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceM)) {
         TrustBullet(R.string.trust_bullet_device)
         TrustBullet(R.string.trust_bullet_never)
+        TrustBullet(R.string.trust_bullet_content)
         TrustBullet(R.string.trust_bullet_purchases)
         TrustBullet(R.string.trust_bullet_delete)
     }

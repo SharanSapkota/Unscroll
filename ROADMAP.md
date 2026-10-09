@@ -179,3 +179,15 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Application ID `com.sharansapkota.unscroll` (registered in Play Console); the Kotlin namespace stays `com.unscroll.app`, so no sources moved and behavior is unchanged
 - Every use of the app's own ID is dynamic (`context.packageName`); a guard test fails if the old ID is used as an app ID in manifests, Gradle or resources
 - Release signing from a gitignored `keystore.properties` with a clear error when it is missing; version bumping documented in docs/RELEASE.md
+
+## Section blocking (Unscroll Plus) 🟡 Built, awaiting identifiers and device testing
+- Opt-in: block only the short-video section (Instagram Reels, TikTok For You, Facebook Reels, YouTube Shorts) while chat, search, profiles and everything else keep working
+- A second accessibility service with window content (IDs only) and its own disclosure ("Unscroll checks which section of the app is open to block short videos. It never reads your messages or content and sends nothing anywhere."), "I agree" / "No thanks"; scroll counting's service is unchanged (still no window content)
+- Strict privacy: only package, window class, view IDs, class names and selected/visible state are read; never text or content descriptions (a unit test fails the build otherwise); nothing stored beyond settings; nothing sent
+- One rules file (`SectionRulesConfig`): per app package names, version-aware rule sets (blocked window/view IDs/classes, selected tabs, allowed chat markers). Seeded empty with TODO markers: until real identifiers are captured, every app returns UNKNOWN and nothing is blocked
+- Fail open: unknown, unreadable or not positively identified never blocks; chat markers always win
+- Cover: the calm stop screen with the concerned fox, "Reels are blocked. Chat is open.", "Take me back to chat" (Back for the app) and "Go home"; an accessibility overlay that is touchable but not focusable, so Back, Home and Recents always work
+- Per app in App detail under Limits: "Block Reels" (off by default), Always / After limit; global kill switch "Turn off section blocking" in Settings; re-enable banner on Home when Android switches the service off
+- Unscroll Plus only (the debug Force Plus applies); paywall, terms and store text updated
+- Debug builds: Section Inspector (Settings › Debug) logs package, window class and deduplicated view ID / class / selected to logcat (tag `SectionInspector`), with a floating "Mark this screen as: Reels / Chat / Home / Search / Other" button; capture steps in docs/SECTION_BLOCKING.md
+- **Done when**: identifiers captured on a device fill in `SectionRulesConfig`; opening Reels/For You/Shorts is covered within a second, "Take me back to chat" leaves it, chat and search are never covered, and "Turn off section blocking" stops everything at once.
