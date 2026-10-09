@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.unscroll.app.BuildConfig
 import com.unscroll.app.ui.apps.AddAppsScreen
 import com.unscroll.app.ui.apps.AppDetailScreen
 import com.unscroll.app.ui.apps.AppDetailViewModel
@@ -41,6 +42,8 @@ import com.unscroll.app.ui.plus.PaywallScreen
 import com.unscroll.app.ui.plus.PickAppsScreen
 import com.unscroll.app.ui.scroll.AccessibilityDisclosureScreen
 import com.unscroll.app.ui.scroll.RestrictedSettingHelpScreen
+import com.unscroll.app.ui.section.SectionBlockingDisclosureScreen
+import com.unscroll.app.ui.section.SectionInspectorScreen
 import com.unscroll.app.ui.settings.SettingsScreen
 import com.unscroll.app.ui.theme.Motion
 
@@ -48,6 +51,10 @@ import com.unscroll.app.ui.theme.Motion
 private const val ROUTE_SCROLL_DISCLOSURE = "settings/scroll-disclosure"
 private const val ROUTE_RESTRICTED_HELP = "settings/restricted-setting-help"
 private const val ROUTE_PICK_APPS = "settings/pick-apps"
+private const val ROUTE_SECTION_DISCLOSURE = "settings/section-disclosure"
+
+/** Debug builds only. */
+private const val ROUTE_SECTION_INSPECTOR = "settings/section-inspector"
 
 /** The "+" picker on the Apps tab. */
 private const val ROUTE_ADD_APPS = "apps/add"
@@ -135,6 +142,8 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onRestrictedSettingHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
                     onOpenPlus = openPlus,
                     onPickApps = { navController.navigate(ROUTE_PICK_APPS) },
+                    onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
+                    onSectionInspector = { navController.navigate(ROUTE_SECTION_INSPECTOR) },
                 )
             }
             composable(ROUTE_PLUS) { PaywallScreen(onClose = { navController.popBackStack() }) }
@@ -148,13 +157,28 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                 route = AppDetailRoute.ROUTE,
                 arguments = listOf(navArgument(AppDetailViewModel.ARG_PACKAGE) { type = NavType.StringType }),
             ) {
-                AppDetailScreen(onBack = { navController.popBackStack() })
+                AppDetailScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPlus = openPlus,
+                    onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
+                )
             }
             composable(ROUTE_SCROLL_DISCLOSURE) {
                 AccessibilityDisclosureScreen(
                     onFinished = { navController.popBackStack() },
                     onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
                 )
+            }
+            composable(ROUTE_SECTION_DISCLOSURE) {
+                SectionBlockingDisclosureScreen(
+                    onFinished = { navController.popBackStack() },
+                    onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
+                )
+            }
+            if (BuildConfig.DEBUG) {
+                composable(ROUTE_SECTION_INSPECTOR) {
+                    SectionInspectorScreen(onBack = { navController.popBackStack() })
+                }
             }
             composable(ROUTE_RESTRICTED_HELP) {
                 RestrictedSettingHelpScreen(onBack = { navController.popBackStack() })

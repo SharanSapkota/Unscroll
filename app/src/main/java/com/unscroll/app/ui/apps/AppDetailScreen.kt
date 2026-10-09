@@ -53,10 +53,13 @@ import kotlinx.coroutines.flow.collectLatest
 fun AppDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenPlus: () -> Unit = {},
+    onSectionSetUp: () -> Unit = {},
     viewModel: AppDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
+    val section by viewModel.section.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val savedText = stringResource(R.string.detail_saved)
     LaunchedEffect(viewModel) {
@@ -89,6 +92,13 @@ fun AppDetailScreen(
                 onCountSwipes = viewModel::setCountSwipes,
                 onRemove = { viewModel.remove(onRemoved = onBack) },
             ),
+            section = section,
+            sectionActions = SectionDetailActions(
+                onBlocked = viewModel::setSectionBlocked,
+                onMode = viewModel::setSectionMode,
+                onOpenPlus = onOpenPlus,
+                onSetUp = onSectionSetUp,
+            ),
         )
         SnackbarHost(
             hostState = snackbar,
@@ -107,6 +117,8 @@ internal fun AppDetailContent(
     modifier: Modifier = Modifier,
     tracking: TrackingRowState = TrackingRowState(),
     trackingActions: TrackingActions = TrackingActions(),
+    section: SectionAppState? = null,
+    sectionActions: SectionDetailActions = SectionDetailActions(),
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.padding(start = Dimens.spaceXs)) {
@@ -129,6 +141,7 @@ internal fun AppDetailContent(
         ) {
             item(key = "header") { Header(state) }
             item(key = "limits") { LimitsSection(state, actions) }
+            section?.let { item(key = "section") { SectionBlockingDetail(it, state.settings.dailyLimitMinutes != null, sectionActions) } }
             item(key = "blocking") { BlockingSection(state.settings, actions) }
             item(key = "pill") { TimerAndNudgesSection(state, actions) }
             item(key = "stats") { MiniStats(state) }

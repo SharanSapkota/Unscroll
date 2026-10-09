@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Opt-in section blocking (Unscroll Plus). A separate service from scroll counting, because
+    telling Reels from chat needs canRetrieveWindowContent="true", a static flag: scroll counting's
+    service keeps it off and is unchanged. Users only switch this one on after agreeing on its own
+    disclosure screen.
+
+    Limits:
+    - Reads only technical identifiers: the package, the window class, and each visible node's
+      viewIdResourceName, className and isSelected (flagReportViewIds). Never text, content
+      descriptions or hints (SectionPrivacyGuardTest checks the code); nothing is stored or sent.
+    - Window, content and selection changes only, and only from the apps listed here (the apps
+      with section rules, SectionRulesConfig; SectionBlockingConfigTest checks this). The service
+      narrows it to the tracked apps the user blocks a section in when it connects, and to none
+      while it is turned off.
+
+    isAccessibilityTool="false": like scroll counting, a digital-wellbeing feature, declared in the
+    Accessibility API declaration (docs/ACCESSIBILITY_DECLARATION.md).
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewSelected"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/section_service_description"
+    android:isAccessibilityTool="false"
+    android:notificationTimeout="150"
+    android:packageNames="com.instagram.android,com.zhiliaoapp.musically,com.ss.android.ugc.trill,com.facebook.katana,com.google.android.youtube"
+    android:settingsActivity="com.unscroll.app.MainActivity"
+    tools:ignore="UnusedAttribute" />

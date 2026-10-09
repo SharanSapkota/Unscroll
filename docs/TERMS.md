@@ -4,7 +4,7 @@ _Last updated: [date of release]. Replace the bracketed parts before publishing,
 
 ## The app
 
-Unscroll is free to use for one tracked app, with every feature included: the live timer, limits, the swipe limit, blocking, stats and the fox. Your history and data are never locked, whatever plan you are on.
+Unscroll is free to use for one tracked app, with the live timer, limits, the swipe limit, blocking, stats and the fox included. Section blocking (covering only Reels, For You or Shorts) is part of Unscroll Plus. Your history and data are never locked, whatever plan you are on.
 
 ## Unscroll Plus
 

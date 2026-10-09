@@ -31,14 +31,14 @@ import com.unscroll.app.ui.theme.Dimens
 
 /**
  * The block screen and the swipe-limit cover: a calm dark page with a concerned fox, the app, one bold headline,
- * the key number in the accent color, and one big "Go home". No paragraphs. [secondary] holds
- * an optional quiet action ("I need access").
+ * the key number in the accent color (if any), and one big "Go home". No paragraphs. [secondary]
+ * holds an optional quiet action ("I need access").
  */
 @Composable
 fun StopScreen(
     packageName: String,
     headline: String,
-    number: String,
+    number: String?,
     numberLabel: String,
     goHomeLabel: String,
     onGoHome: () -> Unit,
@@ -77,7 +77,9 @@ fun StopScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.semantics { heading() },
             )
-            Text(text = number, style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.primary)
+            if (number != null) {
+                Text(text = number, style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.primary)
+            }
             Text(
                 text = numberLabel,
                 style = MaterialTheme.typography.labelLarge,

@@ -26,11 +26,14 @@ import com.unscroll.app.ui.components.SettingsGroup
 import com.unscroll.app.ui.components.UnscrollSheet
 import com.unscroll.app.ui.components.shortMinutes
 import com.unscroll.app.ui.scroll.ScrollCountingPanel
+import com.unscroll.app.ui.section.SectionBlockingPanel
+import com.unscroll.app.ui.section.SectionBlockingViewModel
+import com.unscroll.app.ui.section.sectionValueRes
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
 
-/** Settings › Tracking: the tracking switch, the daily goal and scroll counting. */
+/** Settings › Tracking: the tracking switch, the daily goal, scroll counting and section blocking. */
 @Composable
 internal fun TrackingGroup(
     trackingEnabled: Boolean,
@@ -38,11 +41,18 @@ internal fun TrackingGroup(
     scrollStatus: ScrollCountingStatus,
     onScrollCountingSetUp: () -> Unit,
     onRestrictedHelp: () -> Unit,
+    onSectionSetUp: () -> Unit = {},
+    onOpenPlus: () -> Unit = {},
     dataViewModel: YourDataViewModel = hiltViewModel(),
+    sectionViewModel: SectionBlockingViewModel = hiltViewModel(),
 ) {
     val goal by dataViewModel.dailyGoalMinutes.collectAsStateWithLifecycle()
+    val sectionStatus by sectionViewModel.status.collectAsStateWithLifecycle()
+    val sectionSettings by sectionViewModel.settings.collectAsStateWithLifecycle()
+    val isPlus by sectionViewModel.isPlus.collectAsStateWithLifecycle()
     var goalOpen by rememberSaveable { mutableStateOf(false) }
     var scrollOpen by rememberSaveable { mutableStateOf(false) }
+    var sectionOpen by rememberSaveable { mutableStateOf(false) }
     SettingsGroup {
         SettingSwitchRow(
             title = stringResource(R.string.settings_tracking),
@@ -68,6 +78,22 @@ internal fun TrackingGroup(
             },
             onClick = { scrollOpen = true },
         )
+        // Section blocking is part of Unscroll Plus: free users get the paywall.
+        SettingRow(
+            title = stringResource(R.string.section_title),
+            icon = R.drawable.ic_layers,
+            value = if (isPlus) {
+                stringResource(sectionValueRes(sectionStatus, sectionSettings.turnedOff))
+            } else {
+                stringResource(R.string.plus_badge)
+            },
+            valueColor = if (isPlus && sectionStatus == ScrollCountingStatus.NEEDS_REENABLE) {
+                UnscrollTheme.status.danger
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            onClick = { if (isPlus) sectionOpen = true else onOpenPlus() },
+        )
     }
     if (goalOpen) {
         UnscrollSheet(title = stringResource(R.string.settings_daily_goal), onDismiss = { goalOpen = false }) {
@@ -91,6 +117,21 @@ internal fun TrackingGroup(
                     scrollOpen = false
                     onRestrictedHelp()
                 },
+            )
+        }
+    }
+    if (sectionOpen) {
+        UnscrollSheet(title = stringResource(R.string.section_title), onDismiss = { sectionOpen = false }) {
+            SectionBlockingPanel(
+                onSetUp = {
+                    sectionOpen = false
+                    onSectionSetUp()
+                },
+                onRestrictedHelp = {
+                    sectionOpen = false
+                    onRestrictedHelp()
+                },
+                viewModel = sectionViewModel,
             )
         }
     }

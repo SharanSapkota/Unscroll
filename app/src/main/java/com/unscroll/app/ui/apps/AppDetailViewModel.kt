@@ -8,6 +8,7 @@ import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
+import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.domain.apps.TrackedAppStatus
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
@@ -23,6 +24,10 @@ import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.overlay.OverlaySettings
+import com.unscroll.app.domain.scroll.ScrollConsent
+import com.unscroll.app.domain.scroll.ScrollCountingStatus
+import com.unscroll.app.domain.section.BlockedSection
+import com.unscroll.app.domain.section.SectionBlockMode
 import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.DayOfWeek
@@ -70,6 +75,22 @@ data class TrackingRowState(
     val installed: Boolean = true,
 )
 
+/** Section blocking for this app (App detail › Limits), or none for apps without section rules. */
+data class SectionAppState(
+    val section: BlockedSection,
+    /** The config has identifiers for this app; until then nothing can be detected or blocked. */
+    val ready: Boolean,
+    val isPlus: Boolean,
+    /** The user agreed on the disclosure. */
+    val consented: Boolean,
+    /** The service runs (status ACTIVE). */
+    val serviceOn: Boolean,
+    /** The global kill switch is set. */
+    val turnedOff: Boolean,
+    val blocked: Boolean,
+    val mode: SectionBlockMode,
+)
+
 /**
  * App detail: every setting of one app, saved the moment it changes (no Save button, no
  * cooldown), plus a few stats. [saved] emits after each change so the screen can confirm it.
@@ -85,6 +106,7 @@ class AppDetailViewModel @Inject constructor(
     private val evaluator: BlockEvaluator,
     private val trackedApps: TrackedAppsRepository,
     scrollCounting: ScrollCountingRepository,
+    private val sectionBlocking: SectionBlockingRepository,
     private val clock: Clock,
 ) : ViewModel() {
 
@@ -125,6 +147,30 @@ class AppDetailViewModel @Inject constructor(
             } ?: TrackingRowState(inList = false)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackingRowState())
+
+    /** Section blocking for this app; null when no app rules exist for it. */
+    val section: StateFlow<SectionAppState?> = combine(
+        sectionBlocking.settings,
+        sectionBlocking.isPlus,
+        sectionBlocking.status,
+    ) { settings, plus, status ->
+        sectionBlocking.detectors.rulesFor(packageName)?.let { rules ->
+            SectionAppState(
+                section = rules.section,
+                ready = rules.isReady,
+                isPlus = plus,
+                consented = settings.consent == ScrollConsent.AGREED,
+                serviceOn = status == ScrollCountingStatus.ACTIVE,
+                turnedOff = settings.turnedOff,
+                blocked = settings.isBlocked(packageName),
+                mode = settings.modeFor(packageName),
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun setSectionBlocked(blocked: Boolean) = save { sectionBlocking.setBlocked(packageName, blocked) }
+
+    fun setSectionMode(mode: SectionBlockMode) = save { sectionBlocking.setMode(packageName, mode) }
 
     fun setTracked(tracked: Boolean) = save { trackedApps.setPaused(packageName, paused = !tracked) }
 
