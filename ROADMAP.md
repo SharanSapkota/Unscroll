@@ -170,3 +170,7 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Freemium through one provider (`EntitlementRepository.maxActiveApps`): a free user at the limit who taps "Add" gets the paywall
 - App detail › Tracking: "Track this app" (pause), "Count swipes", "Remove from Unscroll" (confirmation). Removing keeps history and settings; adding again restores them. Uninstalled apps show "Not installed" and aren't tracked; re-checked on resume
 - **Done when**: YouTube (or Chrome in a debug build) added from the picker gets the pill, a daily limit blocks it, its swipes count, and removing and re-adding it keeps its history.
+
+## Billing diagnostics (debug builds) ✅ Done
+- Debug builds log the full Play Billing result (responseCode, name, debugMessage) for startConnection, queryProductDetailsAsync (product ID and ProductDetails count) and launchBillingFlow, and the paywall shows the last code name in small text (BILLING_UNAVAILABLE, ITEM_UNAVAILABLE, DEVELOPER_ERROR, …). Nothing changes in release builds
+- **Done when**: on a debug build whose Play Console product isn't set up, the paywall says why (e.g. "OK · 0 ProductDetails" or ITEM_UNAVAILABLE).

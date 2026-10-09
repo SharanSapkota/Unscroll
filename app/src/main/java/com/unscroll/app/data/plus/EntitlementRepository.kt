@@ -66,6 +66,9 @@ class EntitlementRepository @Inject constructor(
     /** A purchase is waiting for payment (e.g. cash at a store). Not Plus yet. */
     val pending: StateFlow<Boolean> = _pending.asStateFlow()
 
+    /** Debug builds only: the last Billing response code name, for the paywall. Null in release. */
+    val billingDebugStatus: StateFlow<String?> = billing.debugStatus
+
     /** Purchase flows that failed (not cancelled), for the paywall's message. */
     val purchaseFailures: Flow<PurchaseUpdate> = billing.purchaseUpdates.filter { it == PurchaseUpdate.Failed }
 

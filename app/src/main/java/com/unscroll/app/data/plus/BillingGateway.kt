@@ -7,12 +7,19 @@ import com.unscroll.app.domain.plus.PlusOffer
 import com.unscroll.app.domain.plus.PurchaseUpdate
 import com.unscroll.app.domain.plus.PurchasesResult
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Google Play Billing, behind an interface so EntitlementRepository can be tested with a fake.
  * Implementations never throw: every failure comes back as "unavailable".
  */
 interface BillingGateway {
+    /**
+     * Debug builds only: the last Billing call's response code name for the paywall, e.g.
+     * "queryProductDetails: ITEM_UNAVAILABLE". Always null in release builds.
+     */
+    val debugStatus: StateFlow<String?>
+
     /** Play's purchase callbacks (after the purchase flow, or when a pending purchase completes). */
     val purchaseUpdates: Flow<PurchaseUpdate>
 

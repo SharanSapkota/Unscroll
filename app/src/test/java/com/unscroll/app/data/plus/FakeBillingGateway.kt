@@ -11,6 +11,7 @@ import com.unscroll.app.domain.plus.PurchaseUpdate
 import com.unscroll.app.domain.plus.PurchasesResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Play Billing under test control: what it answers, and what it was asked to acknowledge. */
 class FakeBillingGateway : BillingGateway {
@@ -23,6 +24,8 @@ class FakeBillingGateway : BillingGateway {
     val updates = MutableSharedFlow<PurchaseUpdate>(extraBufferCapacity = 8)
 
     override val purchaseUpdates: Flow<PurchaseUpdate> = updates
+
+    override val debugStatus = MutableStateFlow<String?>(null)
 
     override suspend fun queryPurchases(): PurchasesResult =
         purchases?.let { PurchasesResult.Ok(it) } ?: PurchasesResult.Unavailable

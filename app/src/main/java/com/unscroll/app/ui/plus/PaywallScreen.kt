@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.unscroll.app.BuildConfig
 import com.unscroll.app.R
 import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.plus.FreeTier
@@ -158,6 +159,16 @@ private fun PaywallContent(
             TextButton(onClick = onClose) { Text(stringResource(R.string.plus_not_now)) }
         }
 
+        // Debug builds only: why Billing failed (BILLING_UNAVAILABLE, ITEM_UNAVAILABLE, ...).
+        if (BuildConfig.DEBUG && state.debugStatus != null) {
+            Text(
+                text = stringResource(R.string.debug_billing_status, state.debugStatus),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
             val privacyUrl = stringResource(R.string.url_privacy_policy)
             val termsUrl = stringResource(R.string.url_terms)
@@ -248,7 +259,11 @@ private fun PaywallUnavailablePreview() {
     UnscrollTheme {
         Surface {
             PaywallContent(
-                state = PaywallUiState(price = PriceState.Unavailable, message = PaywallMessage.NOTHING_TO_RESTORE),
+                state = PaywallUiState(
+                    price = PriceState.Unavailable,
+                    message = PaywallMessage.NOTHING_TO_RESTORE,
+                    debugStatus = "queryProductDetailsAsync: ITEM_UNAVAILABLE · 0 ProductDetails",
+                ),
                 onContinue = {},
                 onRestore = {},
                 onRetry = {},
