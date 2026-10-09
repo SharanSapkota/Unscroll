@@ -49,8 +49,8 @@ class EntitlementRulesTest {
     @Test
     fun manageUrl_pointsAtTheSubscription() {
         assertEquals(
-            "https://play.google.com/store/account/subscriptions?sku=unscroll_plus_monthly&package=com.unscroll.app",
-            PlusProduct.manageUrl("com.unscroll.app"),
+            "https://play.google.com/store/account/subscriptions?sku=unscroll_plus_monthly&package=com.sharansapkota.unscroll",
+            PlusProduct.manageUrl("com.sharansapkota.unscroll"),
         )
     }
 }

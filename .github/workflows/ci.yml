@@ -40,6 +40,21 @@ jobs:
             exit 1
           fi
 
+      # Release builds need keystore.properties, which CI doesn't have: bundleRelease must stop
+      # with the clear signing message (and not with any other error).
+      - name: Release build without signing fails clearly
+        run: |
+          set +e
+          ./gradlew bundleRelease --console=plain > release.log 2>&1
+          status=$?
+          set -e
+          tail -n 30 release.log
+          if [ $status -eq 0 ]; then
+            echo "::error::bundleRelease succeeded without keystore.properties"
+            exit 1
+          fi
+          grep -q "Release signing is not configured" release.log || { echo "::error::bundleRelease failed for another reason"; exit 1; }
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v4

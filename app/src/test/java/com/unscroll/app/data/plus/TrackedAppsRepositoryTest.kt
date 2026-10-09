@@ -183,7 +183,7 @@ class TrackedAppsRepositoryTest {
         repository.state.first { it.isPlus }
 
         assertEquals(AddResult.EXCLUDED, repository.add("com.android.settings", "Settings"))
-        assertEquals(AddResult.EXCLUDED, repository.add("com.unscroll.app", "Unscroll"))
+        assertEquals(AddResult.EXCLUDED, repository.add("com.sharansapkota.unscroll", "Unscroll"))
         assertNull(database.trackedAppDao().get("com.android.settings"))
     }
 

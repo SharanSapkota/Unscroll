@@ -83,4 +83,14 @@ class ScrollCountingRulesTest {
         assertFalse(ScrollCountingRules.isServiceEnabled("$pkg.debug/$cls", pkg, cls))
         assertFalse(ScrollCountingRules.isServiceEnabled("$pkg/com.other.Service", pkg, cls))
     }
+
+    @Test
+    fun isServiceEnabled_withTheApplicationIdDifferentFromTheNamespace() {
+        // The real app: application ID com.sharansapkota.unscroll, classes in com.unscroll.app.
+        val pkg = "com.sharansapkota.unscroll"
+        val cls = "com.unscroll.app.service.ScrollAccessibilityService"
+        assertTrue(ScrollCountingRules.isServiceEnabled("$pkg/$cls", pkg, cls))
+        assertFalse(ScrollCountingRules.isServiceEnabled("com.unscroll.app/$cls", pkg, cls))
+        assertFalse(ScrollCountingRules.isServiceEnabled("$pkg/.service.ScrollAccessibilityService", pkg, cls))
+    }
 }

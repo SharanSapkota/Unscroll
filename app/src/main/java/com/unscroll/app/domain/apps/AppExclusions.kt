@@ -63,6 +63,6 @@ fun interface ExcludedApps {
 
     companion object {
         /** Tests: only the fixed list (with a placeholder for Unscroll's own package). */
-        val STATIC = ExcludedApps { AppExclusions.isExcluded(it, ownPackage = "com.unscroll.app") }
+        val STATIC = ExcludedApps { AppExclusions.isExcluded(it, ownPackage = "com.sharansapkota.unscroll") }
     }
 }
