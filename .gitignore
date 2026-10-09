@@ -13,3 +13,5 @@
 *.aab
 *.keystore
 *.jks
+# Release signing (docs/RELEASE.md): never commit keys or passwords.
+keystore.properties

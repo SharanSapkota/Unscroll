@@ -61,9 +61,12 @@ object ScrollCountingRules {
         consent == ScrollConsent.AGREED && connected
 
     /**
-     * Whether [component] ("com.unscroll.app/com.unscroll.app.service.ScrollAccessibilityService")
-     * is in the colon-separated Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES value. Entries may
-     * use the short class form ("com.unscroll.app/.service.ScrollAccessibilityService").
+     * Whether [packageName]/[className] is in the colon-separated
+     * Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES value. [packageName] is the application ID
+     * (context.packageName, "com.sharansapkota.unscroll") and [className] the service class, whose
+     * package (namespace "com.unscroll.app") differs: "com.sharansapkota.unscroll/com.unscroll.app.
+     * service.ScrollAccessibilityService". The short form ("pkg/.service.X") only exists when the
+     * class lives under the application ID.
      */
     fun isServiceEnabled(enabledServices: String?, packageName: String, className: String): Boolean {
         if (enabledServices.isNullOrBlank()) return false

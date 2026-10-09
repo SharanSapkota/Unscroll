@@ -174,3 +174,8 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 ## Billing diagnostics (debug builds) ✅ Done
 - Debug builds log the full Play Billing result (responseCode, name, debugMessage) for startConnection, queryProductDetailsAsync (product ID and ProductDetails count) and launchBillingFlow, and the paywall shows the last code name in small text (BILLING_UNAVAILABLE, ITEM_UNAVAILABLE, DEVELOPER_ERROR, …). Nothing changes in release builds
 - **Done when**: on a debug build whose Play Console product isn't set up, the paywall says why (e.g. "OK · 0 ProductDetails" or ITEM_UNAVAILABLE).
+
+## Play package name ✅ Done
+- Application ID `com.sharansapkota.unscroll` (registered in Play Console); the Kotlin namespace stays `com.unscroll.app`, so no sources moved and behavior is unchanged
+- Every use of the app's own ID is dynamic (`context.packageName`); a guard test fails if the old ID is used as an app ID in manifests, Gradle or resources
+- Release signing from a gitignored `keystore.properties` with a clear error when it is missing; version bumping documented in docs/RELEASE.md

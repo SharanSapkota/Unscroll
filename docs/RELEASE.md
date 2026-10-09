@@ -4,9 +4,15 @@ Steps to take Unscroll from CI-green to Google Play. Items marked **(manual)** c
 
 ## 1. Before the first upload
 
-- [ ] **Signing (manual):** create an upload key and keep it outside the repo. Enroll in Play App Signing. Never commit `*.jks` or `*.keystore` (`.gitignore` already blocks them).
-- [ ] **Version:** bump `versionCode` (every upload) and `versionName` in `app/build.gradle.kts`.
-- [ ] **Release build (manual):** `./gradlew bundleRelease` with the signing config passed in from local properties or CI secrets. `isMinifyEnabled` is still `false`. Turning on R8 needs keep-rule testing for Hilt, Room and Compose on a real device first, so leave it off for the first internal test.
+- [ ] **Package name:** the application ID is `com.sharansapkota.unscroll` (registered in Play Console; `applicationId` in `app/build.gradle.kts`). It can never change after the first upload. The Kotlin `namespace` stays `com.unscroll.app` (source packages and `R`); code that needs the app's own ID uses `context.packageName`, never a literal. `PackageNameGuardTest` fails if the old ID is used as an app ID in a manifest, Gradle or resource file.
+- [ ] **Signing (manual):** create an upload key and keep it outside the repo. Enroll in Play App Signing. Never commit `*.jks`, `*.keystore` or `keystore.properties` (`.gitignore` blocks them).
+  - Copy `keystore.properties.example` to `keystore.properties` at the repo root and fill in `storeFile` (path relative to the repo root, ideally outside it), `storePassword`, `keyAlias` and `keyPassword`.
+  - Without the file (or with a key missing), `assembleRelease`/`bundleRelease` stop with "Release signing is not configured: …". Debug builds, lint and tests don't need it.
+- [ ] **Version:** in `app/build.gradle.kts` (`defaultConfig`):
+  - `versionCode`: a whole number that must go up by at least 1 for **every** upload to Play (any track), even a re-upload of the same version. It is currently `1`.
+  - `versionName`: what users see, e.g. `0.1.0` → `0.1.1` for a fix, `0.2.0` for new features, `1.0.0` for the public launch. It is currently `0.1.0`.
+  - Bump both in the same commit as the release notes, e.g. `versionCode = 2`, `versionName = "0.1.1"`.
+- [ ] **Release build (manual):** `./gradlew bundleRelease` with `keystore.properties` in place; the signed bundle is `app/build/outputs/bundle/release/app-release.aab`. `isMinifyEnabled` is still `false`. Turning on R8 needs keep-rule testing for Hilt, Room and Compose on a real device first, so leave it off for the first internal test.
 - [ ] **Icon:** the adaptive icon (`mipmap-anydpi/ic_launcher.xml`, with a monochrome layer for themed icons) is in place. Export a 512×512 PNG for the store listing **(manual)**.
 - [ ] **Store assets (manual):** 4–8 phone screenshots (Dashboard, the timer over an app, the block screen, Apps limits, Settings), and a 1024×500 feature graphic. Text is in [STORE_LISTING.md](../STORE_LISTING.md).
 - [ ] **Privacy policy:** publish [PRIVACY_POLICY.md](PRIVACY_POLICY.md) at a public URL **(manual)** and enter it in the Play Console.

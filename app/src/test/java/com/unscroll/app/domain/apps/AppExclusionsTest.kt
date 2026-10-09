@@ -6,7 +6,7 @@ import org.junit.Test
 
 class AppExclusionsTest {
 
-    private val own = "com.unscroll.app"
+    private val own = "com.sharansapkota.unscroll"
     private val device = setOf("com.google.android.apps.nexuslauncher", "com.oem.dialer", "com.oem.sms")
 
     @Test

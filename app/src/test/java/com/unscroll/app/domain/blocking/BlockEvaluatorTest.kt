@@ -165,7 +165,7 @@ class BlockEvaluatorTest {
     fun excludedApps_areNeverBlocked_whateverTheirSettingsSay() {
         val everything = LimitSettings(blockedAlways = true, dailyLimitMinutes = 1)
         listOf(
-            "com.unscroll.app",
+            "com.sharansapkota.unscroll",
             "com.android.settings",
             "com.google.android.dialer",
             "com.android.vending",
