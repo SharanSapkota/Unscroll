@@ -35,12 +35,16 @@ data class PaywallUiState(
     val pending: Boolean = false,
     val busy: Boolean = false,
     val message: PaywallMessage? = null,
+    /** Debug builds only: the last Billing response code name. Always null in release. */
+    val debugStatus: String? = null,
 )
 
 private data class LocalState(
     val price: PriceState = PriceState.Loading,
     val busy: Boolean = false,
     val message: PaywallMessage? = null,
+    /** Debug builds only: the last Billing response code name. Always null in release. */
+    val debugStatus: String? = null,
 )
 
 @HiltViewModel
@@ -54,8 +58,9 @@ class PaywallViewModel @Inject constructor(
         local.asStateFlow(),
         entitlement.isPlus,
         entitlement.pending,
-    ) { local, plus, pending ->
-        PaywallUiState(local.price, plus, pending, local.busy, local.message)
+        entitlement.billingDebugStatus,
+    ) { local, plus, pending, debugStatus ->
+        PaywallUiState(local.price, plus, pending, local.busy, local.message, debugStatus)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PaywallUiState())
 
     init {

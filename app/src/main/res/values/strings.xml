@@ -541,6 +541,8 @@
     </plurals>
     <string name="settings_debug_force_plus">Force Plus</string>
     <string name="settings_debug_force_plus_billing">Billing</string>
+    <!-- Debug builds only: the last Play Billing response code on the paywall. -->
+    <string name="debug_billing_status" translatable="false">Billing (debug): %1$s</string>
     <!-- Add any app ("+" on the Apps tab) and the tracked list -->
     <string name="apps_add">Add apps</string>
     <string name="apps_not_installed">Not installed</string>
