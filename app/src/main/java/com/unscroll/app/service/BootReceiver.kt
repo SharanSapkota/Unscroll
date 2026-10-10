@@ -26,6 +26,8 @@ class BootReceiver : BroadcastReceiver() {
 
         fun permissionRepository(): PermissionRepository
 
+        fun blockExpiryScheduler(): BlockExpiryScheduler
+
         @ApplicationScope
         fun applicationScope(): CoroutineScope
     }
@@ -46,6 +48,8 @@ class BootReceiver : BroadcastReceiver() {
                 // Permissions may have changed while the phone was off or the app was updated.
                 entryPoint.permissionRepository().refresh()
                 entryPoint.trackingController().startIfReady()
+                // Alarms don't survive a reboot: turn off blocks that ran out, set the next one.
+                entryPoint.blockExpiryScheduler().sync()
             } finally {
                 pendingResult.finish()
             }

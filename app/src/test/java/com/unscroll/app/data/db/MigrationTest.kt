@@ -7,6 +7,8 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.unscroll.app.data.blocking.LimitRepository
+import com.unscroll.app.domain.blocking.BlockDuration
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -55,6 +57,7 @@ class MigrationTest {
                         if (version >= 5) MIGRATION_4_5.migrate(db)
                         if (version >= 6) MIGRATION_5_6.migrate(db)
                         if (version >= 7) MIGRATION_6_7.migrate(db)
+                        if (version >= 8) MIGRATION_7_8.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -376,6 +379,8 @@ class MigrationTest {
                     swipeLimitScope = "SESSION",
                     swipeSessionGapMinutes = 15,
                     swipeAccessAllowed = true,
+                    // v9: "Block completely" became "Block entire app" until turned off.
+                    entireAppBlockedUntil = Long.MAX_VALUE,
                 ),
                 dao.getLimit("com.zhiliaoapp.musically"),
             )
@@ -436,6 +441,70 @@ class MigrationTest {
             dao.upsert(TrackedAppEntity("com.example.video", cachedLabel = "Video", addedAt = 100))
             dao.setRemoved("com.example.video", removed = true)
             assertEquals(true, dao.get("com.example.video")?.removed)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate8To9_keepsEveryBlock_asBlockEntireAppUntilTurnedOff() = runTest {
+        createDatabase(version = 8)
+        val config = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(DB_NAME)
+            .callback(
+                object : SupportSQLiteOpenHelper.Callback(8) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+                },
+            )
+            .build()
+        FrameworkSQLiteOpenHelperFactory().create(config).apply {
+            val columns = "(packageName, dailyLimitMinutes, blockedAlways, scheduleEnabled, scheduleDays, " +
+                "scheduleStartMinute, scheduleEndMinute, swipeLimit, swipeLimitScope, swipeSessionGapMinutes, swipeAccessAllowed)"
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits $columns VALUES ('com.instagram.android', 45, 1, 1, 31, 1320, 420, 100, 'SESSION', 15, 1)",
+            )
+            writableDatabase.execSQL(
+                "INSERT INTO app_limits $columns VALUES ('com.facebook.katana', 30, 0, 0, 127, 1320, 420, NULL, 'DAY', 30, 0)",
+            )
+            close()
+        }
+
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val dao = database.blockingDao()
+            val blocked = dao.getLimit("com.instagram.android")!!
+            assertEquals(Long.MAX_VALUE, blocked.entireAppBlockedUntil)
+            assertEquals(null, blocked.reelsBlockedUntil)
+            assertEquals(0, blocked.lastEntireDuration)
+            assertEquals(0, blocked.lastReelsDuration)
+            // Everything else is kept.
+            assertEquals(45, blocked.dailyLimitMinutes)
+            assertEquals(true, blocked.scheduleEnabled)
+            assertEquals(31, blocked.scheduleDays)
+            assertEquals(100, blocked.swipeLimit)
+            assertEquals("SESSION", blocked.swipeLimitScope)
+            assertEquals(15, blocked.swipeSessionGapMinutes)
+            assertEquals(true, blocked.swipeAccessAllowed)
+
+            val open = dao.getLimit("com.facebook.katana")!!
+            assertEquals(null, open.entireAppBlockedUntil)
+            assertEquals(30, open.dailyLimitMinutes)
+            assertEquals(2, database.sessionDao().observeRecent(10).first().size)
+
+            // Read through the repository: still blocked, until the user turns it off.
+            val settings = LimitRepository(dao).getLimit("com.instagram.android").settings
+            assertEquals(true, settings.entireAppBlocked(now = 4_000_000_000_000L))
+            assertEquals(BlockDuration.UNTIL_OFF, settings.lastEntireDuration)
+
+            dao.upsertLimit(blocked.copy(entireAppBlockedUntil = 1234L, reelsBlockedUntil = Long.MAX_VALUE, lastReelsDuration = 30))
+            val updated = dao.getLimit("com.instagram.android")!!
+            assertEquals(1234L, updated.entireAppBlockedUntil)
+            assertEquals(Long.MAX_VALUE, updated.reelsBlockedUntil)
+            assertEquals(30, updated.lastReelsDuration)
         } finally {
             database.close()
         }

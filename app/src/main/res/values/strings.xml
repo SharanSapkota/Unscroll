@@ -187,6 +187,37 @@
         <item quantity="one">%d min left</item>
         <item quantity="other">%d min left</item>
     </plurals>
+    <plurals name="status_blocked_left">
+        <item quantity="one">Blocked · %d min left</item>
+        <item quantity="other">Blocked · %d min left</item>
+    </plurals>
+    <string name="status_blocked_until_off">Blocked · until you turn it off</string>
+    <!-- %1$s: Reels, For You or Shorts. -->
+    <plurals name="status_section_blocked_left">
+        <item quantity="one">%1$s blocked · %2$d min left</item>
+        <item quantity="other">%1$s blocked · %2$d min left</item>
+    </plurals>
+    <string name="status_section_blocked_until_off">%1$s blocked · until you turn it off</string>
+
+    <!-- Quick toggles (top of App detail) -->
+    <string name="quick_title">Quick block</string>
+    <string name="quick_info">Turn a block on for a set time. When the time is up it turns itself off, even with Unscroll closed. Turning it off works at once.</string>
+    <string name="quick_block_entire">Block entire app</string>
+    <string name="quick_block_reels">Block Reels only</string>
+    <string name="quick_block_for_you">Block For You feed</string>
+    <string name="quick_block_shorts">Block Shorts only</string>
+    <string name="quick_included">Included</string>
+    <string name="quick_not_available">Not available for this app version yet</string>
+    <string name="quick_needs_plus">Unscroll Plus</string>
+    <!-- %1$s: a countdown such as 12:41. -->
+    <string name="quick_left">%1$s left</string>
+    <string name="quick_until_off">Until you turn it off</string>
+    <string name="duration_15m">15 min</string>
+    <string name="duration_30m">30 min</string>
+    <string name="duration_1h">1 hour</string>
+    <string name="duration_2h">2 hours</string>
+    <string name="duration_until_off">Until I turn it off</string>
+    <string name="advanced_options">Advanced options</string>
 
     <!-- Home -->
     <string name="home_tracking_on">Tracking on</string>
@@ -261,7 +292,6 @@
     <string name="detail_allow_access">Allow \"I need access\"</string>
     <string name="detail_allow_access_hint">+%1$d swipes with one tap</string>
     <string name="detail_blocking">Blocking</string>
-    <string name="detail_block_completely">Block completely</string>
     <string name="detail_schedule">Schedule</string>
     <string name="detail_schedule_overnight">Overnight</string>
     <string name="detail_schedule_from">From</string>
@@ -591,8 +621,8 @@
     <string name="section_status_off">Off. Cover only Reels, For You or Shorts and keep chat open.</string>
     <string name="section_status_needs_consent">Turned on in Android settings, but you haven\'t agreed in Unscroll yet. Nothing is checked until you do.</string>
     <string name="section_status_needs_enabling">Almost there: turn on \"Unscroll section blocking\" in Accessibility settings.</string>
-    <string name="section_status_active">On. Choose the apps in Apps › an app › Section blocking.</string>
-    <string name="section_status_no_apps">On, but no app is chosen yet. Choose them in Apps › an app › Section blocking.</string>
+    <string name="section_status_active">On. Choose the apps in Apps › an app › Quick block.</string>
+    <string name="section_status_no_apps">On, but no app is chosen yet. Choose them in Apps › an app › Quick block.</string>
     <string name="section_status_turned_off">Turned off. Nothing is checked or covered.</string>
     <string name="section_status_needs_reenable">Android switched section blocking off. Turn it back on in Accessibility settings.</string>
     <string name="section_turn_off">Turn off section blocking</string>
@@ -600,12 +630,11 @@
     <string name="section_withdraw">Stop and remove consent</string>
     <string name="section_panel_note">If Unscroll can\'t tell which section is open, nothing is blocked. Back, Home and Recents always work.</string>
     <string name="section_banner_title">Section blocking stopped</string>
-    <string name="section_block_app">Block %1$s</string>
+    <!-- %1$s: Reels, For You or Shorts. -->
+    <string name="section_when">Block %1$s</string>
     <string name="section_detail_info">Covers only %1$s. Chat, search, profiles and everything else keep working. If Unscroll can\'t tell which section is open, nothing is blocked.</string>
-    <string name="section_detail_set_up">Set up section blocking</string>
     <string name="section_detail_enable_service">Turn on the service in Accessibility settings</string>
     <string name="section_detail_turned_off">Section blocking is turned off in Settings</string>
-    <string name="section_detail_not_ready">Not ready for this app yet</string>
     <string name="section_detail_needs_limit">Set a daily limit above</string>
     <string name="section_mode_always">Always</string>
     <string name="section_mode_after_limit">After limit</string>

@@ -7,6 +7,9 @@ import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
 import com.unscroll.app.domain.blocking.LimitSettings
+import com.unscroll.app.domain.blocking.QuickBlockTarget
+import com.unscroll.app.domain.blocking.QuickControls
+import com.unscroll.app.domain.blocking.QuickStatus
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -42,6 +45,10 @@ data class AppRowState(
     val status: AppTrackingStatus = AppTrackingStatus.ACTIVE,
     /** The stored name, for apps that aren't installed any more. */
     val label: String? = null,
+    /** A running quick block ("Reels blocked · 12 min left"), for the status line. */
+    val quickStatus: QuickStatus? = null,
+    /** "Block entire app" is running: the row's Block switch. */
+    val entireAppBlocked: Boolean = false,
 ) {
     val tracked: Boolean get() = status == AppTrackingStatus.ACTIVE
 }
@@ -53,7 +60,7 @@ data class AppsUiState(
     private val activeApps: List<AppRowState> get() = apps.filter { it.tracked }
 
     /** "Block all" turns into "Unblock all" once every active app is blocked. */
-    val allBlocked: Boolean get() = activeApps.isNotEmpty() && activeApps.all { it.settings.blockedAlways }
+    val allBlocked: Boolean get() = activeApps.isNotEmpty() && activeApps.all { it.entireAppBlocked }
 }
 
 /** The Apps tab: a control list with one Block switch per app. Everything else is in App detail. */
@@ -84,16 +91,17 @@ class AppsViewModel @Inject constructor(
         .mapLatest { (stored, apps) -> build(stored, apps) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppsUiState())
 
-    /** Changes apply at once (no cooldown). */
+    /** "Block entire app" for the app's remembered duration. Changes apply at once (no cooldown). */
     fun setBlocked(packageName: String, blocked: Boolean) {
-        viewModelScope.launch { limits.updateLimit(packageName) { it.copy(blockedAlways = blocked) } }
+        viewModelScope.launch { limits.setQuickBlock(packageName, QuickBlockTarget.ENTIRE_APP, blocked, clock.now()) }
     }
 
     /** "Block all" / "Unblock all" for every active app shown (paused apps keep their settings). */
     fun setAllBlocked(blocked: Boolean) {
         viewModelScope.launch {
+            val now = clock.now()
             trackedApps.state.first().active.forEach { packageName ->
-                limits.updateLimit(packageName) { it.copy(blockedAlways = blocked) }
+                limits.setQuickBlock(packageName, QuickBlockTarget.ENTIRE_APP, blocked, now)
             }
         }
     }
@@ -121,6 +129,8 @@ class AppsViewModel @Inject constructor(
                 todayMillis = used,
                 status = apps.statusOf(packageName),
                 label = entry.label,
+                quickStatus = QuickControls.status(packageName, settings, now),
+                entireAppBlocked = settings.entireAppBlocked(now),
             )
         }
         return AppsUiState(isLoading = false, apps = rows)

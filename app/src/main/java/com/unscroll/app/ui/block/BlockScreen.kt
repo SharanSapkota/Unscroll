@@ -31,7 +31,9 @@ fun BlockScreen(
     StopScreen(
         packageName = state.packageName,
         headline = when (state.reason) {
-            BlockReason.BLOCKED_ALWAYS -> stringResource(R.string.block_headline_blocked)
+            // "Block entire app": until a time, or until the user turns it off.
+            BlockReason.BLOCKED_ENTIRE_APP -> untilText?.let { stringResource(R.string.block_headline_until, it) }
+                ?: stringResource(R.string.block_headline_blocked)
             BlockReason.DAILY_LIMIT_REACHED -> stringResource(R.string.block_headline_limit)
             BlockReason.SWIPE_LIMIT_REACHED -> stringResource(R.string.block_headline_swipes)
             BlockReason.INSIDE_SCHEDULE -> untilText?.let { stringResource(R.string.block_headline_until, it) }

@@ -46,7 +46,6 @@ internal class DetailActions(
     val onSwipeScope: (SwipeLimitScope) -> Unit = {},
     val onSwipeGap: (Int) -> Unit = {},
     val onSwipeAccess: (Boolean) -> Unit = {},
-    val onBlocked: (Boolean) -> Unit = {},
     val onSchedule: (Boolean) -> Unit = {},
     val onScheduleDay: (DayOfWeek) -> Unit = {},
     val onScheduleStart: (Int) -> Unit = {},
@@ -216,15 +215,9 @@ internal fun BlockingSection(settings: LimitSettings, actions: DetailActions) {
     val context = LocalContext.current
     val locale = Locale.getDefault()
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
+        // "Block entire app" moved to the quick toggles at the top; the schedule stays here.
         SectionHeader(title = stringResource(R.string.detail_blocking))
         SettingsGroup {
-            SettingSwitchRow(
-                title = stringResource(R.string.detail_block_completely),
-                icon = R.drawable.ic_block,
-                checked = settings.blockedAlways,
-                onCheckedChange = actions.onBlocked,
-            )
-            RowDivider()
             SettingSwitchRow(
                 title = stringResource(R.string.detail_schedule),
                 icon = R.drawable.ic_bedtime,

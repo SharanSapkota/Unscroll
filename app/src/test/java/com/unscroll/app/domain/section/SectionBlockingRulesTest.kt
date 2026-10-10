@@ -6,12 +6,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Consent gating, the kill switch, Plus, the per-app switch and mode, and fail-open verdicts. */
+/** Consent gating, the kill switch, Plus, the reels toggle and mode, and fail-open verdicts. */
 class SectionBlockingRulesTest {
 
     private val app = "com.example.social"
 
-    private val on = SectionBlockingSettings(consent = ScrollConsent.AGREED, blockedApps = setOf(app))
+    private val on = SectionBlockingSettings(consent = ScrollConsent.AGREED)
 
     private fun inputs(
         settings: SectionBlockingSettings = on,
@@ -20,7 +20,8 @@ class SectionBlockingRulesTest {
         excluded: Boolean = false,
         limitReached: Boolean = false,
         verdict: SectionVerdict = SectionVerdict.IN_BLOCKED_SECTION,
-    ) = SectionCoverInputs(settings, isPlus, app, tracked, excluded, limitReached, verdict)
+        sectionBlocked: Boolean = verdict == SectionVerdict.IN_BLOCKED_SECTION,
+    ) = SectionCoverInputs(settings, isPlus, app, tracked, excluded, limitReached, verdict, sectionBlocked)
 
     @Test
     fun covers_aPositivelyIdentifiedSection() {
@@ -60,7 +61,8 @@ class SectionBlockingRulesTest {
 
     @Test
     fun perApp_offByDefault_andOnlyTrackedNotExcludedApps() {
-        assertFalse(SectionBlockingRules.shouldCover(inputs(settings = on.copy(blockedApps = emptySet()))))
+        // The reels toggle is off (BlockEvaluator.blocksSection said no).
+        assertFalse(SectionBlockingRules.shouldCover(inputs(sectionBlocked = false)))
         assertFalse(SectionBlockingRules.shouldCover(inputs(tracked = false)))
         assertFalse(SectionBlockingRules.shouldCover(inputs(excluded = true)))
     }
@@ -87,6 +89,15 @@ class SectionBlockingRulesTest {
         val rulePackages = setOf(app, "com.example.video")
         // Only tracked apps that have rules and are chosen by the user.
         assertEquals(setOf(app), monitored(on, trackedActive = tracked, rulePackages = rulePackages))
+        // Only apps whose reels toggle is on.
+        assertEquals(
+            emptySet<String>(),
+            monitored(on, trackedActive = tracked, rulePackages = rulePackages, reelsBlocked = emptySet()),
+        )
+        assertEquals(
+            setOf(app, "com.example.video"),
+            monitored(on, trackedActive = tracked, rulePackages = rulePackages, reelsBlocked = tracked),
+        )
         // Without consent: nothing, even with the inspector on.
         assertEquals(
             emptySet<String>(),
@@ -105,5 +116,6 @@ class SectionBlockingRulesTest {
         trackedActive: Set<String> = setOf(app),
         rulePackages: Set<String> = setOf(app),
         inspectorAllowed: Boolean = false,
-    ) = SectionBlockingRules.monitoredPackages(settings, isPlus, trackedActive, rulePackages, inspectorAllowed)
+        reelsBlocked: Set<String> = setOf(app),
+    ) = SectionBlockingRules.monitoredPackages(settings, isPlus, trackedActive, rulePackages, inspectorAllowed, reelsBlocked)
 }

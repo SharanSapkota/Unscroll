@@ -4,7 +4,11 @@ import com.unscroll.app.data.db.AppLimitEntity
 import com.unscroll.app.data.db.BlockOverrideEntity
 import com.unscroll.app.data.db.BlockingDao
 import com.unscroll.app.domain.blocking.AppLimit
+import com.unscroll.app.domain.blocking.BlockDuration
 import com.unscroll.app.domain.blocking.BlockSchedule
+import com.unscroll.app.domain.blocking.QuickBlockRules
+import com.unscroll.app.domain.blocking.QuickBlockTarget
+import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.SwipeLimitScope
 import javax.inject.Inject
@@ -32,6 +36,34 @@ class LimitRepository @Inject constructor(
         val updated = current.copy(settings = edit(current.settings))
         dao.upsertLimit(updated.toEntity())
         return updated
+    }
+
+    /** A quick toggle on or off ("Block entire app", "Block reels only"), for its remembered duration. */
+    suspend fun setQuickBlock(packageName: String, target: QuickBlockTarget, on: Boolean, now: Long): AppLimit =
+        updateLimit(packageName) { QuickBlockRules.setOn(it, target, on, now) }
+
+    /** A duration chip: remembered, and restarts the block if it is on. */
+    suspend fun setQuickBlockDuration(
+        packageName: String,
+        target: QuickBlockTarget,
+        duration: BlockDuration,
+        now: Long,
+    ): AppLimit = updateLimit(packageName) { QuickBlockRules.setDuration(it, target, duration, now) }
+
+    /**
+     * Turns off every quick block that ran out (the toggle turns itself off) and returns when the
+     * next one ends, or null. Blocks already end on time without this (the evaluator compares
+     * with the clock); it only keeps the stored state and the UI tidy.
+     */
+    suspend fun clearExpiredBlocks(now: Long): Long? {
+        var next: Long? = null
+        dao.getAllLimits().forEach { entity ->
+            val limit = entity.toDomain()
+            val cleared = QuickBlockRules.clearExpired(limit.settings, now)
+            if (cleared != limit.settings) dao.upsertLimit(limit.copy(settings = cleared).toEntity())
+            QuickBlockRules.nextExpiry(cleared, now)?.let { next = minOf(next ?: it, it) }
+        }
+        return next
     }
 
     /** "I need access" on the block screen: one tap, logged. */
@@ -69,7 +101,10 @@ internal fun AppLimitEntity.toDomain() = AppLimit(
     packageName = packageName,
     settings = LimitSettings(
         dailyLimitMinutes = dailyLimitMinutes,
-        blockedAlways = blockedAlways,
+        entireAppBlockedUntil = entireAppBlockedUntil,
+        reelsBlockedUntil = reelsBlockedUntil,
+        lastEntireDuration = BlockDuration.fromMinutes(lastEntireDuration),
+        lastReelsDuration = BlockDuration.fromMinutes(lastReelsDuration),
         schedule = BlockSchedule(
             enabled = scheduleEnabled,
             days = BlockSchedule.daysFromBitmask(scheduleDays),
@@ -86,7 +121,7 @@ internal fun AppLimitEntity.toDomain() = AppLimit(
 internal fun AppLimit.toEntity() = AppLimitEntity(
     packageName = packageName,
     dailyLimitMinutes = settings.dailyLimitMinutes,
-    blockedAlways = settings.blockedAlways,
+    blockedAlways = settings.entireAppBlockedUntil == TimedBlock.FOREVER,
     scheduleEnabled = settings.schedule.enabled,
     scheduleDays = settings.schedule.daysBitmask,
     scheduleStartMinute = settings.schedule.startMinute,
@@ -95,4 +130,8 @@ internal fun AppLimit.toEntity() = AppLimitEntity(
     swipeLimitScope = settings.swipeLimitScope.name,
     swipeSessionGapMinutes = settings.swipeSessionGapMinutes,
     swipeAccessAllowed = settings.swipeAccessAllowed,
+    entireAppBlockedUntil = settings.entireAppBlockedUntil,
+    reelsBlockedUntil = settings.reelsBlockedUntil,
+    lastEntireDuration = settings.lastEntireDuration.minutes,
+    lastReelsDuration = settings.lastReelsDuration.minutes,
 )

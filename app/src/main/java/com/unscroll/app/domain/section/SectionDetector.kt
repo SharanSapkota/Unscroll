@@ -82,6 +82,13 @@ class SectionDetectors(private val config: List<AppSectionRules> = SectionRulesC
 
     fun forPackage(packageName: String): SectionDetector? = byPackage[packageName]
 
+    /**
+     * True when the config has identifiers for [packageName] at [versionCode]. Otherwise the
+     * detector could only answer UNKNOWN, so the reels toggle is shown as not available.
+     */
+    fun isAvailable(packageName: String, versionCode: Long?): Boolean =
+        rulesFor(packageName)?.ruleSetFor(versionCode)?.isEmpty == false
+
     /** The config entry for [packageName], e.g. to tell whether its identifiers are filled in yet. */
     fun rulesFor(packageName: String): AppSectionRules? = config.firstOrNull { packageName in it.packages }
 }

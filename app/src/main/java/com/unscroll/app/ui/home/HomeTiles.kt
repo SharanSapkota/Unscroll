@@ -14,6 +14,7 @@ data class AppTileState(
     val swipes: Int?,
     /** Share of today's daily limit used, or null without a limit or outside the Day view. */
     val limitProgress: Float?,
+    /** "Block entire app" is running. */
     val blocked: Boolean,
 )
 
@@ -25,6 +26,7 @@ object HomeTiles {
         usage: PeriodUsage?,
         scroll: ScrollStats?,
         limits: Map<String, AppLimit>,
+        now: Long = 0L,
     ): List<AppTileState> {
         val millisByApp = usage?.apps?.associate { it.packageName to it.usage.totalMillis }.orEmpty()
         val swipesByApp = scroll?.apps?.associate { it.packageName to it.swipes }.orEmpty()
@@ -43,7 +45,7 @@ object HomeTiles {
                     } else {
                         null
                     },
-                    blocked = settings?.blockedAlways == true,
+                    blocked = settings?.entireAppBlocked(now) == true,
                 )
             }
             // Most used first; ties keep the tracked list order.

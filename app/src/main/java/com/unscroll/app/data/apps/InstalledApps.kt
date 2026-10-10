@@ -3,6 +3,7 @@ package com.unscroll.app.data.apps
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import androidx.core.content.pm.PackageInfoCompat
 import com.unscroll.app.domain.apps.LaunchableApp
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -19,6 +20,9 @@ interface InstalledApps {
 
     /** Every app with a launcher icon, one entry per launcher activity (the picker dedupes). */
     suspend fun launchable(): List<LaunchableApp>
+
+    /** The installed version code, or null if it isn't installed (section rules are per version). */
+    fun versionCode(packageName: String): Long? = null
 }
 
 /**
@@ -41,6 +45,12 @@ class AndroidInstalledApps @Inject constructor(
     override fun label(packageName: String): String? = try {
         val pm = context.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+    } catch (e: PackageManager.NameNotFoundException) {
+        null
+    }
+
+    override fun versionCode(packageName: String): Long? = try {
+        PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(packageName, 0))
     } catch (e: PackageManager.NameNotFoundException) {
         null
     }

@@ -4,9 +4,11 @@ import android.content.Context
 import android.os.Process
 import android.os.SystemClock
 import android.provider.Settings
+import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.plus.DebugBuild
 import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.domain.ApplicationScope
+import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingInputs
 import com.unscroll.app.domain.scroll.ScrollCountingRules
@@ -32,7 +34,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -46,6 +50,7 @@ import kotlinx.coroutines.launch
 class SectionBlockingRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val preferences: SectionBlockingPreferences,
+    private val limits: LimitRepository,
     private val entitlement: EntitlementRepository,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
@@ -68,6 +73,15 @@ class SectionBlockingRepository @Inject constructor(
         .stateIn(scope, SharingStarted.Eagerly, SectionBlockingSettings())
 
     val isPlus: StateFlow<Boolean> = entitlement.isPlus.stateIn(scope, SharingStarted.Eagerly, false)
+
+    /**
+     * Apps whose reels toggle is on (checked against the clock when the stored limits change; a
+     * block that ran out since is turned off by BlockExpiryScheduler, and the service checks the
+     * clock again before covering anything).
+     */
+    val reelsBlockedApps: Flow<Set<String>> = limits.observeLimits()
+        .map { stored -> stored.filterValues { it.settings.reelsBlocked(clock.now()) }.keys }
+        .distinctUntilChanged()
 
     /** Consent given, not turned off, and Plus. */
     val isActive: Flow<Boolean> = combine(settings, isPlus) { s, plus -> SectionBlockingRules.isActive(s, plus) }
@@ -117,9 +131,25 @@ class SectionBlockingRepository @Inject constructor(
     /** The global kill switch: "Turn off section blocking" (consent and service stay). */
     suspend fun setTurnedOff(turnedOff: Boolean) = preferences.setTurnedOff(turnedOff)
 
-    suspend fun setBlocked(packageName: String, blocked: Boolean) = preferences.setBlocked(packageName, blocked)
-
     suspend fun setMode(packageName: String, mode: SectionBlockMode) = preferences.setMode(packageName, mode)
+
+    /**
+     * Before the quick toggles, "Block Reels" was a per-app switch in DataStore. Moves any such
+     * app to the reels toggle, on until the user turns it off, then forgets the old set. Runs once
+     * per process start; does nothing once the set is empty.
+     */
+    fun migrateLegacyBlockedApps() {
+        scope.launch {
+            val legacy = preferences.settings.first().legacyBlockedApps
+            if (legacy.isEmpty()) return@launch
+            legacy.forEach { packageName ->
+                limits.updateLimit(packageName) {
+                    if (it.reelsBlockedUntil == null) it.copy(reelsBlockedUntil = TimedBlock.FOREVER) else it
+                }
+            }
+            preferences.clearLegacyBlockedApps()
+        }
+    }
 
     /** Debug builds only; release builds ignore it. */
     suspend fun setInspector(on: Boolean) {

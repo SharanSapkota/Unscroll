@@ -10,6 +10,8 @@ package com.unscroll.app.domain.section
  * never guessed ones. Each rule set may be limited to a version range (minVersionCode /
  * maxVersionCode from the app's PackageInfo) when an update renames things.
  *
+ * The apps themselves (package names) come from [ReelsCapableApps].
+ *
  * Every entry below is still empty, so every detector returns UNKNOWN and nothing is blocked
  * until real identifiers are filled in.
  */
@@ -17,7 +19,7 @@ object SectionRulesConfig {
 
     val INSTAGRAM = AppSectionRules(
         appName = "Instagram",
-        packages = setOf("com.instagram.android"),
+        packages = ReelsCapableApps.INSTAGRAM,
         section = BlockedSection.REELS,
         ruleSets = listOf(
             SectionRuleSet(
@@ -35,7 +37,7 @@ object SectionRulesConfig {
 
     val TIKTOK = AppSectionRules(
         appName = "TikTok",
-        packages = setOf("com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
+        packages = ReelsCapableApps.TIKTOK,
         section = BlockedSection.FOR_YOU,
         ruleSets = listOf(
             SectionRuleSet(
@@ -53,7 +55,7 @@ object SectionRulesConfig {
 
     val FACEBOOK = AppSectionRules(
         appName = "Facebook",
-        packages = setOf("com.facebook.katana"),
+        packages = ReelsCapableApps.FACEBOOK,
         section = BlockedSection.REELS,
         ruleSets = listOf(
             SectionRuleSet(
@@ -71,7 +73,7 @@ object SectionRulesConfig {
 
     val YOUTUBE = AppSectionRules(
         appName = "YouTube",
-        packages = setOf("com.google.android.youtube"),
+        packages = ReelsCapableApps.YOUTUBE,
         section = BlockedSection.SHORTS,
         ruleSets = listOf(
             SectionRuleSet(

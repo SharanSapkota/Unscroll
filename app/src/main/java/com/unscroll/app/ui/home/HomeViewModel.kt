@@ -208,7 +208,7 @@ class HomeViewModel @Inject constructor(
             weekComparison = getWeekComparison(now, zone),
             hoursInvested = getHoursInvested(now),
             scrollStats = scrollStats,
-            apps = HomeTiles.build(installedTracked(), periodUsage, scrollStats, request.limits),
+            apps = HomeTiles.build(installedTracked(), periodUsage, scrollStats, request.limits, now),
         )
     }
 

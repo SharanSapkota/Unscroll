@@ -19,9 +19,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -32,6 +36,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.LimitSettings
+import com.unscroll.app.domain.blocking.QuickBlockTarget
+import com.unscroll.app.domain.blocking.QuickControls
+import com.unscroll.app.domain.blocking.QuickControlsState
+import com.unscroll.app.domain.blocking.ReelsTapAction
+import com.unscroll.app.domain.blocking.SectionAccess
 import com.unscroll.app.domain.insights.DayUsage
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
@@ -44,6 +53,8 @@ import com.unscroll.app.ui.components.rememberAppLabel
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
+import com.unscroll.app.util.SystemSettings
+import com.unscroll.app.util.openSettings
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -60,6 +71,8 @@ fun AppDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val tracking by viewModel.tracking.collectAsStateWithLifecycle()
     val section by viewModel.section.collectAsStateWithLifecycle()
+    val quick by viewModel.quick.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val savedText = stringResource(R.string.detail_saved)
     LaunchedEffect(viewModel) {
@@ -75,7 +88,6 @@ fun AppDetailScreen(
                 onSwipeScope = viewModel::setSwipeLimitScope,
                 onSwipeGap = viewModel::setSwipeSessionGap,
                 onSwipeAccess = viewModel::setSwipeAccessAllowed,
-                onBlocked = viewModel::setBlockedAlways,
                 onSchedule = viewModel::setScheduleEnabled,
                 onScheduleDay = viewModel::toggleScheduleDay,
                 onScheduleStart = viewModel::setScheduleStart,
@@ -93,11 +105,21 @@ fun AppDetailScreen(
                 onRemove = { viewModel.remove(onRemoved = onBack) },
             ),
             section = section,
-            sectionActions = SectionDetailActions(
-                onBlocked = viewModel::setSectionBlocked,
-                onMode = viewModel::setSectionMode,
-                onOpenPlus = onOpenPlus,
-                onSetUp = onSectionSetUp,
+            sectionActions = SectionDetailActions(onMode = viewModel::setSectionMode),
+            quick = quick,
+            quickActions = QuickActions(
+                onEntire = { viewModel.setQuickBlock(QuickBlockTarget.ENTIRE_APP, it) },
+                onEntireDuration = { viewModel.setQuickDuration(QuickBlockTarget.ENTIRE_APP, it) },
+                onReels = { turnOn ->
+                    // Plus, consent and the service come first; the toggle turns on once they're there.
+                    when (viewModel.onReelsTapped(turnOn)) {
+                        ReelsTapAction.OPEN_PAYWALL -> onOpenPlus()
+                        ReelsTapAction.OPEN_DISCLOSURE -> onSectionSetUp()
+                        ReelsTapAction.OPEN_ACCESSIBILITY -> context.openSettings(SystemSettings.accessibility())
+                        ReelsTapAction.TOGGLE, ReelsTapAction.NONE -> Unit
+                    }
+                },
+                onReelsDuration = { viewModel.setQuickDuration(QuickBlockTarget.REELS, it) },
             ),
         )
         SnackbarHost(
@@ -119,7 +141,10 @@ internal fun AppDetailContent(
     trackingActions: TrackingActions = TrackingActions(),
     section: SectionAppState? = null,
     sectionActions: SectionDetailActions = SectionDetailActions(),
+    quick: QuickControlsState? = null,
+    quickActions: QuickActions = QuickActions(),
 ) {
+    var advancedOpen by rememberSaveable { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.padding(start = Dimens.spaceXs)) {
             Icon(
@@ -140,12 +165,18 @@ internal fun AppDetailContent(
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
         ) {
             item(key = "header") { Header(state) }
-            item(key = "limits") { LimitsSection(state, actions) }
-            section?.let { item(key = "section") { SectionBlockingDetail(it, state.settings.dailyLimitMinutes != null, sectionActions) } }
-            item(key = "blocking") { BlockingSection(state.settings, actions) }
-            item(key = "pill") { TimerAndNudgesSection(state, actions) }
-            item(key = "stats") { MiniStats(state) }
-            if (tracking.inList) item(key = "tracking") { TrackingSection(tracking, trackingActions) }
+            // The quick toggles come first; everything else is one tap away under Advanced options.
+            quick?.let { item(key = "quick") { QuickControlsSection(it, quickActions) } }
+            item(key = "advanced") {
+                AdvancedOptions(open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
+                    LimitsSection(state, actions)
+                    section?.let { SectionBlockingDetail(it, state.settings.dailyLimitMinutes != null, sectionActions) }
+                    BlockingSection(state.settings, actions)
+                    TimerAndNudgesSection(state, actions)
+                    MiniStats(state)
+                    if (tracking.inList) TrackingSection(tracking, trackingActions)
+                }
+            }
         }
     }
 }
@@ -163,9 +194,9 @@ private fun Header(state: AppDetailUiState) {
         }
         Text(text = durationText(state.todayMillis), style = MaterialTheme.typography.displayMedium)
         Text(
-            text = stringResource(R.string.detail_today_status, limitStatusText(state.decision, state.settings)),
+            text = stringResource(R.string.detail_today_status, limitStatusText(state.decision, state.settings, state.quickStatus)),
             style = MaterialTheme.typography.titleSmall,
-            color = limitStatusColor(state.decision, state.settings),
+            color = limitStatusColor(state.decision, state.settings, state.quickStatus),
         )
     }
 }
@@ -229,6 +260,12 @@ private fun AppDetailPreview() {
             ),
             actions = DetailActions(),
             onBack = {},
+            quick = QuickControls.build(
+                DefaultTrackedApps.INSTAGRAM,
+                LimitSettings(reelsBlockedUntil = 12 * 60_000L),
+                now = 0L,
+                access = SectionAccess(rulesAvailable = true, isPlus = true, consented = true, serviceOn = true, turnedOff = false),
+            ),
         )
     }
 }

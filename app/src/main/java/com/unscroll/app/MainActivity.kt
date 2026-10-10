@@ -16,6 +16,7 @@ import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.data.plus.TrackedAppsRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.section.SectionBlockingRepository
+import com.unscroll.app.service.BlockExpiryScheduler
 import com.unscroll.app.service.TrackingController
 import com.unscroll.app.ui.UnscrollRoot
 import com.unscroll.app.ui.fox.ProvideFoxSettings
@@ -47,6 +48,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var trackedApps: TrackedAppsRepository
+
+    @Inject
+    lateinit var blockExpiry: BlockExpiryScheduler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The fox splash (Theme.Unscroll.Starting) stays only until the first frame: no delay.
@@ -83,6 +87,8 @@ class MainActivity : ComponentActivity() {
         // Plus may have started, ended or renewed while away; a tracked app may have been installed.
         entitlement.refresh()
         trackedApps.refresh()
+        // Timed blocks that ran out while away turn off now (they already stopped blocking).
+        blockExpiry.syncAsync()
         // Starting tracking (also after a force stop) is handled by the collector in onCreate.
     }
 }

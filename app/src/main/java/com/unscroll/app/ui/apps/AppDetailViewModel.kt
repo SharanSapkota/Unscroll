@@ -3,6 +3,7 @@ package com.unscroll.app.ui.apps
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.unscroll.app.data.apps.InstalledApps
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.overlay.OverlayPreferences
@@ -12,8 +13,16 @@ import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.domain.apps.TrackedAppStatus
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
+import com.unscroll.app.domain.blocking.BlockDuration
 import com.unscroll.app.domain.blocking.BlockEvaluator
 import com.unscroll.app.domain.blocking.LimitSettings
+import com.unscroll.app.domain.blocking.QuickBlockRules
+import com.unscroll.app.domain.blocking.QuickBlockTarget
+import com.unscroll.app.domain.blocking.QuickControls
+import com.unscroll.app.domain.blocking.QuickControlsState
+import com.unscroll.app.domain.blocking.QuickStatus
+import com.unscroll.app.domain.blocking.ReelsTapAction
+import com.unscroll.app.domain.blocking.SectionAccess
 import com.unscroll.app.domain.blocking.SwipeLimitRules
 import com.unscroll.app.domain.blocking.SwipeLimitScope
 import com.unscroll.app.domain.friction.FrictionSettings
@@ -27,8 +36,10 @@ import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.domain.section.BlockedSection
+import com.unscroll.app.domain.section.ReelsCapableApps
 import com.unscroll.app.domain.section.SectionBlockMode
 import com.unscroll.app.domain.time.Clock
+import com.unscroll.app.service.BlockExpiryScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.DayOfWeek
 import java.time.ZoneId
@@ -41,6 +52,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -52,6 +64,8 @@ data class AppDetailUiState(
     val isLoading: Boolean = true,
     val settings: LimitSettings = LimitSettings.NONE,
     val decision: BlockDecision = BlockDecision.Allowed(remainingMillis = null),
+    /** A running quick block, for the status line. */
+    val quickStatus: QuickStatus? = null,
     val todayMillis: Long = 0,
     val friction: FrictionSettings = FrictionSettings.DEFAULT,
     val pillShown: Boolean = true,
@@ -75,19 +89,9 @@ data class TrackingRowState(
     val installed: Boolean = true,
 )
 
-/** Section blocking for this app (App detail › Limits), or none for apps without section rules. */
+/** When the reels toggle covers the section (Advanced options), for Reels-capable apps only. */
 data class SectionAppState(
     val section: BlockedSection,
-    /** The config has identifiers for this app; until then nothing can be detected or blocked. */
-    val ready: Boolean,
-    val isPlus: Boolean,
-    /** The user agreed on the disclosure. */
-    val consented: Boolean,
-    /** The service runs (status ACTIVE). */
-    val serviceOn: Boolean,
-    /** The global kill switch is set. */
-    val turnedOff: Boolean,
-    val blocked: Boolean,
     val mode: SectionBlockMode,
 )
 
@@ -98,7 +102,7 @@ data class SectionAppState(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AppDetailViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val limits: LimitRepository,
     private val friction: FrictionRepository,
     private val overlay: OverlayPreferences,
@@ -107,10 +111,15 @@ class AppDetailViewModel @Inject constructor(
     private val trackedApps: TrackedAppsRepository,
     scrollCounting: ScrollCountingRepository,
     private val sectionBlocking: SectionBlockingRepository,
+    installedApps: InstalledApps,
+    private val blockExpiry: BlockExpiryScheduler,
     private val clock: Clock,
 ) : ViewModel() {
 
     val packageName: String = checkNotNull(savedStateHandle.get<String>(ARG_PACKAGE))
+
+    /** Identifiers exist for the installed version (read once per screen). */
+    private val reelsRulesAvailable = sectionBlocking.detectors.isAvailable(packageName, installedApps.versionCode(packageName))
 
     private val _saved = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val saved: SharedFlow<Unit> = _saved.asSharedFlow()
@@ -148,27 +157,94 @@ class AppDetailViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackingRowState())
 
-    /** Section blocking for this app; null when no app rules exist for it. */
-    val section: StateFlow<SectionAppState?> = combine(
+    /** "Always" / "After limit" for the reels toggle; null for apps that aren't Reels-capable. */
+    val section: StateFlow<SectionAppState?> = sectionBlocking.settings
+        .map { settings ->
+            ReelsCapableApps.sectionFor(packageName)?.let { SectionAppState(it, settings.modeFor(packageName)) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val sectionAccess = combine(
         sectionBlocking.settings,
         sectionBlocking.isPlus,
         sectionBlocking.status,
     ) { settings, plus, status ->
-        sectionBlocking.detectors.rulesFor(packageName)?.let { rules ->
-            SectionAppState(
-                section = rules.section,
-                ready = rules.isReady,
-                isPlus = plus,
-                consented = settings.consent == ScrollConsent.AGREED,
-                serviceOn = status == ScrollCountingStatus.ACTIVE,
-                turnedOff = settings.turnedOff,
-                blocked = settings.isBlocked(packageName),
-                mode = settings.modeFor(packageName),
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        SectionAccess(
+            rulesAvailable = reelsRulesAvailable,
+            isPlus = plus,
+            consented = settings.consent == ScrollConsent.AGREED,
+            serviceOn = status == ScrollCountingStatus.ACTIVE,
+            turnedOff = settings.turnedOff,
+        )
+    }
 
-    fun setSectionBlocked(blocked: Boolean) = save { sectionBlocking.setBlocked(packageName, blocked) }
+    private val secondTicks = flow {
+        while (true) {
+            emit(Unit)
+            delay(COUNTDOWN_TICK_MILLIS)
+        }
+    }
+
+    /** The quick toggles with their live countdowns (ticks every second while shown). */
+    val quick: StateFlow<QuickControlsState?> = combine(
+        limits.observeLimits().map { (it[packageName] ?: AppLimit(packageName)).settings },
+        sectionAccess,
+        secondTicks,
+    ) { settings, access, _ ->
+        val now = clock.now()
+        // A block that just ran out: its toggle shows off already; tidy up the stored state.
+        if (QuickBlockRules.clearExpired(settings, now) != settings) blockExpiry.syncAsync()
+        QuickControls.build(packageName, settings, now, access)
+    }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    init {
+        // "Block reels only" tapped before section blocking was set up: it turns on once the
+        // disclosure was accepted and the service runs. "No thanks" drops the wish.
+        // No ticker here: this only follows the setup state, also while the user is in Android settings.
+        if (ReelsCapableApps.isReelsCapable(packageName)) {
+            viewModelScope.launch {
+                combine(sectionAccess, sectionBlocking.settings) { access, settings -> access to settings.consent }
+                    .collect { (access, consent) ->
+                        if (savedStateHandle.get<Boolean>(KEY_PENDING_REELS) != true) return@collect
+                        when {
+                            consent == ScrollConsent.DECLINED -> savedStateHandle[KEY_PENDING_REELS] = false
+                            QuickControls.canCompletePendingEnable(QuickControls.availability(access)) -> {
+                                savedStateHandle[KEY_PENDING_REELS] = false
+                                val now = clock.now()
+                                if (!limits.getLimit(packageName).settings.reelsBlocked(now)) {
+                                    setQuickBlock(QuickBlockTarget.REELS, true)
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    /** A quick toggle on or off. Applies at once, no confirmation. */
+    fun setQuickBlock(target: QuickBlockTarget, on: Boolean) =
+        save { limits.setQuickBlock(packageName, target, on, clock.now()) }
+
+    /** A duration chip: remembered per app and toggle; restarts the block if it is on. */
+    fun setQuickDuration(target: QuickBlockTarget, duration: BlockDuration) =
+        save { limits.setQuickBlockDuration(packageName, target, duration, clock.now()) }
+
+    /**
+     * The reels toggle was tapped. Toggles when it can; otherwise returns where to go first
+     * (paywall, disclosure, Accessibility settings) and remembers to turn it on afterwards.
+     */
+    fun onReelsTapped(turnOn: Boolean): ReelsTapAction {
+        val reels = quick.value?.reels ?: return ReelsTapAction.NONE
+        val action = QuickControls.reelsTap(reels, turnOn)
+        when (action) {
+            ReelsTapAction.TOGGLE -> setQuickBlock(QuickBlockTarget.REELS, turnOn)
+            ReelsTapAction.OPEN_DISCLOSURE, ReelsTapAction.OPEN_ACCESSIBILITY -> savedStateHandle[KEY_PENDING_REELS] = true
+            ReelsTapAction.OPEN_PAYWALL, ReelsTapAction.NONE -> Unit
+        }
+        return action
+    }
 
     fun setSectionMode(mode: SectionBlockMode) = save { sectionBlocking.setMode(packageName, mode) }
 
@@ -198,8 +274,6 @@ class AppDetailViewModel @Inject constructor(
     fun setSwipeAccessAllowed(allowed: Boolean) = change { it.copy(swipeAccessAllowed = allowed) }
 
     // Blocking
-
-    fun setBlockedAlways(blocked: Boolean) = change { it.copy(blockedAlways = blocked) }
 
     fun setScheduleEnabled(enabled: Boolean) = change { it.copy(schedule = it.schedule.copy(enabled = enabled)) }
 
@@ -257,6 +331,7 @@ class AppDetailViewModel @Inject constructor(
                 zone = zone,
                 packageName = packageName,
             ),
+            quickStatus = QuickControls.status(packageName, settings, now),
             todayMillis = todayMillis,
             friction = inputs.friction ?: FrictionSettings.DEFAULT,
             pillShown = packageName !in inputs.overlay.pillHiddenFor,
@@ -279,6 +354,8 @@ class AppDetailViewModel @Inject constructor(
 
     companion object {
         const val ARG_PACKAGE = "packageName"
+        private const val KEY_PENDING_REELS = "pendingReelsEnable"
+        private const val COUNTDOWN_TICK_MILLIS = 1_000L
         private const val TICK_MILLIS = 15_000L
         private const val WEEK_DAYS = 7
         private const val MAX_LIMIT_MINUTES = 24 * 60
