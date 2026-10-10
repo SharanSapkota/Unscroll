@@ -36,7 +36,11 @@ import com.unscroll.app.R
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockReason
 import com.unscroll.app.domain.blocking.LimitSettings
+import com.unscroll.app.domain.blocking.QuickBlockTarget
+import com.unscroll.app.domain.blocking.QuickStatus
+import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.plus.AppTrackingStatus
+import com.unscroll.app.domain.section.BlockedSection
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
 import com.unscroll.app.ui.components.LoadingPlaceholder
@@ -148,15 +152,16 @@ private fun AppRow(app: AppRowState, onClick: () -> Unit, onBlock: (Boolean) -> 
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = limitStatusText(app.decision, app.settings),
+                    text = limitStatusText(app.decision, app.settings, app.quickStatus),
                     style = MaterialTheme.typography.bodySmall,
-                    color = limitStatusColor(app.decision, app.settings),
+                    color = limitStatusColor(app.decision, app.settings, app.quickStatus),
                     maxLines = 1,
                 )
             }
             Text(text = durationText(app.todayMillis), style = MaterialTheme.typography.titleMedium)
+            // "Block entire app", for the app's remembered duration (more in App detail).
             Switch(
-                checked = app.settings.blockedAlways,
+                checked = app.entireAppBlocked,
                 onCheckedChange = {
                     haptics.toggle(it)
                     onBlock(it)
@@ -238,9 +243,19 @@ private fun AppsPreview() {
                     ),
                     AppRowState(
                         DefaultTrackedApps.TIKTOK,
-                        LimitSettings(blockedAlways = true),
-                        BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, null),
+                        LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER),
+                        BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, null),
                         0,
+                        quickStatus = QuickStatus(QuickBlockTarget.ENTIRE_APP, section = null, remainingMillis = null),
+                        entireAppBlocked = true,
+                    ),
+                    AppRowState(
+                        "com.google.android.youtube",
+                        LimitSettings(reelsBlockedUntil = 12 * 60_000L),
+                        BlockDecision.Allowed(null),
+                        35 * 60_000L,
+                        quickStatus = QuickStatus(QuickBlockTarget.REELS, BlockedSection.SHORTS, remainingMillis = 12 * 60_000L),
+                        label = "YouTube",
                     ),
                     AppRowState(
                         DefaultTrackedApps.FACEBOOK,

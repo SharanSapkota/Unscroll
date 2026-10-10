@@ -2,6 +2,7 @@ package com.unscroll.app.data.db
 
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 
 /** v1 → v2 (M5): adds the limits and override tables. Sessions are untouched. */
@@ -141,7 +142,7 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
                     "swipeLimitScope = ?, swipeSessionGapMinutes = ?, swipeAccessAllowed = ? WHERE packageName = ?",
                 arrayOf<Any?>(
                     settings.dailyLimitMinutes,
-                    if (settings.blockedAlways) 1 else 0,
+                    if (settings.entireAppBlockedUntil == TimedBlock.FOREVER) 1 else 0,
                     if (settings.schedule.enabled) 1 else 0,
                     settings.schedule.daysBitmask,
                     settings.schedule.startMinute,
@@ -210,4 +211,34 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+/**
+ * v8 → v9: the quick toggles. `app_limits` gets `entireAppBlockedUntil` and `reelsBlockedUntil`
+ * (epoch millis; Long.MAX_VALUE = "until I turn it off"; null = off) and the remembered duration
+ * chip of each (`lastEntireDuration`, `lastReelsDuration`, minutes, 0 = "until I turn it off").
+ * "Block completely" (`blockedAlways`) becomes "Block entire app" until turned off, so every
+ * current block stays. `blockedAlways` stays as a mirror of that (SQLite on API 26 can't drop it
+ * without a rebuild). Nothing else is touched.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `app_limits` ADD COLUMN `entireAppBlockedUntil` INTEGER")
+        db.execSQL("ALTER TABLE `app_limits` ADD COLUMN `reelsBlockedUntil` INTEGER")
+        db.execSQL("ALTER TABLE `app_limits` ADD COLUMN `lastEntireDuration` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `app_limits` ADD COLUMN `lastReelsDuration` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            "UPDATE `app_limits` SET `entireAppBlockedUntil` = ? WHERE `blockedAlways` = 1",
+            arrayOf<Any>(TimedBlock.FOREVER),
+        )
+    }
+}
+
+val ALL_MIGRATIONS = arrayOf(
+    MIGRATION_1_2,
+    MIGRATION_2_3,
+    MIGRATION_3_4,
+    MIGRATION_4_5,
+    MIGRATION_5_6,
+    MIGRATION_6_7,
+    MIGRATION_7_8,
+    MIGRATION_8_9,
+)

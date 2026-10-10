@@ -44,5 +44,6 @@ Rules of thumb:
 
 - **Fail open:** an unreadable screen, an unknown version or no matching identifier never blocks.
 - The cover is an accessibility overlay of the service: touches don't reach the section, but it isn't focusable, so the system **Back**, **Home** and **Recents** always work. "Take me back to chat" removes the cover and sends Back to the app; "Go home" goes Home. If the app is still in the section afterwards, the cover comes back.
+- Per app, the switch is the quick toggle at the top of App detail ("Block Reels only", "Block For You feed", "Block Shorts only"; only for the apps in `ReelsCapableApps`), for 15 min, 30 min, 1 hour, 2 hours or until turned off. It is stored as `reelsBlockedUntil` in `app_limits` and checked against the clock on every evaluation (`BlockEvaluator.blocksSection`). While an app's installed version has no identifiers here, the toggle is disabled with "Not available for this app version yet".
 - Per app: "Always", or "After limit" (only once today's time reached the app's daily limit; with a daily limit the whole app is blocked at the limit anyway, so "After limit" matters while an "I need access" extension runs).
 - Settings › Section blocking › **Turn off section blocking** stops everything at once; **Stop and remove consent** also switches the service off.

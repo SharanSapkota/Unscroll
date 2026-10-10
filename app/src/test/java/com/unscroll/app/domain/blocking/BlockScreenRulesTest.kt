@@ -10,7 +10,7 @@ class BlockScreenRulesTest {
 
     @Test
     fun unblocked_closesTheScreen() {
-        assertNull(BlockScreenRules.current(BlockReason.BLOCKED_ALWAYS, allowed, swipeLimitReached = false))
+        assertNull(BlockScreenRules.current(BlockReason.BLOCKED_ENTIRE_APP, allowed, swipeLimitReached = false))
         assertNull(BlockScreenRules.current(BlockReason.INSIDE_SCHEDULE, allowed, swipeLimitReached = false))
         assertNull(
             BlockScreenRules.current(
@@ -24,7 +24,7 @@ class BlockScreenRulesTest {
     @Test
     fun stillBlockedForAnotherReason_staysWithThatReason() {
         val schedule = BlockDecision.Blocked(BlockReason.INSIDE_SCHEDULE, until = 1_000L)
-        assertEquals(schedule, BlockScreenRules.current(BlockReason.BLOCKED_ALWAYS, schedule, swipeLimitReached = false))
+        assertEquals(schedule, BlockScreenRules.current(BlockReason.BLOCKED_ENTIRE_APP, schedule, swipeLimitReached = false))
     }
 
     @Test
@@ -39,6 +39,6 @@ class BlockScreenRulesTest {
     @Test
     fun aReachedSwipeLimitDoesNotKeepATimeBlockScreen() {
         // The swipe limit has its own cover; a time block screen closes once its rule is gone.
-        assertNull(BlockScreenRules.current(BlockReason.BLOCKED_ALWAYS, allowed, swipeLimitReached = true))
+        assertNull(BlockScreenRules.current(BlockReason.BLOCKED_ENTIRE_APP, allowed, swipeLimitReached = true))
     }
 }

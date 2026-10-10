@@ -22,7 +22,8 @@ import kotlinx.coroutines.flow.map
 
 /**
  * Section blocking's settings, in the preferences DataStore. Settings only: the consent, the kill
- * switch, which apps and when, and the debug inspector switch. Nothing about what was on screen
+ * switch, when ("After limit" apps), and the debug inspector switch. Which apps have their reels
+ * blocked is the reels toggle in `app_limits` (LimitRepository). Nothing about what was on screen
  * is ever stored.
  */
 @Singleton
@@ -38,7 +39,7 @@ class SectionBlockingPreferences @Inject constructor(
                 consent = prefs[CONSENT]?.let { name -> ScrollConsent.entries.firstOrNull { it.name == name } }
                     ?: ScrollConsent.NOT_ASKED,
                 turnedOff = prefs[TURNED_OFF] ?: false,
-                blockedApps = prefs[BLOCKED_APPS] ?: emptySet(),
+                legacyBlockedApps = prefs[BLOCKED_APPS] ?: emptySet(),
                 afterLimitApps = prefs[AFTER_LIMIT_APPS] ?: emptySet(),
                 inspector = prefs[INSPECTOR] ?: false,
             )
@@ -66,9 +67,8 @@ class SectionBlockingPreferences @Inject constructor(
 
     suspend fun setTurnedOff(turnedOff: Boolean) = dataStore.edit { it[TURNED_OFF] = turnedOff }
 
-    suspend fun setBlocked(packageName: String, blocked: Boolean) = dataStore.edit {
-        it.toggle(BLOCKED_APPS, packageName, on = blocked)
-    }
+    /** After the old per-app switches were moved to the reels toggle (`app_limits`). */
+    suspend fun clearLegacyBlockedApps() = dataStore.edit { it.remove(BLOCKED_APPS) }
 
     suspend fun setMode(packageName: String, mode: SectionBlockMode) = dataStore.edit {
         it.toggle(AFTER_LIMIT_APPS, packageName, on = mode == SectionBlockMode.AFTER_LIMIT)

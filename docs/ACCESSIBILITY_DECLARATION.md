@@ -49,7 +49,7 @@ Android has no other API that tells an app when the user scrolls inside another 
 
 ### Core functionality
 
-Section blocking lets the user block only the short-video section of an app they chose (Instagram Reels, TikTok's For You feed, Facebook Reels, YouTube Shorts) while chat, search, profiles and everything else keep working. When the section opens, Unscroll covers it with its own screen ("Reels are blocked. Chat is open.") with "Take me back to chat" and "Go home". The user chooses the apps (App detail › Section blocking, off for every app by default) and when: always, or only after the app's daily limit is reached.
+Section blocking lets the user block only the short-video section of an app they chose (Instagram Reels, TikTok's For You feed, Facebook Reels, YouTube Shorts) while chat, search, profiles and everything else keep working. When the section opens, Unscroll covers it with its own screen ("Reels are blocked. Chat is open.") with "Take me back to chat" and "Go home". The user chooses the apps and for how long (App detail › Quick block › "Block Reels only" / "Block For You feed" / "Block Shorts only", off for every app by default; 15 min to 2 hours, or until they turn it off) and when: always, or only after the app's daily limit is reached (App detail › Advanced options).
 
 ### Why the Accessibility API is needed
 
@@ -66,7 +66,7 @@ Only an accessibility service can tell which part of another app is on screen. `
 
 ### User consent and control
 
-- Its own disclosure screen (Settings › Tracking › Section blocking › Set up, or App detail › Section blocking): "Unscroll checks which section of the app is open to block short videos. It never reads your messages or content and sends nothing anywhere.", what it does, what it never does, and that it is optional. **"I agree"** / **"No thanks"**.
+- Its own disclosure screen (Settings › Tracking › Section blocking › Set up, or App detail › Quick block › Block Reels only): "Unscroll checks which section of the app is open to block short videos. It never reads your messages or content and sends nothing anywhere.", what it does, what it never does, and that it is optional. **"I agree"** / **"No thanks"**.
 - Without consent every event is ignored and the service switches itself off if the user had declined. Scroll counting is unaffected either way.
 - Settings › Section blocking: "Turn off section blocking" (a kill switch: nothing is read or covered), "Stop and remove consent" (the service calls `disableSelf()`), or the system Accessibility settings.
 
@@ -82,4 +82,4 @@ Show:
 3. The swipe count on the timer while scrolling Instagram.
 4. The dashboard's Swipes card.
 5. Turning the feature off.
-6. Section blocking: Settings › Section blocking › Set up with its disclosure, "I agree", switching on "Unscroll section blocking", App detail › Section blocking › Block Reels, opening Reels (covered, "Take me back to chat"), then chat working, then "Turn off section blocking".
+6. Section blocking: Settings › Section blocking › Set up with its disclosure, "I agree", switching on "Unscroll section blocking", App detail › Quick block › Block Reels only, opening Reels (covered, "Take me back to chat"), then chat working, then "Turn off section blocking".

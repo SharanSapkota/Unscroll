@@ -4,6 +4,7 @@ import com.unscroll.app.domain.blocking.BlockSchedule
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.SwipeLimitRules
 import com.unscroll.app.domain.blocking.SwipeLimitScope
+import com.unscroll.app.domain.blocking.TimedBlock
 
 /**
  * Reads the `pendingChangeJson` column of `app_limits` before v7, which held a loosening change
@@ -19,7 +20,7 @@ internal object LegacyPendingChange {
         return try {
             LimitSettings(
                 dailyLimitMinutes = values["dailyLimitMinutes"]?.takeIf { it != "null" }?.toInt(),
-                blockedAlways = values.getValue("blockedAlways").toBooleanStrict(),
+                entireAppBlockedUntil = if (values.getValue("blockedAlways").toBooleanStrict()) TimedBlock.FOREVER else null,
                 schedule = BlockSchedule(
                     enabled = values.getValue("scheduleEnabled").toBooleanStrict(),
                     days = BlockSchedule.daysFromBitmask(values.getValue("scheduleDays").toInt()),

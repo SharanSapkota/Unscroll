@@ -49,6 +49,7 @@ fun SectionBlockingPanel(
     val context = LocalContext.current
     val status by viewModel.status.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val reelsBlockedApps by viewModel.reelsBlockedApps.collectAsStateWithLifecycle()
     val openAccessibility = { context.openSettings(SystemSettings.accessibility()) }
 
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceM)) {
@@ -56,7 +57,7 @@ fun SectionBlockingPanel(
             text = stringResource(
                 when {
                     status == ScrollCountingStatus.ACTIVE && settings.turnedOff -> R.string.section_status_turned_off
-                    status == ScrollCountingStatus.ACTIVE && settings.blockedApps.isEmpty() -> R.string.section_status_no_apps
+                    status == ScrollCountingStatus.ACTIVE && reelsBlockedApps.isEmpty() -> R.string.section_status_no_apps
                     else -> when (status) {
                         ScrollCountingStatus.OFF -> R.string.section_status_off
                         ScrollCountingStatus.NEEDS_CONSENT -> R.string.section_status_needs_consent
@@ -129,8 +130,9 @@ fun SectionBlockingBanner(
     val status by viewModel.status.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val isPlus by viewModel.isPlus.collectAsStateWithLifecycle()
+    val reelsBlockedApps by viewModel.reelsBlockedApps.collectAsStateWithLifecycle()
     // Only worth a banner while the user still wants it: on, Plus, and at least one app chosen.
-    val wanted = SectionBlockingRules.isActive(settings, isPlus) && settings.blockedApps.isNotEmpty()
+    val wanted = SectionBlockingRules.isActive(settings, isPlus) && reelsBlockedApps.isNotEmpty()
     if (status != ScrollCountingStatus.NEEDS_REENABLE || !wanted) return
     UnscrollCard(modifier = modifier.fillMaxWidth()) {
         Column(

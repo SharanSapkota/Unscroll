@@ -18,9 +18,11 @@ import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
@@ -37,7 +39,7 @@ data class BlockUiState(
     /** The app isn't blocked any more (the user changed its limits): the activity should close. */
     val unblocked: Boolean = false,
 ) {
-    /** Extra time is only offered for the daily limit, never for "Block completely" or schedules. */
+    /** Extra time is only offered for the daily limit, never for "Block entire app" or schedules. */
     val canRequestAccess: Boolean get() = reason == BlockReason.DAILY_LIMIT_REACHED
 }
 
@@ -56,7 +58,7 @@ class BlockViewModel @Inject constructor(
             packageName = savedStateHandle.get<String>(BlockActivity.EXTRA_PACKAGE).orEmpty(),
             reason = savedStateHandle.get<String>(BlockActivity.EXTRA_REASON)
                 ?.let { name -> BlockReason.entries.firstOrNull { it.name == name } }
-                ?: BlockReason.BLOCKED_ALWAYS,
+                ?: BlockReason.BLOCKED_ENTIRE_APP,
             until = savedStateHandle.get<Long>(BlockActivity.EXTRA_UNTIL)?.takeIf { it > 0 },
         ),
     )
@@ -77,6 +79,17 @@ class BlockViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .drop(1)
                 .collect { recheck(it) }
+        }
+        // A block with an end (a timed "Block entire app", a schedule) closes the screen right
+        // when it ends, also while nothing else changes.
+        viewModelScope.launch {
+            _uiState.map { it.until to it.reason }
+                .distinctUntilChanged()
+                .collectLatest { (until, reason) ->
+                    if (until == null || reason == BlockReason.SWIPE_LIMIT_REACHED) return@collectLatest
+                    delay((until - clock.now()).coerceAtLeast(0))
+                    recheck(limits.getLimit(_uiState.value.packageName).settings)
+                }
         }
     }
 

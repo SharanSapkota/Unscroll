@@ -17,15 +17,17 @@ data class SectionBlockingSettings(
     val consent: ScrollConsent = ScrollConsent.NOT_ASKED,
     /** The global kill switch: "Turn off section blocking". Nothing is read or covered while set. */
     val turnedOff: Boolean = false,
-    /** Apps whose section is blocked (off for every app by default). */
-    val blockedApps: Set<String> = emptySet(),
+    /**
+     * Before the quick toggles, the per-app "Block Reels" switch lived here. Now the reels block
+     * is `reelsBlockedUntil` in `app_limits`; this set is only read once to move it there
+     * (SectionBlockingRepository.migrateLegacyBlockedApps) and then cleared.
+     */
+    val legacyBlockedApps: Set<String> = emptySet(),
     /** Apps in [SectionBlockMode.AFTER_LIMIT]; the rest are [SectionBlockMode.ALWAYS]. */
     val afterLimitApps: Set<String> = emptySet(),
     /** Debug builds only: the Section Inspector logs identifiers to logcat. */
     val inspector: Boolean = false,
 ) {
-    fun isBlocked(packageName: String): Boolean = packageName in blockedApps
-
     fun modeFor(packageName: String): SectionBlockMode =
         if (packageName in afterLimitApps) SectionBlockMode.AFTER_LIMIT else SectionBlockMode.ALWAYS
 }
@@ -42,6 +44,11 @@ data class SectionCoverInputs(
     /** Today's time in the app reached its daily limit. */
     val limitReached: Boolean,
     val verdict: SectionVerdict,
+    /**
+     * The app's reels toggle (or "Block entire app") is running and the verdict is the blocked
+     * section: BlockEvaluator.blocksSection.
+     */
+    val sectionBlocked: Boolean,
 )
 
 /** Pure rules for section blocking: consent, the kill switch, Plus and the per-app settings. */
@@ -59,7 +66,7 @@ object SectionBlockingRules {
         isActive(settings, isPlus) &&
             tracked &&
             !excluded &&
-            settings.isBlocked(packageName) &&
+            sectionBlocked &&
             verdict == SectionVerdict.IN_BLOCKED_SECTION &&
             (settings.modeFor(packageName) == SectionBlockMode.ALWAYS || limitReached)
     }
@@ -70,8 +77,8 @@ object SectionBlockingRules {
 
     /**
      * The packages the section service listens to. Nothing without consent; while active, the
-     * tracked apps whose section the user blocks and that have rules; in debug builds with the
-     * inspector on, every tracked app (so identifiers can be captured for any of them).
+     * tracked apps whose reels toggle is on ([reelsBlockedApps]) and that have rules; in debug
+     * builds with the inspector on, every tracked app (so identifiers can be captured for any).
      */
     fun monitoredPackages(
         settings: SectionBlockingSettings,
@@ -79,10 +86,11 @@ object SectionBlockingRules {
         trackedActive: Set<String>,
         rulePackages: Set<String>,
         inspectorAllowed: Boolean,
+        reelsBlockedApps: Set<String>,
     ): Set<String> = when {
         settings.consent != ScrollConsent.AGREED -> emptySet()
         inspectorAllowed && settings.inspector -> trackedActive
-        isActive(settings, isPlus) -> trackedActive intersect settings.blockedApps intersect rulePackages
+        isActive(settings, isPlus) -> trackedActive intersect reelsBlockedApps intersect rulePackages
         else -> emptySet()
     }
 }

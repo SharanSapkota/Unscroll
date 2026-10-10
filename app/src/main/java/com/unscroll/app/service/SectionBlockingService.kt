@@ -11,6 +11,7 @@ import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.domain.apps.ExcludedApps
+import com.unscroll.app.domain.blocking.BlockEvaluator
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -84,6 +85,8 @@ class SectionBlockingService : AccessibilityService() {
 
     @Inject lateinit var clock: Clock
 
+    @Inject lateinit var evaluator: BlockEvaluator
+
     private var scope: CoroutineScope? = null
     private var cover: SectionCover? = null
     private var inspectorButton: SectionInspectorButton? = null
@@ -128,13 +131,19 @@ class SectionBlockingService : AccessibilityService() {
             if (repository.settings.first().consent == ScrollConsent.DECLINED) disableSelf()
         }
         serviceScope.launch {
-            combine(repository.settings, repository.isPlus, trackedApps.state) { settings, plus, state ->
+            combine(
+                repository.settings,
+                repository.isPlus,
+                trackedApps.state,
+                repository.reelsBlockedApps,
+            ) { settings, plus, state, reelsBlocked ->
                 SectionBlockingRules.monitoredPackages(
                     settings = settings,
                     isPlus = plus,
                     trackedActive = state.active,
                     rulePackages = repository.detectors.packages,
                     inspectorAllowed = repository.inspectorAllowed,
+                    reelsBlockedApps = reelsBlocked,
                 )
             }.distinctUntilChanged().collect { packages ->
                 monitored = packages
@@ -144,8 +153,8 @@ class SectionBlockingService : AccessibilityService() {
             }
         }
         serviceScope.launch {
-            // Any settings change (kill switch, per-app switch, mode, Plus): re-check the cover.
-            combine(repository.settings, repository.isPlus) { s, p -> s to p }.collect {
+            // Any settings change (kill switch, reels toggle, mode, Plus): re-check the cover.
+            combine(repository.settings, repository.isPlus, limits.observeLimits()) { s, p, _ -> s to p }.collect {
                 recheckCovered()
                 if (!inspectorOn()) inspectorButton?.hide()
             }
@@ -199,6 +208,9 @@ class SectionBlockingService : AccessibilityService() {
         val detector = repository.detectors.forPackage(pkg)
         val verdict = detector?.detect(screen, versionCode(pkg)) ?: SectionVerdict.UNKNOWN
         val afterLimit = settings.modeFor(pkg) == SectionBlockMode.AFTER_LIMIT
+        // The reels toggle (or "Block entire app") checked against the clock now, so a timed
+        // block that ran out never covers, even before its stored state is cleared.
+        val sectionBlocked = evaluator.blocksSection(limits.getLimit(pkg).settings, verdict, clock.now(), pkg)
         val inputs = SectionCoverInputs(
             settings = settings,
             isPlus = isPlus,
@@ -207,6 +219,7 @@ class SectionBlockingService : AccessibilityService() {
             excluded = excludedApps.isExcluded(pkg),
             limitReached = afterLimit && verdict == SectionVerdict.IN_BLOCKED_SECTION && limitReached(pkg),
             verdict = verdict,
+            sectionBlocked = sectionBlocked,
         )
         val coverView = cover ?: return
         if (detector != null && SectionBlockingRules.shouldCover(inputs)) {

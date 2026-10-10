@@ -54,7 +54,7 @@ Store listing sentence (for the full description, near the feature list):
 > Unscroll's optional swipe counter uses the Accessibility Service API to count scroll gestures in the apps you choose to track, and to cover an app when the swipe limit you set is reached. It never reads your screen content or messages, and no data leaves your phone.
 
 ## Section blocking prominent disclosure (in-app, required)
-Shown on its own screen (Settings › Tracking › Section blocking › Set up, or App detail › Section blocking) before the user is sent to Accessibility settings for the second service, and only acted on after an explicit "I agree" tap. Keep the app's `section_disclosure_*` strings and this text in sync:
+Shown on its own screen (Settings › Tracking › Section blocking › Set up, or App detail › Quick block › Block Reels only) before the user is sent to Accessibility settings for the second service, and only acted on after an explicit "I agree" tap. Keep the app's `section_disclosure_*` strings and this text in sync:
 
 > **Block only short videos**
 > Unscroll checks which section of the app is open to block short videos. It never reads your messages or content and sends nothing anywhere.

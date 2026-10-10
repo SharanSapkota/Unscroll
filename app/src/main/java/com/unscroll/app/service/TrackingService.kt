@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import com.unscroll.app.MainActivity
 import com.unscroll.app.R
 import com.unscroll.app.data.tracking.TrackingPreferences
+import com.unscroll.app.domain.tracking.ScreenStateSource
 import com.unscroll.app.overlay.OverlayTimerManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -26,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -58,6 +60,12 @@ class TrackingService : Service() {
     @Inject
     lateinit var swipeLimitEnforcer: SwipeLimitEnforcer
 
+    @Inject
+    lateinit var screenState: ScreenStateSource
+
+    @Inject
+    lateinit var blockExpiry: BlockExpiryScheduler
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var trackingJob: Job? = null
 
@@ -88,6 +96,8 @@ class TrackingService : Service() {
                 launch { blockEnforcer.run() }
                 launch { frictionCoordinator.run() }
                 launch { swipeLimitEnforcer.run() }
+                // Timed blocks that ran out while the screen was off turn off on screen-on.
+                launch { screenState.isScreenOn.filter { it }.collect { blockExpiry.sync() } }
                 sessionManager.run()
             }
         }

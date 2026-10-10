@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         NudgeLogEntity::class,
         TrackedAppEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 abstract class UnscrollDatabase : RoomDatabase() {

@@ -1,6 +1,8 @@
 package com.unscroll.app.data.section
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.section.SectionBlockMode
 import com.unscroll.app.domain.section.SectionBlockingSettings
@@ -21,11 +23,11 @@ class SectionBlockingPreferencesTest {
 
     private val app = "com.example.social"
 
-    private fun TestScope.createPreferences() = SectionBlockingPreferences(
-        PreferenceDataStoreFactory.create(scope = backgroundScope) {
-            tempFolder.root.resolve("test.preferences_pb")
-        },
-    )
+    private fun TestScope.createDataStore() = PreferenceDataStoreFactory.create(scope = backgroundScope) {
+        tempFolder.root.resolve("test.preferences_pb")
+    }
+
+    private fun TestScope.createPreferences() = SectionBlockingPreferences(createDataStore())
 
     @Test
     fun offByDefault() = runTest {
@@ -59,19 +61,25 @@ class SectionBlockingPreferencesTest {
     }
 
     @Test
-    fun perAppSwitchAndMode() = runTest {
+    fun perAppMode() = runTest {
         val preferences = createPreferences()
-        preferences.setBlocked(app, true)
         preferences.setMode(app, SectionBlockMode.AFTER_LIMIT)
-        var settings = preferences.settings.first()
-        assertTrue(settings.isBlocked(app))
-        assertEquals(SectionBlockMode.AFTER_LIMIT, settings.modeFor(app))
+        assertEquals(SectionBlockMode.AFTER_LIMIT, preferences.settings.first().modeFor(app))
 
         preferences.setMode(app, SectionBlockMode.ALWAYS)
-        preferences.setBlocked(app, false)
-        settings = preferences.settings.first()
-        assertFalse(settings.isBlocked(app))
-        assertEquals(SectionBlockMode.ALWAYS, settings.modeFor(app))
+        assertEquals(SectionBlockMode.ALWAYS, preferences.settings.first().modeFor(app))
+    }
+
+    @Test
+    fun legacyBlockedApps_areReadUntilCleared() = runTest {
+        val dataStore = createDataStore()
+        val preferences = SectionBlockingPreferences(dataStore)
+        // The old per-app "Block Reels" switch, as stored before the quick toggles.
+        dataStore.edit { it[stringSetPreferencesKey("section_blocked_apps")] = setOf(app) }
+        assertEquals(setOf(app), preferences.settings.first().legacyBlockedApps)
+
+        preferences.clearLegacyBlockedApps()
+        assertEquals(emptySet<String>(), preferences.settings.first().legacyBlockedApps)
     }
 
     @Test

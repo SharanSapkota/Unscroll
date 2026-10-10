@@ -1,6 +1,7 @@
 package com.unscroll.app.domain.blocking
 
 import com.unscroll.app.domain.apps.ExcludedApps
+import com.unscroll.app.domain.section.SectionVerdict
 import com.unscroll.app.domain.time.Clock
 import java.time.DayOfWeek
 import java.time.DayOfWeek.MONDAY
@@ -10,6 +11,8 @@ import java.time.DayOfWeek.TUESDAY
 import java.time.LocalDateTime
 import java.time.ZoneId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BlockEvaluatorTest {
@@ -39,10 +42,10 @@ class BlockEvaluatorTest {
     }
 
     @Test
-    fun blockedAlways_wins_evenWithExtension() {
-        val settings = LimitSettings(dailyLimitMinutes = 60, blockedAlways = true)
+    fun entireApp_wins_evenWithExtension() {
+        val settings = LimitSettings(dailyLimitMinutes = 60, entireAppBlockedUntil = TimedBlock.FOREVER)
         assertEquals(
-            BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, until = null),
+            BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = null),
             evaluate(settings, extensionUntil = now + 5 * MINUTE),
         )
     }
@@ -163,7 +166,7 @@ class BlockEvaluatorTest {
 
     @Test
     fun excludedApps_areNeverBlocked_whateverTheirSettingsSay() {
-        val everything = LimitSettings(blockedAlways = true, dailyLimitMinutes = 1)
+        val everything = LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER, dailyLimitMinutes = 1)
         listOf(
             "com.sharansapkota.unscroll",
             "com.android.settings",
@@ -183,7 +186,110 @@ class BlockEvaluatorTest {
 
     @Test
     fun anyAddedApp_isBlockedLikeTheDefaults() {
-        val decision = evaluator.evaluate(LimitSettings(blockedAlways = true), usedTodayMillis = 0, packageName = "com.example.anyapp")
-        assertEquals(BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, until = null), decision)
+        val decision = evaluator.evaluate(LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER), usedTodayMillis = 0, packageName = "com.example.anyapp")
+        assertEquals(BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = null), decision)
+    }
+
+    // Quick toggles: timed and "until I turn it off" blocks.
+
+    @Test
+    fun entireApp_untilTurnedOff_blocksWithoutAnEnd() {
+        assertEquals(
+            BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = null),
+            evaluate(LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER)),
+        )
+    }
+
+    @Test
+    fun entireApp_timed_blocksUntilItsEnd() {
+        val until = now + 15 * MINUTE
+        assertEquals(
+            BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = until),
+            evaluate(LimitSettings(entireAppBlockedUntil = until)),
+        )
+    }
+
+    @Test
+    fun entireApp_expiresAtTheExactBoundary() {
+        val until = now + 30 * MINUTE
+        val settings = LimitSettings(entireAppBlockedUntil = until, dailyLimitMinutes = 60)
+        now = until - 1
+        assertEquals(BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = until), evaluate(settings))
+        now = until
+        assertEquals(BlockDecision.Allowed(remainingMillis = 60 * MINUTE), evaluate(settings))
+        now = until + 1
+        assertEquals(BlockDecision.Allowed(remainingMillis = 60 * MINUTE), evaluate(settings))
+    }
+
+    @Test
+    fun entireApp_winsOverTheScheduleAndTheDailyLimit() {
+        val until = now + 15 * MINUTE
+        val settings = LimitSettings(
+            entireAppBlockedUntil = until,
+            dailyLimitMinutes = 10,
+            schedule = schedule("11:00", "13:00", MONDAY),
+        )
+        assertEquals(
+            BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = until),
+            evaluate(settings, usedMinutes = 30, extensionUntil = now + 5 * MINUTE),
+        )
+    }
+
+    @Test
+    fun reelsOnly_neverBlocksTheWholeApp() {
+        assertEquals(
+            BlockDecision.Allowed(remainingMillis = null),
+            evaluate(LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER)),
+        )
+    }
+
+    @Test
+    fun reelsOnly_coversOnlyAPositivelyIdentifiedSection() {
+        val reels = LimitSettings(reelsBlockedUntil = now + 15 * MINUTE)
+        assertTrue(evaluator.blocksSection(reels, SectionVerdict.IN_BLOCKED_SECTION, now))
+        // Fail open: unknown screens and chat are never covered.
+        assertFalse(evaluator.blocksSection(reels, SectionVerdict.UNKNOWN, now))
+        assertFalse(evaluator.blocksSection(reels, SectionVerdict.IN_ALLOWED_SECTION, now))
+        // Off: nothing is covered.
+        assertFalse(evaluator.blocksSection(LimitSettings.NONE, SectionVerdict.IN_BLOCKED_SECTION, now))
+    }
+
+    @Test
+    fun reelsOnly_timed_expiresAtTheExactBoundary_andUntilOffNeverDoes() {
+        val until = now + 15 * MINUTE
+        val timed = LimitSettings(reelsBlockedUntil = until)
+        assertTrue(evaluator.blocksSection(timed, SectionVerdict.IN_BLOCKED_SECTION, until - 1))
+        assertFalse(evaluator.blocksSection(timed, SectionVerdict.IN_BLOCKED_SECTION, until))
+        val forever = LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER)
+        assertTrue(evaluator.blocksSection(forever, SectionVerdict.IN_BLOCKED_SECTION, now + 3_650L * 24 * 60 * MINUTE))
+    }
+
+    @Test
+    fun entireApp_includesReels() {
+        val entire = LimitSettings(entireAppBlockedUntil = now + 15 * MINUTE, reelsBlockedUntil = null)
+        assertTrue(evaluator.blocksSection(entire, SectionVerdict.IN_BLOCKED_SECTION, now))
+    }
+
+    @Test
+    fun section_neverBlockedForExcludedApps() {
+        val reels = LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER)
+        assertFalse(evaluator.blocksSection(reels, SectionVerdict.IN_BLOCKED_SECTION, now, "com.android.settings"))
+        assertTrue(evaluator.blocksSection(reels, SectionVerdict.IN_BLOCKED_SECTION, now, "com.instagram.android"))
+    }
+
+    @Test
+    fun changingTheDurationWhileActive_restartsTheBlock() {
+        val started = QuickBlockRules.setOn(LimitSettings(lastEntireDuration = BlockDuration.MIN_15), QuickBlockTarget.ENTIRE_APP, true, now)
+        assertEquals(now + 15 * MINUTE, started.entireAppBlockedUntil)
+
+        now += 10 * MINUTE
+        val changed = QuickBlockRules.setDuration(started, QuickBlockTarget.ENTIRE_APP, BlockDuration.HOUR_1, now)
+        assertEquals(now + 60 * MINUTE, changed.entireAppBlockedUntil)
+        assertEquals(BlockDuration.HOUR_1, changed.lastEntireDuration)
+        assertEquals(BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = now + 60 * MINUTE), evaluate(changed))
+
+        // 20 minutes after the first start: the old 15 min block would be over, the new one isn't.
+        now += 10 * MINUTE
+        assertTrue(evaluate(changed) is BlockDecision.Blocked)
     }
 }

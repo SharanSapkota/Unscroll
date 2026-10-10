@@ -2,6 +2,7 @@ package com.unscroll.app.ui.home
 
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.LimitSettings
+import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.insights.AppUsage
 import com.unscroll.app.domain.insights.PeriodUsage
 import com.unscroll.app.domain.insights.UsagePeriod
@@ -63,7 +64,7 @@ class HomeTilesTest {
 
     @Test
     fun blockedApps_areMarked() {
-        val limits = mapOf(FACEBOOK to AppLimit(FACEBOOK, LimitSettings(blockedAlways = true)))
+        val limits = mapOf(FACEBOOK to AppLimit(FACEBOOK, LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER)))
         val tiles = HomeTiles.build(packages, null, null, limits)
         assertEquals(listOf(false, false, true), tiles.map { it.blocked })
     }

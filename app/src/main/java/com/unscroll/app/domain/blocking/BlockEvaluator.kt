@@ -1,6 +1,7 @@
 package com.unscroll.app.domain.blocking
 
 import com.unscroll.app.domain.apps.ExcludedApps
+import com.unscroll.app.domain.section.SectionVerdict
 import com.unscroll.app.domain.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -9,7 +10,8 @@ import java.time.ZonedDateTime
 import javax.inject.Inject
 
 enum class BlockReason {
-    BLOCKED_ALWAYS,
+    /** "Block entire app", until a time or until the user turns it off. */
+    BLOCKED_ENTIRE_APP,
     DAILY_LIMIT_REACHED,
     INSIDE_SCHEDULE,
 
@@ -21,7 +23,7 @@ sealed interface BlockDecision {
     /** [remainingMillis] is the time left under the daily limit, or null without a limit. */
     data class Allowed(val remainingMillis: Long?) : BlockDecision
 
-    /** [until] is when the block lifts by itself, or null for "Block completely". */
+    /** [until] is when the block lifts by itself, or null for "Block entire app" until turned off. */
     data class Blocked(val reason: BlockReason, val until: Long?) : BlockDecision
 }
 
@@ -29,8 +31,9 @@ sealed interface BlockDecision {
  * Decides whether an app may be used right now. Pure: the caller supplies today's usage and any
  * active extension, and the time comes from the injected [Clock].
  *
- * Order matters: "Block completely" wins, then the schedule, then the daily limit. An extension
- * granted from the block screen only lifts the daily limit.
+ * Order matters: "Block entire app" (while its time runs) wins, then the schedule, then the daily
+ * limit. An extension granted from the block screen only lifts the daily limit. Timed blocks are
+ * compared with the clock on every call, so they end on time even after process death.
  *
  * Safety first: an excluded app (Unscroll, a home screen, Settings, the phone, emergency apps, the
  * Play Store; see AppExclusions) is never blocked, whatever its stored settings say.
@@ -49,7 +52,10 @@ class BlockEvaluator @Inject constructor(
         packageName: String? = null,
     ): BlockDecision {
         if (packageName != null && excludedApps.isExcluded(packageName)) return BlockDecision.Allowed(remainingMillis = null)
-        if (settings.blockedAlways) return BlockDecision.Blocked(BlockReason.BLOCKED_ALWAYS, until = null)
+        if (settings.entireAppBlocked(now)) {
+            val until = settings.entireAppBlockedUntil?.takeUnless { it == TimedBlock.FOREVER }
+            return BlockDecision.Blocked(BlockReason.BLOCKED_ENTIRE_APP, until = until)
+        }
 
         val time = Instant.ofEpochMilli(now).atZone(zone)
         scheduleEnd(settings.schedule, time)?.let { end ->
@@ -68,6 +74,23 @@ class BlockEvaluator @Inject constructor(
                 until = time.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
             )
         }
+    }
+
+    /**
+     * Whether section blocking should treat [verdict] as blocked for this app: the reels toggle
+     * (or "Block entire app", which includes reels) is running and the detector positively
+     * identified the short-video section. Fails open: UNKNOWN and allowed sections never block,
+     * and excluded apps never do.
+     */
+    fun blocksSection(
+        settings: LimitSettings,
+        verdict: SectionVerdict,
+        now: Long = clock.now(),
+        packageName: String? = null,
+    ): Boolean {
+        if (packageName != null && excludedApps.isExcluded(packageName)) return false
+        if (verdict != SectionVerdict.IN_BLOCKED_SECTION) return false
+        return settings.reelsBlocked(now) || settings.entireAppBlocked(now)
     }
 
     /** When the schedule window containing [time] ends, or null if [time] is outside it. */

@@ -127,6 +127,11 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- A timed block ("Block entire app" / "Block reels only") ran out: turn it off. -->
+        <receiver
+            android:name=".service.BlockExpiryReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

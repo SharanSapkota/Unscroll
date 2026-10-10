@@ -33,7 +33,16 @@ enum class SwipeLimitScope { DAY, SESSION }
 data class LimitSettings(
     /** Null means no daily limit. */
     val dailyLimitMinutes: Int? = null,
-    val blockedAlways: Boolean = false,
+    /**
+     * "Block entire app": blocked until this epoch-millis time ([TimedBlock.FOREVER]: until the
+     * user turns it off), or null when off. A past value means it ran out.
+     */
+    val entireAppBlockedUntil: Long? = null,
+    /** "Block reels only" (Reels-capable apps): same as [entireAppBlockedUntil], for the section. */
+    val reelsBlockedUntil: Long? = null,
+    /** The duration chip last chosen for each toggle; the next "on" uses it. */
+    val lastEntireDuration: BlockDuration = BlockDuration.DEFAULT,
+    val lastReelsDuration: BlockDuration = BlockDuration.DEFAULT,
     val schedule: BlockSchedule = BlockSchedule(),
     /** Hard swipe limit (needs the opt-in scroll counting), or null for none. */
     val swipeLimit: Int? = null,
@@ -43,9 +52,17 @@ data class LimitSettings(
     /** Offer "I need access" (one tap, +20 swipes) on the swipe-limit cover. */
     val swipeAccessAllowed: Boolean = false,
 ) {
-    /** Time-based rules, enforced by BlockEnforcer. The swipe limit has its own enforcer. */
+    /**
+     * Time-based rules, enforced by BlockEnforcer. The swipe limit and the reels block have their
+     * own enforcers. A stored entire-app block counts even if it ran out; the evaluator checks.
+     */
     val hasAnyRule: Boolean
-        get() = dailyLimitMinutes != null || blockedAlways || schedule.enabled
+        get() = dailyLimitMinutes != null || entireAppBlockedUntil != null || schedule.enabled
+
+    fun entireAppBlocked(now: Long): Boolean = TimedBlock.isActive(entireAppBlockedUntil, now)
+
+    /** The reels toggle itself; the entire-app block includes reels on top of this. */
+    fun reelsBlocked(now: Long): Boolean = TimedBlock.isActive(reelsBlockedUntil, now)
 
     companion object {
         val NONE = LimitSettings()

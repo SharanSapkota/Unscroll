@@ -14,7 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.unscroll.app.ui.theme.Dimens
 
-/** One horizontally scrolling row of choice chips, with a haptic tick on each tap. */
+/**
+ * One horizontally scrolling row of choice chips, with a haptic tick on each tap. It scrolls
+ * rather than clips, so large font sizes keep every chip whole.
+ */
 @Composable
 fun <T> ChipGroup(
     options: List<T>,
@@ -23,6 +26,7 @@ fun <T> ChipGroup(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = Dimens.spaceL),
+    enabled: Boolean = true,
 ) {
     val haptics = rememberHaptics()
     Row(
@@ -34,6 +38,7 @@ fun <T> ChipGroup(
         options.forEach { option ->
             FilterChip(
                 selected = isSelected(option),
+                enabled = enabled,
                 onClick = {
                     haptics.tick()
                     onSelect(option)

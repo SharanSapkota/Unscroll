@@ -12,6 +12,9 @@ interface BlockingDao {
     @Query("SELECT * FROM app_limits")
     fun observeLimits(): Flow<List<AppLimitEntity>>
 
+    @Query("SELECT * FROM app_limits")
+    suspend fun getAllLimits(): List<AppLimitEntity>
+
     @Query("SELECT * FROM app_limits WHERE packageName = :packageName")
     suspend fun getLimit(packageName: String): AppLimitEntity?
 
