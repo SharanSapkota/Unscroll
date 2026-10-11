@@ -169,4 +169,35 @@ class SectionDetectorTest {
         assertEquals(null, detectors.forPackage("com.other"))
         assertEquals(rules, detectors.rulesFor(app))
     }
+
+    @Test
+    fun requiredViewIds_makeARuleACombination() {
+        val combo = RuleBasedSectionDetector(
+            rules.copy(
+                ruleSets = listOf(
+                    SectionRuleSet(
+                        selectedTabViewIds = setOf("$app:id/tab_clips"),
+                        blockedViewIds = setOf("id/clips_viewer"),
+                        requiredViewIds = setOf("id/clips_container"),
+                    ),
+                ),
+            ),
+        )
+        val viewer = SectionNode(viewId = "$app:id/clips_viewer")
+        val container = SectionNode(viewId = "$app:id/clips_container")
+        // One signal without the required ID: not blocked.
+        assertEquals(SectionVerdict.IN_ALLOWED_SECTION, combo.detect(screen(viewer), null))
+        assertEquals(SectionVerdict.IN_ALLOWED_SECTION, combo.detect(screen(tabBar(clipsSelected = true)), null))
+        // The required ID alone: not blocked either.
+        assertEquals(SectionVerdict.IN_ALLOWED_SECTION, combo.detect(screen(container), null))
+        // Both: blocked, by the view ID or by the selected tab; short IDs work for every package.
+        assertEquals(SectionVerdict.IN_BLOCKED_SECTION, combo.detect(screen(viewer, container), null))
+        assertEquals(SectionVerdict.IN_BLOCKED_SECTION, combo.detect(screen(tabBar(clipsSelected = true), container), null))
+        assertEquals(
+            SectionVerdict.IN_BLOCKED_SECTION,
+            combo.detect(screen(SectionNode(viewId = "$twin:id/clips_viewer"), SectionNode(viewId = "$twin:id/clips_container"), pkg = twin), null),
+        )
+        // A hidden required node doesn't count.
+        assertEquals(SectionVerdict.IN_ALLOWED_SECTION, combo.detect(screen(viewer, container.copy(isVisible = false)), null))
+    }
 }

@@ -21,6 +21,13 @@ data class SectionRuleSet(
     val allowedWindowClasses: Set<String> = emptySet(),
     /** View IDs that are positively not the blocked section (a chat thread, ...). Win over blocked. */
     val allowedViewIds: Set<String> = emptySet(),
+    /**
+     * View IDs that must ALL be on visible nodes as well before anything above counts as the
+     * blocked section, so a rule is a combination rather than one ID. Empty: no extra condition.
+     */
+    val requiredViewIds: Set<String> = emptySet(),
+    /** Where and when the identifiers were captured and checked. Documentation only. */
+    val verifiedOn: SectionCapture? = null,
 ) {
     /** No blocked identifiers: nothing can be detected, the detector returns UNKNOWN. */
     val isEmpty: Boolean
@@ -48,3 +55,15 @@ data class AppSectionRules(
     /** True once at least one rule set has identifiers. */
     val isReady: Boolean get() = ruleSets.any { !it.isEmpty }
 }
+
+/** The capture a rule set was built from, kept next to the identifiers. Never read at runtime. */
+data class SectionCapture(
+    val device: String,
+    val androidVersion: String,
+    /** The app's versionName, as shown in its App info page. */
+    val appVersionName: String,
+    /** The app's versionCode, or null when the capture didn't include it. */
+    val appVersionCode: Long?,
+    /** ISO date (yyyy-mm-dd) the captures were taken and the rules checked against them. */
+    val verifiedDate: String,
+)
