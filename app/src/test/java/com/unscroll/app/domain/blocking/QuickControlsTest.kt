@@ -173,10 +173,11 @@ class QuickControlsTest {
     }
 
     @Test
-    fun placeholderRules_meanNotAvailable() {
-        // Every app ships with empty identifiers until they are captured with the Section Inspector.
+    fun reelsToggle_availableOnlyWithRules() {
+        // Instagram and YouTube have captured identifiers; TikTok and Facebook are still empty.
         val detectors = SectionDetectors()
-        ReelsCapableApps.packages.forEach { assertFalse(it, detectors.isAvailable(it, versionCode = 1L)) }
+        val withRules = setOf("com.instagram.android", "com.google.android.youtube")
+        ReelsCapableApps.packages.forEach { assertEquals(it, it in withRules, detectors.isAvailable(it, versionCode = 1L)) }
         assertFalse(detectors.isAvailable("com.reddit.frontpage", versionCode = 1L))
     }
 

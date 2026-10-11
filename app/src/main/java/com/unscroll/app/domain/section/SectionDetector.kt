@@ -33,7 +33,7 @@ interface SectionDetector {
  * 2. An allowed marker (window class or view ID, e.g. a chat screen): IN_ALLOWED_SECTION.
  *    Allowed always wins, so chat is never blocked even if a blocked marker is also on screen.
  * 3. A blocked window class, a selected tab from selectedTabViewIds, or a blocked view ID or
- *    class name: IN_BLOCKED_SECTION.
+ *    class name, AND every requiredViewIds entry on a visible node: IN_BLOCKED_SECTION.
  * 4. Otherwise IN_ALLOWED_SECTION.
  */
 class RuleBasedSectionDetector(private val rules: AppSectionRules) : SectionDetector {
@@ -54,7 +54,8 @@ class RuleBasedSectionDetector(private val rules: AppSectionRules) : SectionDete
             visible.any { it.isSelected && matchesId(it.viewId, set.selectedTabViewIds) } ||
             visible.any { matchesId(it.viewId, set.blockedViewIds) } ||
             visible.any { it.className != null && it.className in set.blockedClassNames }
-        return if (blocked) SectionVerdict.IN_BLOCKED_SECTION else SectionVerdict.IN_ALLOWED_SECTION
+        val combined = blocked && set.requiredViewIds.all { required -> visible.any { matchesId(it.viewId, setOf(required)) } }
+        return if (combined) SectionVerdict.IN_BLOCKED_SECTION else SectionVerdict.IN_ALLOWED_SECTION
     }
 
     companion object {

@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.w3c.dom.Element
 
-/** The seeded config and the service XML: placeholders only, so nothing is blocked yet. */
+/** The config's apps and the service XML. The rules themselves are checked in SectionCaptureTest. */
 class SectionRulesConfigTest {
 
     @Test
@@ -23,8 +23,8 @@ class SectionRulesConfigTest {
     }
 
     @Test
-    fun placeholders_detectNothing_untilRealIdsAreCaptured() {
-        // No identifiers were invented: every detector returns UNKNOWN, even for a busy screen.
+    fun unsupportedApps_detectNothing() {
+        // TikTok and Facebook stay empty (see SectionRulesConfig): UNKNOWN, even for a busy screen.
         val busy = SectionNode(
             viewId = "x:id/anything",
             className = "android.widget.FrameLayout",
@@ -32,13 +32,16 @@ class SectionRulesConfigTest {
             children = List(20) { SectionNode(viewId = "x:id/node$it", className = "android.view.View", isSelected = it % 2 == 0) },
         )
         val detectors = SectionDetectors()
-        SectionRulesConfig.APPS.forEach { rules ->
+        listOf(SectionRulesConfig.TIKTOK, SectionRulesConfig.FACEBOOK).forEach { rules ->
             assertFalse(rules.appName, rules.isReady)
             rules.packages.forEach { pkg ->
                 val verdict = detectors.forPackage(pkg)!!.detect(SectionScreen(pkg, "AnyActivity", busy), 1L)
                 assertEquals(pkg, SectionVerdict.UNKNOWN, verdict)
             }
         }
+        // Instagram and YouTube have rules (checked against the captures in SectionCaptureTest).
+        assertTrue(SectionRulesConfig.INSTAGRAM.isReady)
+        assertTrue(SectionRulesConfig.YOUTUBE.isReady)
     }
 
     @Test

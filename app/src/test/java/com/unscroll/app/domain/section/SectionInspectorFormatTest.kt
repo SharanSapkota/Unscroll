@@ -44,6 +44,14 @@ class SectionInspectorFormatTest {
     }
 
     @Test
+    fun versionCode_isLoggedWhenKnown() {
+        assertEquals(
+            "MARK REELS package=com.example.social window=com.example.social.MainActivity version=4501234",
+            SectionInspectorFormat.lines(screen, InspectorLabel.REELS, versionCode = 4501234L).first(),
+        )
+    }
+
+    @Test
     fun unreadableTree() {
         assertEquals(
             listOf("package=com.example.social window=-", "  (node tree not readable)"),

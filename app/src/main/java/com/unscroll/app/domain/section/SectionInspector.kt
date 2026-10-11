@@ -11,11 +11,13 @@ enum class InspectorLabel { REELS, CHAT, HOME, SEARCH, OTHER }
 object SectionInspectorFormat {
 
     /** Logcat truncates long lines; one entry per line keeps every identifier readable. */
-    fun lines(screen: SectionScreen, label: InspectorLabel? = null): List<String> {
+    /** [versionCode] is the installed app's version, logged so rule sets can be pinned to it. */
+    fun lines(screen: SectionScreen, label: InspectorLabel? = null, versionCode: Long? = null): List<String> {
         val header = buildString {
             if (label != null) append("MARK ").append(label.name).append(' ')
             append("package=").append(screen.packageName)
             append(" window=").append(screen.windowClassName ?: "-")
+            if (versionCode != null) append(" version=").append(versionCode)
         }
         val root = screen.root ?: return listOf(header, "  (node tree not readable)")
         val entries = root.visible()

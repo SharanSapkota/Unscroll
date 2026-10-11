@@ -2,7 +2,18 @@
 
 Section blocking covers only the short-video section of an app (Instagram Reels, TikTok For You, Facebook Reels, YouTube Shorts). It recognizes the section from **technical identifiers only**: view IDs (`viewIdResourceName`), class names, which tab is selected (`isSelected`) and the window (activity) class name. Never text or content descriptions.
 
-The identifiers live in one file, `app/src/main/java/com/unscroll/app/domain/section/SectionRulesConfig.kt`. Every entry ships empty, so until real identifiers are filled in, every detector returns UNKNOWN and **nothing is blocked**. Don't add identifiers from memory or guesses: only ones captured with the Section Inspector below.
+The identifiers live in one file, `app/src/main/java/com/unscroll/app/domain/section/SectionRulesConfig.kt`. An app without identifiers returns UNKNOWN and **nothing is blocked**. Don't add identifiers from memory or guesses: only ones captured with the Section Inspector below.
+
+### Current status (captured on a Pixel 8, Android 17, 2026-10-11)
+
+| App (version) | Rule | Confidence |
+|---|---|---|
+| Instagram 450.0.0.50.77 | (`clips_tab` selected **or** `clips_viewer_view_pager`) **and** `clips_viewer_container`; chat markers `direct_inbox_action_bar`, `inbox_refreshable_thread_list_recyclerview`, `message_thread_container`, `row_thread_composer_container` win | High for the captured screens. Readable names. |
+| YouTube 21.40.161 | `reel_watch_player` **and** `reel_recycler` **and** `reel_watch_fragment_root` | High for the captured screens. Readable names. `reel_time_bar` and `reel_container` also show up outside Shorts, so never use a `reel_` prefix. |
+| TikTok 47.0.3 | none (UNKNOWN) | Obfuscated IDs (`id/omq`) that change between releases; For You can't be told from Following (only the Home tab `omq` and the top tab `android:id/text1` are selected). Needed: a Following capture plus the version code, so a rule can be limited to one version. |
+| Facebook 581.0.0.45.58 | none (UNKNOWN) | Every resource name is stripped (`id/(name removed)`); Reels only differs by `SurfaceView`/`SeekBar`/`RelativeLayout`, which Stories have too. No safe rule. |
+
+Version codes weren't in those captures, so both rule sets have open version ranges (they fail open after a rename). The Inspector header now logs `version=<versionCode>`, so the next capture can pin them. Missing captures that would raise confidence: Search and the regular video player for YouTube; Reels opened from a DM, a profile and the home feed for Instagram; Search, Following and LIVE for TikTok; Search, Messenger and Watch/Video for Facebook. `SectionCaptureTest` checks every rule against node trees transcribed from the captures (`SectionCaptures`).
 
 ## 1. Capture on your phone (debug build)
 
@@ -31,6 +42,7 @@ Per app, in `SectionRulesConfig.kt`:
 | `blockedViewIds` | views that appear **only** in the section (the full-screen player) | `id/clips_viewer_pager` |
 | `blockedClassNames` | view classes that appear only in the section | `com.example.app.ClipsPlayerView` |
 | `blockedWindowClasses` | activities that are the section | `com.example.app.ClipsActivity` |
+| `requiredViewIds` | IDs that must **all** be visible as well, so a rule is a combination | `id/clips_viewer_container` |
 | `allowedViewIds` / `allowedWindowClasses` | chat and anything that must never be blocked; they win over every blocked marker | `id/direct_thread_composer` |
 
 Rules of thumb:
@@ -38,7 +50,9 @@ Rules of thumb:
 - An ID without the package (`id/name`) matches every package of the app (TikTok has two).
 - Always add an allowed marker for chat, so a reel shared in a chat thread never blocks the thread.
 - When an app update renames things, add a second `SectionRuleSet` with `minVersionCode` (the app's version code, `adb shell dumpsys package <pkg> | grep versionCode`) and cap the old one with `maxVersionCode`.
-- Add a test to `SectionDetectorTest` (or a new test) with a node tree built from the capture: the section blocked, chat and home not blocked.
+- Prefer a combination (`requiredViewIds`) over one ID.
+- Add every capture to `SectionCaptures` (test sources) as a node tree; `SectionCaptureTest` then checks the blocked screen is blocked and no allowed screen ever is.
+- Record the capture in the rule set's `verifiedOn` (device, Android version, app version name and code, date).
 
 ## 3. How blocking behaves
 

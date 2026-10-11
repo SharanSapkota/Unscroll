@@ -316,7 +316,7 @@ class SectionBlockingService : AccessibilityService() {
     private fun inspect(screen: SectionScreen, windowChange: Boolean) {
         inspectorButton?.show()
         if (!windowChange) return
-        val lines = SectionInspectorFormat.lines(screen)
+        val lines = SectionInspectorFormat.lines(screen, versionCode = versionCode(screen.packageName))
         if (lastDump[screen.packageName] == lines) return
         lastDump[screen.packageName] = lines
         lines.forEach { Log.i(INSPECTOR_TAG, it) }
@@ -336,7 +336,7 @@ class SectionBlockingService : AccessibilityService() {
             return
         }
         val screen = readScreen(pkg) ?: return
-        SectionInspectorFormat.lines(screen, label).forEach { Log.i(INSPECTOR_TAG, it) }
+        SectionInspectorFormat.lines(screen, label, versionCode(pkg)).forEach { Log.i(INSPECTOR_TAG, it) }
     }
 
     override fun onInterrupt() = Unit
