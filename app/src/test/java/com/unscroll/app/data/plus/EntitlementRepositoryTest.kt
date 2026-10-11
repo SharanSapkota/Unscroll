@@ -2,9 +2,11 @@ package com.unscroll.app.data.plus
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.unscroll.app.data.plus.FakeBillingGateway.Companion.plus
+import com.unscroll.app.domain.plus.OfferResult
 import com.unscroll.app.domain.plus.PlusCheck
 import com.unscroll.app.domain.plus.PurchaseState
 import com.unscroll.app.domain.plus.PurchaseUpdate
+import com.unscroll.app.testing.BillingSwitch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -25,13 +27,18 @@ class EntitlementRepositoryTest {
     private val billing = FakeBillingGateway()
     private lateinit var preferences: EntitlementPreferences
 
-    private fun TestScope.repository(debugBuild: Boolean = false): EntitlementRepository {
+    /** Payments on unless a test says otherwise: these tests cover the billing code itself. */
+    private fun TestScope.repository(
+        debugBuild: Boolean = false,
+        billingEnabled: Boolean = BillingSwitch.ON,
+        name: String = "plus",
+    ): EntitlementRepository {
         preferences = EntitlementPreferences(
             PreferenceDataStoreFactory.create(scope = backgroundScope) {
-                tempFolder.root.resolve("plus.preferences_pb")
+                tempFolder.root.resolve("$name.preferences_pb")
             },
         )
-        return EntitlementRepository(billing, preferences, backgroundScope, debugBuild)
+        return EntitlementRepository(billing, preferences, backgroundScope, debugBuild, billingEnabled)
     }
 
     @Test
@@ -205,5 +212,53 @@ class EntitlementRepositoryTest {
         assertFalse(repository.isPlus.first())
         repository.setDebugOverride(null)
         assertTrue(repository.isPlus.first())
+    }
+
+    // Payments off (PlusConfig.BILLING_ENABLED false).
+
+    @Test
+    fun billingOff_isPlus_withoutEverCallingBilling() = runTest {
+        val repository = repository(debugBuild = true, billingEnabled = BillingSwitch.OFF)
+        billing.purchases = emptyList()
+
+        repository.start()
+        repository.refresh()
+        runCurrent()
+        assertTrue(repository.isPlus.first())
+        assertEquals(Int.MAX_VALUE, repository.maxActiveApps.first())
+        assertEquals(PlusCheck.PLUS, repository.check())
+        assertEquals(PlusCheck.PLUS, repository.restore())
+        assertEquals(OfferResult.Unavailable, repository.offer())
+        assertNull(repository.billingDebugStatus.value)
+        assertEquals(0, billing.calls)
+    }
+
+    @Test
+    fun billingOff_hidesTheEndedNotice_ignoresTheDebugOverride_andKeepsTheStoredState() = runTest {
+        val off = repository(debugBuild = true, billingEnabled = BillingSwitch.OFF)
+        // A user whose Plus had ended, with "Free" forced in a debug build.
+        preferences.saveCachedPlus(false, ended = true)
+        preferences.setDebugOverride(false)
+        off.setDebugOverride(true)
+
+        assertTrue(off.isPlus.first())
+        assertFalse(off.plusEnded.first())
+        assertNull(off.debugOverride.first())
+        // Nothing stored was changed, so switching payments back on finds it as it was.
+        assertEquals(false, preferences.cachedPlus.first())
+        assertEquals(false, preferences.debugOverride.first())
+        assertTrue(preferences.plusEnded.first())
+        assertEquals(0, billing.calls)
+    }
+
+    @Test
+    fun bothStates_plusMeansUnlimitedApps() = runTest {
+        BillingSwitch.BOTH.forEach { enabled ->
+            billing.purchases = listOf(plus())
+            val repository = repository(billingEnabled = enabled, name = "plus-$enabled")
+            repository.check()
+            assertTrue("billingEnabled=$enabled", repository.isPlus.first())
+            assertEquals(Int.MAX_VALUE, repository.maxActiveApps.first())
+        }
     }
 }

@@ -72,7 +72,8 @@ class SectionBlockingRepository @Inject constructor(
     val settings: StateFlow<SectionBlockingSettings> = preferences.settings
         .stateIn(scope, SharingStarted.Eagerly, SectionBlockingSettings())
 
-    val isPlus: StateFlow<Boolean> = entitlement.isPlus.stateIn(scope, SharingStarted.Eagerly, false)
+    /** Plus (always with payments off, so it starts as true there too). */
+    val isPlus: StateFlow<Boolean> = entitlement.isPlus.stateIn(scope, SharingStarted.Eagerly, !entitlement.billingEnabled)
 
     /**
      * Apps whose reels toggle is on (checked against the clock when the stored limits change; a

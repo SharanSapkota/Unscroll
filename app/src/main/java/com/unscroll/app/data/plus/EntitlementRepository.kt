@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -37,6 +38,12 @@ import kotlinx.coroutines.sync.withLock
  * Purchases are acknowledged as soon as they are seen (Play refunds unacknowledged ones after 3
  * days); a failed acknowledgement is retried on the next check. When Plus ends, the "Plus ended"
  * notice is set; nothing is deleted, the extra apps are only paused (TrackedAppsRepository).
+ *
+ * With payments off ([billingEnabled] false, [PlusConfig.BILLING_ENABLED]) everyone has Plus:
+ * [isPlus] is always true, Billing is never asked (no connection, no query, no purchase), and
+ * there is no "Plus ended" notice or debug override. Apps that the free tier had paused become
+ * active again on their own (nothing was ever deleted), and the stored state stays untouched, so
+ * turning payments back on picks up where it was.
  */
 @Singleton
 class EntitlementRepository @Inject constructor(
@@ -44,10 +51,18 @@ class EntitlementRepository @Inject constructor(
     private val preferences: EntitlementPreferences,
     @ApplicationScope private val scope: CoroutineScope,
     @DebugBuild private val debugBuild: Boolean,
+    @BillingEnabled val billingEnabled: Boolean,
 ) {
-    /** Plus on or off. Debug builds can force it; release builds always follow Billing. */
-    val isPlus: Flow<Boolean> = combine(preferences.cachedPlus, preferences.debugOverride) { cached, override -> effective(cached, override) }
-        .distinctUntilChanged()
+    /**
+     * Plus on or off. Debug builds can force it; release builds always follow Billing. Always on
+     * while payments are off.
+     */
+    val isPlus: Flow<Boolean> = if (billingEnabled) {
+        combine(preferences.cachedPlus, preferences.debugOverride) { cached, override -> effective(cached, override) }
+            .distinctUntilChanged()
+    } else {
+        flowOf(true)
+    }
 
     /**
      * How many apps can be active at once: the single provider of the free-tier limit
@@ -55,11 +70,11 @@ class EntitlementRepository @Inject constructor(
      */
     val maxActiveApps: Flow<Int> = isPlus.map { FreeTier.maxActiveApps(it) }
 
-    /** Plus ended on this phone and the user hasn't dismissed the notice yet. */
-    val plusEnded: Flow<Boolean> = preferences.plusEnded
+    /** Plus ended on this phone and the user hasn't dismissed the notice yet. Never with payments off. */
+    val plusEnded: Flow<Boolean> = if (billingEnabled) preferences.plusEnded else flowOf(false)
 
-    /** The forced state in debug builds (null: follow Billing). Always null in release. */
-    val debugOverride: Flow<Boolean?> = if (debugBuild) preferences.debugOverride else flowOf(null)
+    /** The forced state in debug builds (null: follow Billing). Always null in release and with payments off. */
+    val debugOverride: Flow<Boolean?> = if (debugBuild && billingEnabled) preferences.debugOverride else flowOf(null)
 
     private val _pending = MutableStateFlow(false)
 
@@ -67,30 +82,44 @@ class EntitlementRepository @Inject constructor(
     val pending: StateFlow<Boolean> = _pending.asStateFlow()
 
     /** Debug builds only: the last Billing response code name, for the paywall. Null in release. */
-    val billingDebugStatus: StateFlow<String?> = billing.debugStatus
+    val billingDebugStatus: StateFlow<String?> =
+        if (billingEnabled) billing.debugStatus else MutableStateFlow<String?>(null).asStateFlow()
 
     /** Purchase flows that failed (not cancelled), for the paywall's message. */
-    val purchaseFailures: Flow<PurchaseUpdate> = billing.purchaseUpdates.filter { it == PurchaseUpdate.Failed }
+    val purchaseFailures: Flow<PurchaseUpdate> =
+        if (billingEnabled) billing.purchaseUpdates.filter { it == PurchaseUpdate.Failed } else emptyFlow()
 
     private val mutex = Mutex()
     private val started = AtomicBoolean(false)
 
-    /** Starts listening to Play's purchase updates and checks once. Safe to call more than once. */
+    /**
+     * Starts listening to Play's purchase updates and checks once. Safe to call more than once.
+     * Does nothing with payments off.
+     */
     fun start() {
-        if (!started.compareAndSet(false, true)) return
+        if (!billingEnabled || !started.compareAndSet(false, true)) return
         scope.launch {
             billing.purchaseUpdates.collect { if (it == PurchaseUpdate.Changed) check() }
         }
         refresh()
     }
 
-    /** Asks Billing again in the background (app start, resume). */
+    /** Asks Billing again in the background (app start, resume). Does nothing with payments off. */
     fun refresh() {
+        if (!billingEnabled) return
         scope.launch { check() }
     }
 
-    /** Asks Billing and stores the answer. If Billing is unavailable, the last state stays. */
-    suspend fun check(): PlusCheck = mutex.withLock {
+    /**
+     * Asks Billing and stores the answer. If Billing is unavailable, the last state stays. With
+     * payments off, Billing isn't asked and the answer is Plus.
+     */
+    suspend fun check(): PlusCheck {
+        if (!billingEnabled) return PlusCheck.PLUS
+        return checkBilling()
+    }
+
+    private suspend fun checkBilling(): PlusCheck = mutex.withLock {
         when (val result = billing.queryPurchases()) {
             PurchasesResult.Unavailable -> PlusCheck.UNAVAILABLE
             is PurchasesResult.Ok -> {
@@ -112,9 +141,10 @@ class EntitlementRepository @Inject constructor(
     /** "Restore purchases": Billing knows the subscriptions of the Google account on this phone. */
     suspend fun restore(): PlusCheck = check()
 
-    suspend fun offer(): OfferResult = billing.queryOffer()
+    suspend fun offer(): OfferResult = if (billingEnabled) billing.queryOffer() else OfferResult.Unavailable
 
     suspend fun purchase(activity: Activity, offer: PlusOffer): LaunchResult {
+        if (!billingEnabled) return LaunchResult.UNAVAILABLE
         val result = billing.launchPurchase(activity, offer)
         if (result == LaunchResult.ALREADY_OWNED) check()
         return result
@@ -126,7 +156,7 @@ class EntitlementRepository @Inject constructor(
 
     /** Debug builds only: force Plus on (true), off (false), or follow Billing (null). */
     suspend fun setDebugOverride(plus: Boolean?) {
-        if (!debugBuild) return
+        if (!debugBuild || !billingEnabled) return
         mutex.withLock {
             val cached = preferences.cachedPlus.first()
             preferences.setDebugOverride(plus, ended = endedNotice(effective(cached, plus)))

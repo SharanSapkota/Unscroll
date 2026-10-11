@@ -45,6 +45,11 @@ import kotlinx.coroutines.launch
  * until they pick). Everything that isn't tracked gets no session, pill, limits or blocking
  * (SessionManager asks [isActive]). Removing an app only hides it: its history and settings stay
  * in their tables, so adding it again restores them.
+ *
+ * With payments off (PlusConfig) EntitlementRepository reports Plus, so every listed app is active
+ * and adding never needs Plus. Apps the free tier had paused come back by themselves: that pause
+ * was never stored (only the user's own "Track this app" off is), and the stored picks are kept
+ * untouched for when payments come back.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton

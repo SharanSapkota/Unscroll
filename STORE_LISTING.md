@@ -13,28 +13,16 @@ Doomscrolling steals hours you never get back. Unscroll shows you exactly how mu
 - Insights: time-of-day heatmap, number of opens, longest sessions, weekly trends
 - Friction, not guilt: a live timer, limits, and gentle nudges that actually work
 - Swipe counter and swipe limit (optional): see how many times you swipe, and cover the app when you hit the limit you set
-- Section blocking (optional, Unscroll Plus): block only Reels, TikTok's For You feed or YouTube Shorts while chat, search and profiles keep working
+- Section blocking (optional): block only Reels, TikTok's For You feed or YouTube Shorts while chat, search and profiles keep working
 - Private by design: all your data stays on your phone. No account. No tracking.
 
-**Pricing (in the full description; the price itself is set in Play Console, never in the app):**
-> Free for 1 app, with the timer, limits, blocking and stats included. Unscroll Plus: {price}/month for unlimited apps and section blocking (block only Reels, For You or Shorts), cancel anytime in Google Play.
->
-> Your data stays with you. We only charge to support the people who build Unscroll.
-
-The "1" follows `FreeTier.FREE_APPS`. Play shows the local price on the listing ("Offers in-app purchases"); don't write a price in the text, so it never disagrees with the user's currency.
-
-## Subscription disclosure (Play subscriptions policy)
-Shown on the in-app paywall next to "Continue", and in the full description:
-
-> Unscroll Plus is a monthly subscription for {price}, billed through Google Play. It renews automatically until you cancel. Cancel anytime in Google Play › Payments & subscriptions › Subscriptions; you keep Plus until the end of the paid month. If Plus ends, nothing is deleted: your free app stays tracked and the others are paused, with their history kept.
-
-In the app: the paywall shows the price Play returns ("{price} / month"), "Billed monthly through Google Play. Renews automatically until you cancel.", "Restore purchases", "Not now", and links to the privacy policy and terms ([docs/TERMS.md](docs/TERMS.md)). No countdowns, trials or pre-selected options. Settings › Unscroll Plus has "Manage subscription" (the Play subscriptions page for `unscroll_plus_monthly`) and "Restore purchases".
+**Pricing:** Unscroll is free, with every feature for every app. Payments are turned off for now (`billingEnabled = false` in `app/build.gradle.kts`): the listing must not mention a price, a subscription or Unscroll Plus, and Play Console must not have an active subscription product. The paid texts are kept in "Enable when billing is turned on" at the end of this file.
 
 ## Permission disclosures to prepare
 - Usage access: to detect which app is open and measure time
 - Display over other apps: to show the live timer and block screen
 - Accessibility (optional, M7): to count scroll gestures in the tracked apps; no screen content is read or stored. Full wording below; Play declaration draft in docs/ACCESSIBILITY_DECLARATION.md.
-- Accessibility, second service (optional, Unscroll Plus): section blocking checks which section of a chosen app is open using technical identifiers only (view IDs, class names, selected tab, screen name), never text or messages, and covers only the short-video section. Its own disclosure below.
+- Accessibility, second service (optional): section blocking checks which section of a chosen app is open using technical identifiers only (view IDs, class names, selected tab, screen name), never text or messages, and covers only the short-video section. Its own disclosure below.
 
 ## Accessibility prominent disclosure (in-app, required)
 Shown on its own screen (Settings › Scroll counting › Set up) before the user is sent to Accessibility settings, and only acted on after an explicit "I agree" tap. Keep the app's `scroll_disclosure_*` strings and this text in sync:
@@ -63,18 +51,43 @@ Shown on its own screen (Settings › Tracking › Section blocking › Set up, 
 >
 > **What it never does:** It never reads your messages, posts, captions, comments, usernames or anything you type. It doesn't store what was on screen and sends nothing anywhere: Unscroll has no account and no internet access. It never taps or types for you; it can only go Back or Home when you ask it to.
 >
-> **Optional:** Section blocking is part of Unscroll Plus and off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android's Accessibility settings.
+> **Optional:** Section blocking is off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android's Accessibility settings.
 >
 > [I agree] [No thanks]
 
 Store listing sentence (for the full description):
-> Unscroll's optional section blocking (Unscroll Plus) uses the Accessibility Service API to tell which section of an app you chose is open, so it can cover only Reels, For You or Shorts. It looks only at technical screen identifiers, never at your messages or content, and no data leaves your phone.
+> Unscroll's optional section blocking uses the Accessibility Service API to tell which section of an app you chose is open, so it can cover only Reels, For You or Shorts. It looks only at technical screen identifiers, never at your messages or content, and no data leaves your phone.
 
 ## Checklist
 - Privacy policy URL (required): draft in docs/PRIVACY_POLICY.md
-- Terms URL (linked from the paywall): draft in docs/TERMS.md
-- Subscription `unscroll_plus_monthly` with base plan `monthly` in Play Console (see docs/RELEASE.md)
+- Terms URL: draft in docs/TERMS.md (optional while payments are off: the app links to it only from the paywall, which is hidden)
 - Data Safety form: no data collected or shared (answers in docs/DATA_SAFETY.md)
 - Accessibility API declaration form (draft in docs/ACCESSIBILITY_DECLARATION.md, covering both services, plus a short video of each disclosure and feature)
 - 4-8 screenshots, 512x512 icon, 1024x500 feature graphic
 - Do not use "Instagram", "TikTok", or "Facebook" in the title
+
+## Enable when billing is turned on
+Not used while payments are off. When `billingEnabled` is switched back on (docs/RELEASE.md, "Payments on or off"), restore these texts in the places named, and remove the "Pricing" note above.
+
+Feature list line:
+> - Section blocking (optional, Unscroll Plus): block only Reels, TikTok's For You feed or YouTube Shorts while chat, search and profiles keep working
+
+**Pricing (in the full description; the price itself is set in Play Console, never in the app):**
+> Free for 1 app, with the timer, limits, blocking and stats included. Unscroll Plus: {price}/month for unlimited apps and section blocking (block only Reels, For You or Shorts), cancel anytime in Google Play.
+>
+> Your data stays with you. We only charge to support the people who build Unscroll.
+
+The "1" follows `FreeTier.FREE_APPS`. Play shows the local price on the listing ("Offers in-app purchases"); don't write a price in the text, so it never disagrees with the user's currency.
+
+### Subscription disclosure (Play subscriptions policy)
+Shown on the in-app paywall next to "Continue", and in the full description:
+
+> Unscroll Plus is a monthly subscription for {price}, billed through Google Play. It renews automatically until you cancel. Cancel anytime in Google Play › Payments & subscriptions › Subscriptions; you keep Plus until the end of the paid month. If Plus ends, nothing is deleted: your free app stays tracked and the others are paused, with their history kept.
+
+In the app: the paywall shows the price Play returns ("{price} / month"), "Billed monthly through Google Play. Renews automatically until you cancel.", "Restore purchases", "Not now", and links to the privacy policy and terms ([docs/TERMS.md](docs/TERMS.md)). No countdowns, trials or pre-selected options. Settings › Unscroll Plus has "Manage subscription" (the Play subscriptions page for `unscroll_plus_monthly`) and "Restore purchases".
+
+### Paid wording in other sections
+- Permission disclosures: "Accessibility, second service (optional, Unscroll Plus): …"
+- Section blocking disclosure, "Optional" (the app switches to `section_disclosure_optional_body` by itself): "> **Optional:** Section blocking is part of Unscroll Plus and off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android's Accessibility settings."
+- Section blocking store sentence: "Unscroll's optional section blocking (Unscroll Plus) uses the Accessibility Service API …"
+- Checklist: "Terms URL (linked from the paywall): draft in docs/TERMS.md" and "Subscription `unscroll_plus_monthly` with base plan `monthly` in Play Console (see docs/RELEASE.md)"

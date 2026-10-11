@@ -353,6 +353,8 @@
     <string name="settings_quiet_hours">Quiet hours</string>
     <string name="settings_quiet_info">During quiet hours, open nudges, break reminders and limit warnings stay silent. Blocks and swipe limits still apply.</string>
     <string name="settings_privacy_info">Everything Unscroll records stays on this phone: no account, no analytics, no internet permission. Unscroll Plus is bought through Google Play, which never gets your usage data. \"Delete history\" keeps your settings and limits; \"Delete all my data\" removes everything.</string>
+    <!-- Used while payments are off (PlusConfig.BILLING_ENABLED false). -->
+    <string name="settings_privacy_info_no_billing">Everything Unscroll records stays on this phone: no account, no analytics, no internet permission. \"Delete history\" keeps your settings and limits; \"Delete all my data\" removes everything.</string>
     <string name="settings_dynamic_color">Dynamic color</string>
     <plurals name="settings_debug_sample_added">
         <item quantity="one">%d session added</item>
@@ -386,6 +388,8 @@
     <string name="trust_bullet_never">We never see or collect your usage.</string>
     <string name="trust_bullet_content">Unscroll never reads your messages, posts or anything you type.</string>
     <string name="trust_bullet_purchases">No accounts. Purchases are handled by Google Play. We never see your usage data.</string>
+    <!-- Used instead of trust_bullet_purchases while payments are off. -->
+    <string name="trust_bullet_no_accounts">No accounts. We never see your usage data.</string>
     <string name="trust_bullet_delete">You can delete all your data any time in Settings.</string>
     <string name="onboarding_why_usage">To see how long you spend in each app.</string>
     <string name="onboarding_why_overlay">To show the timer and the limit screen.</string>
@@ -617,6 +621,8 @@
     <string name="section_disclosure_does_not_body">It never reads your messages, posts, captions, comments, usernames or anything you type. It doesn\'t store what was on screen and sends nothing anywhere: Unscroll has no account and no internet access. It never taps or types for you; it can only go Back or Home when you ask it to.</string>
     <string name="section_disclosure_optional_title">Optional</string>
     <string name="section_disclosure_optional_body">Section blocking is part of Unscroll Plus and off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android\'s Accessibility settings.</string>
+    <!-- Used while payments are off: the same text without Unscroll Plus. -->
+    <string name="section_disclosure_optional_body_no_billing">Section blocking is off until you turn it on. Everything else in Unscroll works without it, and you can turn it off any time in Settings or in Android\'s Accessibility settings.</string>
     <string name="section_disclosure_next">Next: Android opens Accessibility settings. Tap \"Unscroll section blocking\" and turn it on.</string>
     <string name="section_status_off">Off. Cover only Reels, For You or Shorts and keep chat open.</string>
     <string name="section_status_needs_consent">Turned on in Android settings, but you haven\'t agreed in Unscroll yet. Nothing is checked until you do.</string>

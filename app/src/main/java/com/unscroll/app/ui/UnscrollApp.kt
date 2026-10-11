@@ -30,6 +30,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.unscroll.app.BuildConfig
+import com.unscroll.app.data.plus.PlusConfig
 import com.unscroll.app.ui.apps.AddAppsScreen
 import com.unscroll.app.ui.apps.AppDetailScreen
 import com.unscroll.app.ui.apps.AppDetailViewModel
@@ -74,7 +75,10 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
     // App detail, Plus, the free-app pick and the add-apps picker are full-screen pages: no bottom bar.
     val showBottomBar = currentDestination?.route !in FULL_SCREEN_ROUTES
     val openApp: (String) -> Unit = { navController.navigate(AppDetailRoute.of(it)) }
-    val openPlus: () -> Unit = { navController.navigate(ROUTE_PLUS) { launchSingleTop = true } }
+    // With payments off (PlusConfig) there is no paywall: nothing opens it, and its routes don't exist.
+    val openPlus: () -> Unit = {
+        if (PlusConfig.BILLING_ENABLED) navController.navigate(ROUTE_PLUS) { launchSingleTop = true }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -146,12 +150,14 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onSectionInspector = { navController.navigate(ROUTE_SECTION_INSPECTOR) },
                 )
             }
-            composable(ROUTE_PLUS) { PaywallScreen(onClose = { navController.popBackStack() }) }
-            composable(ROUTE_PICK_APPS) {
-                PickAppsScreen(
-                    onDone = { navController.popBackStack() },
-                    onPlus = { navController.navigate(ROUTE_PLUS) { popUpTo(ROUTE_PICK_APPS) { inclusive = true } } },
-                )
+            if (PlusConfig.BILLING_ENABLED) {
+                composable(ROUTE_PLUS) { PaywallScreen(onClose = { navController.popBackStack() }) }
+                composable(ROUTE_PICK_APPS) {
+                    PickAppsScreen(
+                        onDone = { navController.popBackStack() },
+                        onPlus = { navController.navigate(ROUTE_PLUS) { popUpTo(ROUTE_PICK_APPS) { inclusive = true } } },
+                    )
+                }
             }
             composable(
                 route = AppDetailRoute.ROUTE,

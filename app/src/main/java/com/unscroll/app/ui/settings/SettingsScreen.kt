@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.BuildConfig
 import com.unscroll.app.R
+import com.unscroll.app.data.plus.PlusConfig
 import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
@@ -99,11 +100,14 @@ fun SettingsScreen(
             )
         }
 
-        SectionHeader(
-            title = stringResource(R.string.plus_title),
-            info = pluralStringResource(R.plurals.settings_plus_info, FreeTier.FREE_APPS, FreeTier.FREE_APPS),
-        )
-        PlusGroup(onOpenPlus = onOpenPlus, onPickApps = onPickApps)
+        // Unscroll Plus, its free app, Manage subscription and Restore purchases: only with payments on.
+        if (PlusConfig.BILLING_ENABLED) {
+            SectionHeader(
+                title = stringResource(R.string.plus_title),
+                info = pluralStringResource(R.plurals.settings_plus_info, FreeTier.FREE_APPS, FreeTier.FREE_APPS),
+            )
+            PlusGroup(onOpenPlus = onOpenPlus, onPickApps = onPickApps)
+        }
 
         SectionHeader(title = stringResource(R.string.settings_group_tracking))
         TrackingGroup(
@@ -144,7 +148,9 @@ fun SettingsScreen(
 
         SectionHeader(
             title = stringResource(R.string.settings_group_data),
-            info = stringResource(R.string.settings_privacy_info),
+            info = stringResource(
+                if (PlusConfig.BILLING_ENABLED) R.string.settings_privacy_info else R.string.settings_privacy_info_no_billing,
+            ),
         )
         DataPrivacyGroup()
 
@@ -185,7 +191,7 @@ fun SettingsScreen(
                     showChevron = false,
                     onClick = viewModel::insertSampleData,
                 )
-                PlusDebugRow()
+                if (PlusConfig.BILLING_ENABLED) PlusDebugRow()
                 SettingRow(
                     title = stringResource(R.string.inspector_title),
                     icon = R.drawable.ic_bug,
