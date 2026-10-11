@@ -25,6 +25,7 @@ import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK_ASIA
 import com.unscroll.app.testing.BillingSwitch
 import com.unscroll.app.testing.FakeUsageDataSource
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -41,9 +42,9 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** Installed apps under test control. */
+/** Installed apps under test control. Thread-safe: the repository reads it on Dispatchers.IO. */
 private class FakeInstalledApps(
-    val installed: MutableSet<String> = mutableSetOf(INSTAGRAM, TIKTOK, FACEBOOK),
+    val installed: MutableSet<String> = ConcurrentHashMap.newKeySet<String>().apply { addAll(listOf(INSTAGRAM, TIKTOK, FACEBOOK)) },
 ) : InstalledApps {
     override fun isInstalled(packageName: String): Boolean = packageName in installed
 
@@ -251,8 +252,10 @@ class TrackedAppsRepositoryTest {
 
         installed.installed -= FACEBOOK
         repository.refresh()
-        val state = repository.state.first { FACEBOOK !in it.active }
-        assertEquals(AppTrackingStatus.NOT_INSTALLED, state.statusOf(FACEBOOK))
+        // Wait for the settled state: an earlier emission can still carry the rows from before the
+        // name was cached, where the uninstalled app isn't listed at all.
+        val state = repository.state.first { it.statusOf(FACEBOOK) == AppTrackingStatus.NOT_INSTALLED }
+        assertFalse(FACEBOOK in state.active)
         assertEquals("label:$FACEBOOK", state.entries.first { it.packageName == FACEBOOK }.label)
 
         installed.installed += FACEBOOK
@@ -338,8 +341,12 @@ class TrackedAppsRepositoryTest {
         val before = repository()
         before.state.first { it.entries.size == 3 }
         before.pick(listOf(FACEBOOK))
+        // The pick must be in the state before the notice: with the notice and no pick, the
+        // downgrade would keep the most used app instead (as when Plus ends without a pick).
+        before.state.first { it.active == setOf(FACEBOOK) }
         preferences.setPlusEnded(true)
-        assertEquals(AppTrackingStatus.LOCKED, before.state.first { !it.needsPick }.statusOf(INSTAGRAM))
+        entitlement.plusEnded.first { it }
+        assertEquals(AppTrackingStatus.LOCKED, before.state.first { it.active == setOf(FACEBOOK) }.statusOf(INSTAGRAM))
         database.sessionDao().insert(SessionEntity(packageName = INSTAGRAM, startTime = 1_000, endTime = 61_000))
         database.blockingDao().upsertLimit(
             AppLimitEntity(INSTAGRAM, dailyLimitMinutes = 30, blockedAlways = false, scheduleEnabled = false, scheduleDays = 0, scheduleStartMinute = 0, scheduleEndMinute = 0),
