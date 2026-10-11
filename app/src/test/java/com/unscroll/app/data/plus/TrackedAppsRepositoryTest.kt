@@ -361,7 +361,10 @@ class TrackedAppsRepositoryTest {
         assertFalse(entitlement.plusEnded.first())
         assertEquals(listOf(INSTAGRAM), database.sessionDao().getAll().map { it.packageName })
         assertEquals(30, database.blockingDao().getLimit(INSTAGRAM)?.dailyLimitMinutes)
-        assertEquals(3, database.trackedAppDao().observeAll().first().count { !it.removed && it.status == "ACTIVE" })
+        // No row was paused, removed or deleted (the four seeded defaults include TikTok's second package).
+        val rows = database.trackedAppDao().observeAll().first()
+        assertEquals(4, rows.size)
+        assertTrue(rows.all { !it.removed && it.status == "ACTIVE" })
         // The stored pick stays for when payments come back.
         assertEquals(setOf(FACEBOOK), preferences.pickedApps.first())
     }
