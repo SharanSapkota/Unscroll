@@ -7,7 +7,7 @@ The identifiers live in one file, `app/src/main/java/com/unscroll/app/domain/sec
 ## 1. Capture on your phone (debug build)
 
 1. Install a debug build (`./gradlew installDebug`) and finish onboarding.
-2. Settings › Debug › Force Plus: **Plus** (section blocking is a Plus feature; the inspector itself works without Plus).
+2. With payments on only: Settings › Debug › Force Plus: **Plus** (section blocking is a Plus feature then; the inspector itself works without Plus). While payments are off (`billingEnabled = false`) everyone has it and the switch is hidden; skip this step.
 3. Settings › Tracking › Section blocking › Set up › **I agree**, then switch on **Unscroll section blocking** in Accessibility settings.
 4. Add the app you want to capture to the tracked list (Apps › +), for example YouTube.
 5. Settings › Debug › **Section Inspector** › turn on **Log screen identifiers**.

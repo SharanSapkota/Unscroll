@@ -23,23 +23,36 @@ class FakeBillingGateway : BillingGateway {
     val acknowledged = mutableListOf<String>()
     val updates = MutableSharedFlow<PurchaseUpdate>(extraBufferCapacity = 8)
 
+    /** Every call that would reach Play Billing (purchases, acknowledge, offer, purchase flow). */
+    var calls = 0
+        private set
+
     override val purchaseUpdates: Flow<PurchaseUpdate> = updates
 
     override val debugStatus = MutableStateFlow<String?>(null)
 
-    override suspend fun queryPurchases(): PurchasesResult =
-        purchases?.let { PurchasesResult.Ok(it) } ?: PurchasesResult.Unavailable
+    override suspend fun queryPurchases(): PurchasesResult {
+        calls++
+        return purchases?.let { PurchasesResult.Ok(it) } ?: PurchasesResult.Unavailable
+    }
 
     override suspend fun acknowledge(purchaseToken: String): Boolean {
+        calls++
         if (!acknowledgeSucceeds) return false
         acknowledged += purchaseToken
         purchases = purchases?.map { if (it.token == purchaseToken) it.copy(acknowledged = true) else it }
         return true
     }
 
-    override suspend fun queryOffer(): OfferResult = offer
+    override suspend fun queryOffer(): OfferResult {
+        calls++
+        return offer
+    }
 
-    override suspend fun launchPurchase(activity: Activity, offer: PlusOffer): LaunchResult = launchResult
+    override suspend fun launchPurchase(activity: Activity, offer: PlusOffer): LaunchResult {
+        calls++
+        return launchResult
+    }
 
     companion object {
         fun plus(state: PurchaseState = PurchaseState.PURCHASED, acknowledged: Boolean = true, token: String = "token") =

@@ -45,7 +45,7 @@ Android has no other API that tells an app when the user scrolls inside another 
 - Consent is stored on the device. If the service is switched on in system settings without in-app consent, every event is ignored.
 - The user can turn the feature off at any time in Settings › Scroll counting (the service then calls `disableSelf()`), or in the system Accessibility settings.
 
-## Section blocking (second service, Unscroll Plus)
+## Section blocking (second service; an Unscroll Plus feature only while payments are on)
 
 ### Core functionality
 
@@ -59,7 +59,7 @@ Only an accessibility service can tell which part of another app is on screen. `
 
 - **Accessed:** the event's package name; the window (activity) class name from window-state changes; and, for each node on screen, only `viewIdResourceName`, `className`, `isSelected` and `isVisibleToUser`. These technical identifiers are compared on the device with a fixed list for each app (`SectionRulesConfig`).
 - **Never accessed:** node or event text, content descriptions, hint text, state descriptions, tooltips, pane titles, extras, or any user content (messages, usernames, captions, comments). One file copies nodes (`SectionNodeSnapshot`) into a structure that has no field for text, and a unit test (`SectionPrivacyGuardTest`) fails the build if any code on the detection path calls `getText`, `getContentDescription` or similar.
-- **Limited by configuration:** `packageNames` lists only the apps with section rules, and the service narrows it at runtime to the tracked apps the user blocks a section in (none while it is turned off or the user has no Plus). Event types: window state, window content and view-selected changes only.
+- **Limited by configuration:** `packageNames` lists only the apps with section rules, and the service narrows it at runtime to the tracked apps the user blocks a section in (none while it is turned off, or, with payments on, without Plus). Event types: window state, window content and view-selected changes only.
 - **Stored:** nothing about the screen. Only the user's settings (consent, the on/off switch, which apps, always or after limit).
 - **Fail open:** if the app's screen can't be read or isn't positively identified as the short-video section, nothing is blocked.
 - **Actions:** `GLOBAL_ACTION_BACK` when the user taps "Take me back to chat" and `GLOBAL_ACTION_HOME` for "Go home". The cover is an accessibility overlay that is not focusable, so the system Back, Home and Recents always work, and it disappears with the service.

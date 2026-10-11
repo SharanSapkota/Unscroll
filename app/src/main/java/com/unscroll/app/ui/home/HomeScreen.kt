@@ -44,6 +44,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.data.plus.PlusConfig
 import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.goals.Streak
 import com.unscroll.app.domain.insights.AppUsage
@@ -94,7 +95,7 @@ fun HomeScreen(
         modifier = modifier,
         banner = {
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
-                PlusEndedBanner()
+                if (PlusConfig.BILLING_ENABLED) PlusEndedBanner()
                 ScrollCountingBanner()
                 SectionBlockingBanner()
             }

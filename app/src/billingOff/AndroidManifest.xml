@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release builds while payments are off (billingEnabled = false in app/build.gradle.kts): Play
+     Billing stays a dependency, but no BillingClient is ever created, so its BILLING permission is
+     removed from the merged manifest. With payments on, this file isn't used. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="com.android.vending.BILLING"
+        tools:node="remove" />
+</manifest>

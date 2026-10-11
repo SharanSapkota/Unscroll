@@ -78,7 +78,8 @@ internal fun TrackingGroup(
             },
             onClick = { scrollOpen = true },
         )
-        // Section blocking is part of Unscroll Plus: free users get the paywall.
+        // Section blocking is part of Unscroll Plus: free users get the paywall. With payments off
+        // everyone has Plus, so this always opens the sheet.
         SettingRow(
             title = stringResource(R.string.section_title),
             icon = R.drawable.ic_layers,

@@ -22,6 +22,16 @@ val keystoreProperties = Properties().apply {
 val signingKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
 val missingSigningKeys: List<String> = signingKeys.filter { keystoreProperties.getProperty(it).isNullOrBlank() }
 
+/**
+ * THE master switch for payments (Unscroll Plus, Google Play Billing). Off for now: everything is
+ * unlocked for everyone, no BillingClient is created, the paywall and every Plus row are hidden,
+ * and release builds drop the com.android.vending.BILLING permission. The billing code stays in
+ * the repo; to turn payments back on, change `false` to `true` here (docs/RELEASE.md). For a
+ * one-off build, `-Punscroll.billingEnabled=true` overrides it. The app reads it only through
+ * `BuildConfig.BILLING_ENABLED` (PlusConfig).
+ */
+val billingEnabled: Boolean = providers.gradleProperty("unscroll.billingEnabled").orNull?.toBooleanStrict() ?: false
+
 android {
     // The Kotlin package and the R class keep this namespace; only the installed app ID (below) changed.
     namespace = "com.unscroll.app"
@@ -34,6 +44,15 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+
+        // Payments on or off, from billingEnabled above (the only place to change it).
+        buildConfigField("boolean", "BILLING_ENABLED", billingEnabled.toString())
+    }
+
+    sourceSets {
+        // With payments off, release builds remove the BILLING permission that Play Billing adds.
+        // Debug builds keep the library's manifest as it is.
+        if (!billingEnabled) getByName("release").manifest.srcFile("src/billingOff/AndroidManifest.xml")
     }
 
     signingConfigs {
@@ -65,7 +84,7 @@ android {
 
     buildFeatures {
         compose = true
-        // BuildConfig.DEBUG gates debug-only tools such as sample data.
+        // BuildConfig.DEBUG gates debug-only tools such as sample data; BILLING_ENABLED gates payments.
         buildConfig = true
     }
 
@@ -116,6 +135,7 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.activity.compose)
     // Unscroll Plus: Google Play Billing is the only payment system (no accounts, no backend).
+    // Kept while payments are off (billingEnabled = false): the code stays, no client is created.
     implementation(libs.play.billing)
 
     implementation(platform(libs.androidx.compose.bom))

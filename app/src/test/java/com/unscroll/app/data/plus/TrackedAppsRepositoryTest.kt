@@ -1,7 +1,9 @@
 package com.unscroll.app.data.plus
 
 import android.app.Application
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,7 +23,9 @@ import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK_ASIA
+import com.unscroll.app.testing.BillingSwitch
 import com.unscroll.app.testing.FakeUsageDataSource
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -38,9 +42,9 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
-/** Installed apps under test control. */
+/** Installed apps under test control. Thread-safe: the repository reads it on Dispatchers.IO. */
 private class FakeInstalledApps(
-    val installed: MutableSet<String> = mutableSetOf(INSTAGRAM, TIKTOK, FACEBOOK),
+    val installed: MutableSet<String> = ConcurrentHashMap.newKeySet<String>().apply { addAll(listOf(INSTAGRAM, TIKTOK, FACEBOOK)) },
 ) : InstalledApps {
     override fun isInstalled(packageName: String): Boolean = packageName in installed
 
@@ -69,23 +73,32 @@ class TrackedAppsRepositoryTest {
 
     @Before
     fun setUp() {
-        database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext<Application>(),
-            UnscrollDatabase::class.java,
-        ).build()
+        database = newDatabase()
     }
+
+    private fun newDatabase(): UnscrollDatabase = Room.inMemoryDatabaseBuilder(
+        ApplicationProvider.getApplicationContext<Application>(),
+        UnscrollDatabase::class.java,
+    ).build()
 
     @After
     fun tearDown() {
         database.close()
     }
 
-    private fun TestScope.repository(): TrackedAppsRepository {
-        val dataStore = PreferenceDataStoreFactory.create(scope = backgroundScope) {
-            tempFolder.root.resolve("plus.preferences_pb")
-        }
+    private var dataStore: DataStore<Preferences>? = null
+    private var dataStoreName = "plus"
+
+    /**
+     * Payments on unless a test says otherwise (the free-tier tests need Billing). A second call in
+     * the same test reuses the database and DataStore, like the app after an update.
+     */
+    private fun TestScope.repository(billingEnabled: Boolean = BillingSwitch.ON): TrackedAppsRepository {
+        val dataStore = dataStore ?: PreferenceDataStoreFactory.create(scope = backgroundScope) {
+            tempFolder.root.resolve("$dataStoreName.preferences_pb")
+        }.also { dataStore = it }
         preferences = EntitlementPreferences(dataStore)
-        entitlement = EntitlementRepository(billing, preferences, backgroundScope, debugBuild = false)
+        entitlement = EntitlementRepository(billing, preferences, backgroundScope, debugBuild = false, billingEnabled = billingEnabled)
         return TrackedAppsRepository(
             dao = database.trackedAppDao(),
             entitlement = entitlement,
@@ -239,8 +252,10 @@ class TrackedAppsRepositoryTest {
 
         installed.installed -= FACEBOOK
         repository.refresh()
-        val state = repository.state.first { FACEBOOK !in it.active }
-        assertEquals(AppTrackingStatus.NOT_INSTALLED, state.statusOf(FACEBOOK))
+        // Wait for the settled state: an earlier emission can still carry the rows from before the
+        // name was cached, where the uninstalled app isn't listed at all.
+        val state = repository.state.first { it.statusOf(FACEBOOK) == AppTrackingStatus.NOT_INSTALLED }
+        assertFalse(FACEBOOK in state.active)
         assertEquals("label:$FACEBOOK", state.entries.first { it.packageName == FACEBOOK }.label)
 
         installed.installed += FACEBOOK
@@ -290,6 +305,107 @@ class TrackedAppsRepositoryTest {
         val free = repository.state.first { !it.isPlus && !it.needsPick }
         assertEquals(setOf(FACEBOOK), free.active)
         assertEquals(setOf(FACEBOOK), preferences.pickedApps.first())
+    }
+
+    // Payments off (PlusConfig.BILLING_ENABLED false).
+
+    @Test
+    fun billingOff_freshInstall_tracksEveryApp_withoutAPick() = runTest {
+        used(TIKTOK, 50)
+        val repository = repository(billingEnabled = BillingSwitch.OFF)
+
+        val state = repository.state.first { it.entries.size == 3 }
+        assertEquals(setOf(INSTAGRAM, TIKTOK, FACEBOOK), state.active)
+        assertFalse(state.needsPick)
+        assertTrue(state.isPlus)
+        assertEquals(0, billing.calls)
+    }
+
+    @Test
+    fun billingOff_addingApps_neverNeedsPlus() = runTest {
+        installed.installed += setOf(VIDEO, "com.example.a", "com.example.b")
+        val repository = repository(billingEnabled = BillingSwitch.OFF)
+        repository.state.first { it.entries.size == 3 }
+
+        listOf(VIDEO, "com.example.a", "com.example.b").forEach {
+            assertEquals(AddResult.ADDED, repository.add(it, it))
+        }
+        assertEquals(6, repository.state.first { it.active.size == 6 }.active.size)
+        // No free picks are written while everything is unlocked.
+        assertEquals(emptySet<String>(), preferences.pickedApps.first())
+    }
+
+    @Test
+    fun billingOff_reactivatesAppsPausedByTheFreeTier_withHistoryAndSettingsIntact() = runTest {
+        // Before: a free user whose Plus ended, Facebook picked, the other two locked by the free tier.
+        val before = repository()
+        before.state.first { it.entries.size == 3 }
+        before.pick(listOf(FACEBOOK))
+        // The pick must be in the state before the notice: with the notice and no pick, the
+        // downgrade would keep the most used app instead (as when Plus ends without a pick).
+        before.state.first { it.active == setOf(FACEBOOK) }
+        preferences.setPlusEnded(true)
+        entitlement.plusEnded.first { it }
+        assertEquals(AppTrackingStatus.LOCKED, before.state.first { it.active == setOf(FACEBOOK) }.statusOf(INSTAGRAM))
+        database.sessionDao().insert(SessionEntity(packageName = INSTAGRAM, startTime = 1_000, endTime = 61_000))
+        database.blockingDao().upsertLimit(
+            AppLimitEntity(INSTAGRAM, dailyLimitMinutes = 30, blockedAlways = false, scheduleEnabled = false, scheduleDays = 0, scheduleStartMinute = 0, scheduleEndMinute = 0),
+        )
+
+        // After the update with payments off: every app is active again, nothing deleted.
+        val after = repository(billingEnabled = BillingSwitch.OFF)
+        val state = after.state.first { it.active.size == 3 }
+        assertEquals(setOf(INSTAGRAM, TIKTOK, FACEBOOK), state.active)
+        assertEquals(AppTrackingStatus.ACTIVE, state.statusOf(INSTAGRAM))
+        assertTrue(after.isActive(INSTAGRAM))
+        assertFalse(entitlement.plusEnded.first())
+        assertEquals(listOf(INSTAGRAM), database.sessionDao().getAll().map { it.packageName })
+        assertEquals(30, database.blockingDao().getLimit(INSTAGRAM)?.dailyLimitMinutes)
+        // No row was paused, removed or deleted (the four seeded defaults include TikTok's second package).
+        val rows = database.trackedAppDao().observeAll().first()
+        assertEquals(4, rows.size)
+        assertTrue(rows.all { !it.removed && it.status == "ACTIVE" })
+        // The stored pick stays for when payments come back.
+        assertEquals(setOf(FACEBOOK), preferences.pickedApps.first())
+    }
+
+    @Test
+    fun billingOff_keepsTheUsersOwnPause() = runTest {
+        val repository = repository(billingEnabled = BillingSwitch.OFF)
+        repository.state.first { INSTAGRAM in it.active }
+
+        repository.setPaused(INSTAGRAM, paused = true)
+        assertEquals(AppTrackingStatus.PAUSED, repository.state.first { INSTAGRAM !in it.active }.statusOf(INSTAGRAM))
+    }
+
+    @Test
+    fun bothStates_withPlus_theTrackedListWorksTheSame() {
+        BillingSwitch.BOTH.forEach { enabled ->
+            // A fresh install for each state.
+            database.close()
+            database = newDatabase()
+            dataStore = null
+            dataStoreName = "plus-$enabled"
+            installed.installed += VIDEO
+            billing.purchases = listOf(plus())
+            runTest {
+                val repository = repository(billingEnabled = enabled)
+                entitlement.check()
+                val state = repository.state.first { it.isPlus && it.entries.size == 3 }
+                assertEquals("billingEnabled=$enabled", setOf(INSTAGRAM, TIKTOK, FACEBOOK), state.active)
+                assertFalse(state.needsPick)
+
+                assertEquals(AddResult.ADDED, repository.add(VIDEO, "Video"))
+                repository.state.first { VIDEO in it.active }
+                repository.setCountSwipes(VIDEO, countSwipes = false)
+                repository.state.first { !it.countsSwipes(VIDEO) }
+                repository.setPaused(VIDEO, paused = true)
+                assertEquals(AppTrackingStatus.PAUSED, repository.state.first { VIDEO !in it.active }.statusOf(VIDEO))
+                repository.remove(VIDEO)
+                repository.state.first { latest -> latest.entries.none { it.packageName == VIDEO } }
+            }
+            installed.installed -= VIDEO
+        }
     }
 
     private companion object {

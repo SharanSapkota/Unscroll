@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewFontScale
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import com.unscroll.app.R
+import com.unscroll.app.data.plus.PlusConfig
 import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.ui.fox.FoxMascot
 import com.unscroll.app.ui.fox.LocalFoxSettings
@@ -96,7 +97,7 @@ private fun TrustBullets() {
         TrustBullet(R.string.trust_bullet_device)
         TrustBullet(R.string.trust_bullet_never)
         TrustBullet(R.string.trust_bullet_content)
-        TrustBullet(R.string.trust_bullet_purchases)
+        TrustBullet(if (PlusConfig.BILLING_ENABLED) R.string.trust_bullet_purchases else R.string.trust_bullet_no_accounts)
         TrustBullet(R.string.trust_bullet_delete)
     }
 }

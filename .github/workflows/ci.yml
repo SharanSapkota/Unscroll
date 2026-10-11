@@ -40,6 +40,30 @@ jobs:
             exit 1
           fi
 
+      # Payments have one switch (billingEnabled in app/build.gradle.kts). While it is off, release
+      # builds must not declare Play Billing's BILLING permission (app/src/billingOff); with it on,
+      # they must. INTERNET is never allowed. Merging the manifest needs no signing.
+      - name: Release manifest permissions
+        run: |
+          ./gradlew processReleaseManifest --console=plain
+          manifest=$(find app/build/intermediates -name AndroidManifest.xml -path '*merged_manifest*' -path '*release*' | head -n 1)
+          echo "Merged release manifest: $manifest"
+          tr '\n' ' ' < "$manifest" | grep -o '<uses-permission[^>]*>' | sed 's/  */ /g' | sort -u
+          if grep -q 'android.permission.INTERNET' "$manifest"; then
+            echo "::error::The merged release manifest has the INTERNET permission."
+            exit 1
+          fi
+          if grep -Eq 'val billingEnabled.*\?: false' app/build.gradle.kts; then
+            if grep -q 'com.android.vending.BILLING' "$manifest"; then
+              echo "::error::Payments are off, but the release manifest still declares com.android.vending.BILLING."
+              exit 1
+            fi
+            echo "Payments off: no BILLING permission in the release manifest."
+          else
+            grep -q 'com.android.vending.BILLING' "$manifest" || { echo "::error::Payments are on, but the release manifest lacks com.android.vending.BILLING."; exit 1; }
+            echo "Payments on: BILLING permission present."
+          fi
+
       # Release builds need keystore.properties, which CI doesn't have: bundleRelease must stop
       # with the clear signing message (and not with any other error).
       - name: Release build without signing fails clearly

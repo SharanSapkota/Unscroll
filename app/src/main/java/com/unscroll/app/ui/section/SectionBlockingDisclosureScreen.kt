@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.unscroll.app.R
+import com.unscroll.app.data.plus.PlusConfig
 import com.unscroll.app.ui.scroll.DisclosureBlock
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
@@ -83,7 +84,9 @@ private fun SectionBlockingDisclosureContent(
         )
         DisclosureBlock(
             title = stringResource(R.string.section_disclosure_optional_title),
-            body = stringResource(R.string.section_disclosure_optional_body),
+            body = stringResource(
+                if (PlusConfig.BILLING_ENABLED) R.string.section_disclosure_optional_body else R.string.section_disclosure_optional_body_no_billing,
+            ),
         )
         Text(
             text = stringResource(R.string.section_disclosure_next),
