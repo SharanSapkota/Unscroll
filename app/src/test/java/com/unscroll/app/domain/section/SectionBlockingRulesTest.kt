@@ -1,12 +1,17 @@
 package com.unscroll.app.domain.section
 
 import com.unscroll.app.domain.scroll.ScrollConsent
+import com.unscroll.app.testing.SectionBlockingSwitch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Consent gating, the kill switch, Plus, the reels toggle and mode, and fail-open verdicts. */
+/**
+ * Consent gating, the kill switch, Plus, the reels toggle and mode, and fail-open verdicts. Run
+ * with the master switch ON (SectionBlockingSwitch), so they keep passing for when section
+ * blocking is switched back on; [masterSwitchOff_neverCoversOrListens] covers the shipped build.
+ */
 class SectionBlockingRulesTest {
 
     private val app = "com.example.social"
@@ -21,7 +26,8 @@ class SectionBlockingRulesTest {
         limitReached: Boolean = false,
         verdict: SectionVerdict = SectionVerdict.IN_BLOCKED_SECTION,
         sectionBlocked: Boolean = verdict == SectionVerdict.IN_BLOCKED_SECTION,
-    ) = SectionCoverInputs(settings, isPlus, app, tracked, excluded, limitReached, verdict, sectionBlocked)
+        blockingEnabled: Boolean = SectionBlockingSwitch.ON,
+    ) = SectionCoverInputs(settings, isPlus, app, tracked, excluded, limitReached, verdict, sectionBlocked, blockingEnabled)
 
     @Test
     fun covers_aPositivelyIdentifiedSection() {
@@ -38,7 +44,7 @@ class SectionBlockingRulesTest {
     fun consentGating() {
         ScrollConsent.entries.filter { it != ScrollConsent.AGREED }.forEach { consent ->
             val settings = on.copy(consent = consent)
-            assertFalse(consent.name, SectionBlockingRules.isActive(settings, isPlus = true))
+            assertFalse(consent.name, SectionBlockingRules.isActive(settings, isPlus = true, blockingEnabled = SectionBlockingSwitch.ON))
             assertFalse(consent.name, SectionBlockingRules.shouldCover(inputs(settings = settings)))
         }
     }
@@ -46,7 +52,7 @@ class SectionBlockingRulesTest {
     @Test
     fun killSwitch_stopsEverything() {
         val off = on.copy(turnedOff = true)
-        assertFalse(SectionBlockingRules.isActive(off, isPlus = true))
+        assertFalse(SectionBlockingRules.isActive(off, isPlus = true, blockingEnabled = SectionBlockingSwitch.ON))
         assertFalse(SectionBlockingRules.shouldCover(inputs(settings = off)))
         // Nothing is listened to either (no app in serviceInfo.packageNames).
         assertEquals(emptySet<String>(), monitored(off))
@@ -54,7 +60,7 @@ class SectionBlockingRulesTest {
 
     @Test
     fun plusOnly() {
-        assertFalse(SectionBlockingRules.isActive(on, isPlus = false))
+        assertFalse(SectionBlockingRules.isActive(on, isPlus = false, blockingEnabled = SectionBlockingSwitch.ON))
         assertFalse(SectionBlockingRules.shouldCover(inputs(isPlus = false)))
         assertEquals(emptySet<String>(), monitored(on, isPlus = false))
     }
@@ -81,6 +87,24 @@ class SectionBlockingRulesTest {
         assertFalse(SectionBlockingRules.limitReached(dailyLimitMinutes = null, usedTodayMillis = Long.MAX_VALUE))
         assertFalse(SectionBlockingRules.limitReached(30, 30 * 60_000L - 1))
         assertTrue(SectionBlockingRules.limitReached(30, 30 * 60_000L))
+    }
+
+    @Test
+    fun masterSwitchOff_neverCoversOrListens() {
+        // Everything else says "cover": consent, Plus, the reels toggle, a positive verdict.
+        assertFalse(SectionBlockingRules.isActive(on, isPlus = true, blockingEnabled = SectionBlockingSwitch.OFF))
+        assertFalse(SectionBlockingRules.shouldCover(inputs(blockingEnabled = SectionBlockingSwitch.OFF)))
+        assertEquals(emptySet<String>(), monitored(on, blockingEnabled = SectionBlockingSwitch.OFF))
+        // Only the separate debug inspector flag may still listen, to capture identifiers.
+        val inspecting = on.copy(inspector = true)
+        assertEquals(
+            setOf(app),
+            monitored(inspecting, inspectorAllowed = true, blockingEnabled = SectionBlockingSwitch.OFF),
+        )
+        assertEquals(
+            emptySet<String>(),
+            monitored(inspecting, inspectorAllowed = false, blockingEnabled = SectionBlockingSwitch.OFF),
+        )
     }
 
     @Test
@@ -117,5 +141,14 @@ class SectionBlockingRulesTest {
         rulePackages: Set<String> = setOf(app),
         inspectorAllowed: Boolean = false,
         reelsBlocked: Set<String> = setOf(app),
-    ) = SectionBlockingRules.monitoredPackages(settings, isPlus, trackedActive, rulePackages, inspectorAllowed, reelsBlocked)
+        blockingEnabled: Boolean = SectionBlockingSwitch.ON,
+    ) = SectionBlockingRules.monitoredPackages(
+        settings,
+        isPlus,
+        trackedActive,
+        rulePackages,
+        inspectorAllowed,
+        reelsBlocked,
+        blockingEnabled,
+    )
 }

@@ -29,8 +29,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.unscroll.app.BuildConfig
 import com.unscroll.app.data.plus.PlusConfig
+import com.unscroll.app.data.section.SectionBlockingConfig
 import com.unscroll.app.ui.apps.AddAppsScreen
 import com.unscroll.app.ui.apps.AppDetailScreen
 import com.unscroll.app.ui.apps.AppDetailViewModel
@@ -78,6 +78,10 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
     // With payments off (PlusConfig) there is no paywall: nothing opens it, and its routes don't exist.
     val openPlus: () -> Unit = {
         if (PlusConfig.BILLING_ENABLED) navController.navigate(ROUTE_PLUS) { launchSingleTop = true }
+    }
+    // With section blocking off (SectionBlockingConfig) its disclosure route doesn't exist either.
+    val openSectionSetUp: () -> Unit = {
+        if (SectionBlockingConfig.SETUP_SHOWN) navController.navigate(ROUTE_SECTION_DISCLOSURE)
     }
 
     Scaffold(
@@ -146,8 +150,10 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onRestrictedSettingHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
                     onOpenPlus = openPlus,
                     onPickApps = { navController.navigate(ROUTE_PICK_APPS) },
-                    onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
-                    onSectionInspector = { navController.navigate(ROUTE_SECTION_INSPECTOR) },
+                    onSectionSetUp = openSectionSetUp,
+                    onSectionInspector = {
+                        if (SectionBlockingConfig.INSPECTOR_ALLOWED) navController.navigate(ROUTE_SECTION_INSPECTOR)
+                    },
                 )
             }
             if (PlusConfig.BILLING_ENABLED) {
@@ -166,7 +172,7 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                 AppDetailScreen(
                     onBack = { navController.popBackStack() },
                     onOpenPlus = openPlus,
-                    onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
+                    onSectionSetUp = openSectionSetUp,
                 )
             }
             composable(ROUTE_SCROLL_DISCLOSURE) {
@@ -175,13 +181,17 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
                 )
             }
-            composable(ROUTE_SECTION_DISCLOSURE) {
-                SectionBlockingDisclosureScreen(
-                    onFinished = { navController.popBackStack() },
-                    onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
-                )
+            // Section blocking switched off (SectionBlockingConfig): its disclosure and the inspector
+            // aren't even registered (only a debug build with the inspector flag keeps them).
+            if (SectionBlockingConfig.SETUP_SHOWN) {
+                composable(ROUTE_SECTION_DISCLOSURE) {
+                    SectionBlockingDisclosureScreen(
+                        onFinished = { navController.popBackStack() },
+                        onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
+                    )
+                }
             }
-            if (BuildConfig.DEBUG) {
+            if (SectionBlockingConfig.INSPECTOR_ALLOWED) {
                 composable(ROUTE_SECTION_INSPECTOR) {
                     SectionInspectorScreen(onBack = { navController.popBackStack() })
                 }

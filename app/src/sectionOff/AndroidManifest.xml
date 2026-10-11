@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Builds while section blocking is off (sectionBlockingEnabled = false in app/build.gradle.kts):
+     SectionBlockingService, the only service with canRetrieveWindowContent="true", is removed from
+     the merged manifest, so the app declares only scroll counting's accessibility service (event
+     type and package name, no window content). Debug builds keep it only with
+     -Punscroll.sectionInspector=true. With section blocking on, this file isn't used. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <service
+            android:name="com.unscroll.app.service.SectionBlockingService"
+            tools:node="remove" />
+    </application>
+</manifest>

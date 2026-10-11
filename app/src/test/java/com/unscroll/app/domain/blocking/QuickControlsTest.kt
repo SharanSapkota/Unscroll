@@ -4,6 +4,7 @@ import com.unscroll.app.domain.section.BlockedSection
 import com.unscroll.app.domain.section.ReelsCapableApps
 import com.unscroll.app.domain.section.SectionDetectors
 import com.unscroll.app.domain.section.SectionRulesConfig
+import com.unscroll.app.testing.SectionBlockingSwitch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -11,7 +12,11 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** The quick toggles: durations, on/off, expiry, the reels toggle's setup steps and labels. */
+/**
+ * The quick toggles: durations, on/off, expiry, the reels toggle's setup steps and labels. The
+ * reels toggle tests run with section blocking ON (SectionBlockingSwitch) so they keep passing for
+ * when it is switched back on; the OFF tests cover the shipped build.
+ */
 class QuickControlsTest {
 
     private val now = 1_000_000_000L
@@ -46,18 +51,18 @@ class QuickControlsTest {
     fun nonReelsApps_neverExposeTheReelsToggle() {
         listOf("com.reddit.frontpage", "com.twitter.android", "com.android.chrome", "com.whatsapp").forEach { pkg ->
             // Even with a stored reels block, a normal app only gets "Block entire app".
-            val state = QuickControls.build(pkg, LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER), now, ready)
+            val state = QuickControls.build(pkg, LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER), now, ready, SectionBlockingSwitch.ON)
             assertNull(pkg, state.reels)
-            assertNull(pkg, QuickControls.status(pkg, LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER), now))
+            assertNull(pkg, QuickControls.status(pkg, LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER), now, SectionBlockingSwitch.ON))
         }
         ReelsCapableApps.packages.forEach { pkg ->
-            assertNotNull(pkg, QuickControls.build(pkg, LimitSettings(), now, ready).reels)
+            assertNotNull(pkg, QuickControls.build(pkg, LimitSettings(), now, ready, SectionBlockingSwitch.ON).reels)
         }
     }
 
     @Test
     fun defaults_areOff_untilTurnedOff() {
-        val state = QuickControls.build("com.instagram.android", LimitSettings(), now, ready)
+        val state = QuickControls.build("com.instagram.android", LimitSettings(), now, ready, SectionBlockingSwitch.ON)
         assertEquals(QuickToggleState(on = false, remainingMillis = null, duration = BlockDuration.UNTIL_OFF), state.entireApp)
         assertEquals(QuickToggleState(on = false, remainingMillis = null, duration = BlockDuration.UNTIL_OFF), state.reels?.toggle)
     }
@@ -103,44 +108,44 @@ class QuickControlsTest {
     @Test
     fun countdown_andExpiry() {
         val settings = LimitSettings(reelsBlockedUntil = now + 12 * MINUTE + 41_000L)
-        val state = QuickControls.build("com.instagram.android", settings, now, ready)
+        val state = QuickControls.build("com.instagram.android", settings, now, ready, SectionBlockingSwitch.ON)
         assertEquals(12 * MINUTE + 41_000L, state.reels?.toggle?.remainingMillis)
         assertTrue(state.reels!!.toggle.on)
 
         // At the exact end the toggle shows off; clearExpired then turns it off for good.
-        val atEnd = QuickControls.build("com.instagram.android", settings, settings.reelsBlockedUntil!!, ready)
+        val atEnd = QuickControls.build("com.instagram.android", settings, settings.reelsBlockedUntil!!, ready, SectionBlockingSwitch.ON)
         assertFalse(atEnd.reels!!.toggle.on)
-        assertNull(QuickBlockRules.clearExpired(settings, settings.reelsBlockedUntil!!).reelsBlockedUntil)
+        assertNull(QuickBlockRules.clearExpired(settings, settings.reelsBlockedUntil!!, SectionBlockingSwitch.ON).reelsBlockedUntil)
         // Still running: untouched (same object).
-        assertTrue(QuickBlockRules.clearExpired(settings, now) === settings)
+        assertTrue(QuickBlockRules.clearExpired(settings, now, SectionBlockingSwitch.ON) === settings)
         // "Until I turn it off" never expires.
         val forever = LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER)
-        assertTrue(QuickBlockRules.clearExpired(forever, Long.MAX_VALUE - 1) === forever)
+        assertTrue(QuickBlockRules.clearExpired(forever, Long.MAX_VALUE - 1, SectionBlockingSwitch.ON) === forever)
     }
 
     @Test
     fun nextExpiry_isTheEarliestTimedEnd() {
         val settings = LimitSettings(entireAppBlockedUntil = now + 60 * MINUTE, reelsBlockedUntil = now + 15 * MINUTE)
-        assertEquals(now + 15 * MINUTE, QuickBlockRules.nextExpiry(settings, now))
-        assertNull(QuickBlockRules.nextExpiry(LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER), now))
-        assertNull(QuickBlockRules.nextExpiry(LimitSettings(reelsBlockedUntil = now - 1), now))
+        assertEquals(now + 15 * MINUTE, QuickBlockRules.nextExpiry(settings, now, SectionBlockingSwitch.ON))
+        assertNull(QuickBlockRules.nextExpiry(LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER), now, SectionBlockingSwitch.ON))
+        assertNull(QuickBlockRules.nextExpiry(LimitSettings(reelsBlockedUntil = now - 1), now, SectionBlockingSwitch.ON))
     }
 
     @Test
     fun entireApp_showsReelsIncluded_andTurningItOffRestoresTheReelsToggle() {
         val reelsOff = LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER)
-        val included = QuickControls.build("com.instagram.android", reelsOff, now, ready).reels!!
+        val included = QuickControls.build("com.instagram.android", reelsOff, now, ready, SectionBlockingSwitch.ON).reels!!
         assertTrue(included.included)
         assertFalse(included.toggle.on)
         assertEquals(ReelsTapAction.NONE, QuickControls.reelsTap(included, turnOn = false))
 
         val reelsOn = reelsOff.copy(reelsBlockedUntil = now + 15 * MINUTE)
         val afterEntireOff = QuickBlockRules.setOn(reelsOn, QuickBlockTarget.ENTIRE_APP, false, now)
-        val reels = QuickControls.build("com.instagram.android", afterEntireOff, now, ready).reels!!
+        val reels = QuickControls.build("com.instagram.android", afterEntireOff, now, ready, SectionBlockingSwitch.ON).reels!!
         assertFalse(reels.included)
         assertTrue(reels.toggle.on)
         val afterEntireOffWithoutReels = QuickBlockRules.setOn(reelsOff, QuickBlockTarget.ENTIRE_APP, false, now)
-        assertFalse(QuickControls.build("com.instagram.android", afterEntireOffWithoutReels, now, ready).reels!!.toggle.on)
+        assertFalse(QuickControls.build("com.instagram.android", afterEntireOffWithoutReels, now, ready, SectionBlockingSwitch.ON).reels!!.toggle.on)
     }
 
     @Test
@@ -156,7 +161,7 @@ class QuickControlsTest {
     @Test
     fun reelsTap_goesThroughPlusConsentAndTheService_butOffAlwaysWorks() {
         fun tap(access: SectionAccess, turnOn: Boolean) = QuickControls.reelsTap(
-            QuickControls.build("com.instagram.android", LimitSettings(), now, access).reels!!,
+            QuickControls.build("com.instagram.android", LimitSettings(), now, access, SectionBlockingSwitch.ON).reels!!,
             turnOn,
         )
         assertEquals(ReelsTapAction.TOGGLE, tap(ready, true))
@@ -184,10 +189,10 @@ class QuickControlsTest {
     @Test
     fun status_entireFirst_thenReels() {
         val pkg = "com.google.android.youtube"
-        assertNull(QuickControls.status(pkg, LimitSettings(), now))
+        assertNull(QuickControls.status(pkg, LimitSettings(), now, SectionBlockingSwitch.ON))
         assertEquals(
             QuickStatus(QuickBlockTarget.REELS, BlockedSection.SHORTS, 12 * MINUTE),
-            QuickControls.status(pkg, LimitSettings(reelsBlockedUntil = now + 12 * MINUTE), now),
+            QuickControls.status(pkg, LimitSettings(reelsBlockedUntil = now + 12 * MINUTE), now, SectionBlockingSwitch.ON),
         )
         assertEquals(
             QuickStatus(QuickBlockTarget.ENTIRE_APP, null, null),
@@ -195,8 +200,48 @@ class QuickControlsTest {
                 pkg,
                 LimitSettings(entireAppBlockedUntil = TimedBlock.FOREVER, reelsBlockedUntil = now + 12 * MINUTE),
                 now,
+                SectionBlockingSwitch.ON,
             ),
         )
+    }
+
+    @Test
+    fun switchedOff_noAppGetsTheReelsToggle_evenWithEverythingReady() {
+        val stored = LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER, lastReelsDuration = BlockDuration.MIN_15)
+        (ReelsCapableApps.packages + "com.reddit.frontpage").forEach { pkg ->
+            val state = QuickControls.build(pkg, stored, now, ready, SectionBlockingSwitch.OFF)
+            assertNull(pkg, state.reels)
+            // "Block entire app" with its duration chips is still there, unchanged.
+            assertFalse(pkg, state.entireApp.on)
+            assertEquals(pkg, BlockDuration.DEFAULT, state.entireApp.duration)
+        }
+    }
+
+    @Test
+    fun switchedOff_storedReelsBlockIsIgnored_butKept() {
+        val pkg = "com.instagram.android"
+        val timed = LimitSettings(reelsBlockedUntil = now + 12 * MINUTE)
+        // No "Reels blocked" status line.
+        assertNull(QuickControls.status(pkg, timed, now, SectionBlockingSwitch.OFF))
+        assertNull(QuickControls.status(pkg, LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER), now, SectionBlockingSwitch.OFF))
+        // Never cleared (not even once over) and never scheduled: the stored value stays as it is.
+        assertTrue(QuickBlockRules.clearExpired(timed, now + 60 * MINUTE, SectionBlockingSwitch.OFF) === timed)
+        assertNull(QuickBlockRules.nextExpiry(timed, now, SectionBlockingSwitch.OFF))
+    }
+
+    @Test
+    fun entireAppBlock_worksTheSame_eitherWay() {
+        SectionBlockingSwitch.BOTH.forEach { enabled ->
+            val pkg = "com.google.android.youtube"
+            val on = QuickBlockRules.setOn(LimitSettings(lastEntireDuration = BlockDuration.MIN_30), QuickBlockTarget.ENTIRE_APP, true, now)
+            assertEquals(now + 30 * MINUTE, on.entireAppBlockedUntil)
+            val state = QuickControls.build(pkg, on, now, ready, enabled)
+            assertTrue(state.entireApp.on)
+            assertEquals(30 * MINUTE, state.entireApp.remainingMillis)
+            assertEquals(QuickStatus(QuickBlockTarget.ENTIRE_APP, null, 30 * MINUTE), QuickControls.status(pkg, on, now, enabled))
+            assertEquals(now + 30 * MINUTE, QuickBlockRules.nextExpiry(on, now, enabled))
+            assertNull(QuickBlockRules.clearExpired(on, now + 30 * MINUTE, enabled).entireAppBlockedUntil)
+        }
     }
 
     @Test

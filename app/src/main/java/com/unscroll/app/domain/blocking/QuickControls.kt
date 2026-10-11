@@ -56,10 +56,16 @@ data class ReelsToggleState(
     val availability: ReelsAvailability,
 )
 
-/** The quick controls of one app: always "Block entire app"; "Block reels only" for Reels-capable apps. */
+/**
+ * The quick controls of one app: always "Block entire app"; "Block reels only" for Reels-capable
+ * apps while section blocking is switched on (SectionBlockingConfig.ENABLED).
+ */
 data class QuickControlsState(
     val entireApp: QuickToggleState,
-    /** Null for every app that isn't in [ReelsCapableApps]: no reels toggle at all. */
+    /**
+     * Null for every app that isn't in [ReelsCapableApps], and for every app while section
+     * blocking is switched off: no reels toggle at all (not even a disabled one).
+     */
     val reels: ReelsToggleState?,
 )
 
@@ -78,9 +84,17 @@ enum class ReelsTapAction { TOGGLE, OPEN_PAYWALL, OPEN_DISCLOSURE, OPEN_ACCESSIB
 /** Pure: builds the quick controls from the stored settings and the clock. */
 object QuickControls {
 
-    fun build(packageName: String, settings: LimitSettings, now: Long, access: SectionAccess): QuickControlsState {
+    /** With [sectionBlockingEnabled] false (the master switch) no app gets the reels toggle. */
+    fun build(
+        packageName: String,
+        settings: LimitSettings,
+        now: Long,
+        access: SectionAccess,
+        sectionBlockingEnabled: Boolean,
+    ): QuickControlsState {
         val entire = toggle(settings.entireAppBlockedUntil, settings.lastEntireDuration, now)
-        val reels = ReelsCapableApps.sectionFor(packageName)?.let { section ->
+        val reelsSection = if (sectionBlockingEnabled) ReelsCapableApps.sectionFor(packageName) else null
+        val reels = reelsSection?.let { section ->
             ReelsToggleState(
                 section = section,
                 toggle = toggle(settings.reelsBlockedUntil, settings.lastReelsDuration, now),
@@ -91,11 +105,15 @@ object QuickControls {
         return QuickControlsState(entireApp = entire, reels = reels)
     }
 
-    /** The running quick block to show in the app's status line: the entire app first, then reels. */
-    fun status(packageName: String, settings: LimitSettings, now: Long): QuickStatus? {
+    /**
+     * The running quick block to show in the app's status line: the entire app first, then reels.
+     * With [sectionBlockingEnabled] false a stored reels block is ignored (kept, never shown).
+     */
+    fun status(packageName: String, settings: LimitSettings, now: Long, sectionBlockingEnabled: Boolean): QuickStatus? {
         if (settings.entireAppBlocked(now)) {
             return QuickStatus(QuickBlockTarget.ENTIRE_APP, null, TimedBlock.remainingMillis(settings.entireAppBlockedUntil, now))
         }
+        if (!sectionBlockingEnabled) return null
         val section = ReelsCapableApps.sectionFor(packageName) ?: return null
         if (!settings.reelsBlocked(now)) return null
         return QuickStatus(QuickBlockTarget.REELS, section, TimedBlock.remainingMillis(settings.reelsBlockedUntil, now))

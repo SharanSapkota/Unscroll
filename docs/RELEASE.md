@@ -17,6 +17,8 @@ Steps to take Unscroll from CI-green to Google Play. Items marked **(manual)** c
 - [ ] **Store assets (manual):** 4–8 phone screenshots (Dashboard, the timer over an app, the block screen, Apps limits, Settings), and a 1024×500 feature graphic. Text is in [STORE_LISTING.md](../STORE_LISTING.md).
 - [ ] **Privacy policy:** publish [PRIVACY_POLICY.md](PRIVACY_POLICY.md) at a public URL **(manual)** and enter it in the Play Console.
 - [ ] **Terms:** publish [TERMS.md](TERMS.md) at a public URL **(manual)**. Point `url_privacy_policy` and `url_terms` in `strings.xml` at the final pages (they point at the repo's docs for now).
+- [ ] **Section blocking:** off for now (see "Section blocking on or off" below). While it is off, the Accessibility API declaration covers only the scroll-counting service, and the store listing, privacy policy and terms don't mention blocking only Reels, For You or Shorts.
+- [ ] **Before making the repo public: delete `app/captures/`** (`git rm -r app/captures` and commit). It holds raw Section Inspector dumps from the developer's phone that were only needed to fill in `SectionRulesConfig`. The unit tests don't read it (`SectionCaptures.kt` has its own transcriptions). Deleting it from the latest commit doesn't remove it from history: if the dumps must not be public at all, rewrite history (e.g. `git filter-repo --path app/captures --invert-paths`) or publish from a fresh repository.
 - [ ] **Payments:** off for now (see "Payments on or off" below). While they are off, skip the Unscroll Plus step and the Plus check in "Every release", and don't create or activate the subscription in Play Console.
 - [ ] **Unscroll Plus (only with payments on; manual, Play Console › Monetize › Subscriptions):**
   - Create the subscription `unscroll_plus_monthly` (the id in `PlusProduct.PRODUCT_ID`) with an auto-renewing base plan `monthly` (`PlusProduct.BASE_PLAN_ID`), billing period 1 month.
@@ -44,6 +46,7 @@ Steps to take Unscroll from CI-green to Google Play. Items marked **(manual)** c
 - [ ] Room migrations: install the new build over the previous release with real data. Data must be kept.
 - [ ] Re-check the Data safety answers if any library or permission changed. CI's "Merged manifest permissions" step lists every permission in the merged manifest.
 - [ ] Payments off: the release manifest has no `com.android.vending.BILLING` (CI's "Release manifest permissions" step), and Settings shows no Unscroll Plus row.
+- [ ] Section blocking off: the release manifest has no `SectionBlockingService` (CI's "Release manifest permissions" step), App detail shows only "Block entire app" for Instagram, TikTok, Facebook and YouTube, and Accessibility settings list only "Unscroll swipe counter".
 - [ ] Unscroll Plus on a license-tester account (only with payments on): buy, restore on a second device, cancel and let it lapse (the "Plus ended" banner, the free app stays tracked), resubscribe (paused apps resume).
 
 ## Payments on or off
@@ -61,3 +64,23 @@ One switch decides everything about payments: `billingEnabled` in `app/build.gra
 2. Restore the texts in the "Enable when billing is turned on" sections of [STORE_LISTING.md](../STORE_LISTING.md), [PRIVACY_POLICY.md](PRIVACY_POLICY.md) and [TERMS.md](TERMS.md), and the Billing notes in [DATA_SAFETY.md](DATA_SAFETY.md).
 3. Set up the subscription in Play Console (the Unscroll Plus step above), and run the Plus check in "Every release".
 4. CI's "Release manifest permissions" step then expects `com.android.vending.BILLING` in the release manifest; nothing else needs to change. The tests already run both states (`BillingSwitch` in the unit tests).
+
+## Section blocking on or off
+
+One switch decides everything about section blocking ("Block Reels only" / "Block For You feed" / "Block Shorts only"): `sectionBlockingEnabled` in `app/build.gradle.kts` (currently `false`). The app reads it only as `BuildConfig.SECTION_BLOCKING_ENABLED`, through `SectionBlockingConfig.ENABLED` (`data/section/SectionBlockingConfig.kt`); classes get it injected as `@SectionBlockingEnabled`, and the pure rules (`QuickControls`, `QuickBlockRules`, `SectionBlockingRules`) take it as a parameter. `SectionBlockingSwitchGuardTest` checks there is one switch and one reader.
+
+**While it is `false` (now):**
+- App detail › Quick block shows only "Block entire app" with its duration chips for every app, Instagram, TikTok, Facebook and YouTube included; no reels toggle, not even a disabled one, and no "Not available for this app version yet" caption. "Advanced options" keeps everything else except "Section blocking" (Always / After limit).
+- No section detector runs, no installed version is looked up for section rules (`SectionDetectors.isAvailable` / `InstalledApps.versionCode` are not called), and no node tree is read for blocking.
+- The section service (`SectionBlockingService`, the only one with `canRetrieveWindowContent="true"`) is removed from the merged manifest of release builds and of debug builds (`app/src/sectionOff/AndroidManifest.xml`; `app/src/billingOffSectionOff/AndroidManifest.xml` while payments are off too, because a build type takes one extra manifest). Users who had switched it on simply lose it: Android drops services that no longer exist. The only accessibility service left is scroll counting ("Unscroll swipe counter": `canRetrieveWindowContent="false"`, scroll and window-change events, event type and package name only).
+- Hidden: the section blocking disclosure (its route isn't registered), Settings › Tracking › Section blocking (status, "Turn off section blocking", "Stop and remove consent"), the Home banner when Android switched the service off, the Paywall's section bullet and "adds section blocking" in the Plus info (only matter with payments on), and Settings › Debug › Section Inspector.
+- A stored `reelsBlockedUntil` (and `lastReelsDuration`, the "Always / After limit" choice, the consent, and the old per-app set in DataStore) is kept as it is and has no effect: no "Reels blocked" status line, no cover, the expiry alarm ignores it and never clears it, and the one-time move of the old set is skipped.
+- The code, `SectionRulesConfig`, the detector and their tests stay. The section tests run with the switch ON (`SectionBlockingSwitch` in the unit tests); the quick-control and repository tests also run it OFF.
+
+**Section Inspector while it is off (debug builds only):** build with `-Punscroll.sectionInspector=true` (e.g. `./gradlew -Punscroll.sectionInspector=true installDebug`). That build keeps the section service in the manifest, shows Settings › Tracking › Section blocking (to give consent and switch the service on) and Settings › Debug › Section Inspector. The service then only logs identifiers for the inspector; it still never covers anything. Release builds never have the inspector.
+
+**To turn section blocking back on:**
+1. In `app/build.gradle.kts`, change `?: false` to `?: true` in `val sectionBlockingEnabled` (for one build only: `./gradlew -Punscroll.sectionBlockingEnabled=true …`).
+2. Restore the texts in the "Enable when section blocking is turned on" sections of [ACCESSIBILITY_DECLARATION.md](ACCESSIBILITY_DECLARATION.md), [STORE_LISTING.md](../STORE_LISTING.md), [PRIVACY_POLICY.md](PRIVACY_POLICY.md) and [TERMS.md](TERMS.md), and the section note in [DATA_SAFETY.md](DATA_SAFETY.md). Update the Accessibility API declaration in Play Console (two services) with a video of the section blocking disclosure.
+3. Stored reels blocks come back as they were: a "until I turn it off" block is on again at once, a timed one that ran out meanwhile is cleared by the next expiry sync. Tell testers, or turn them off first if that is a surprise.
+4. CI's "Release manifest permissions" step then expects `SectionBlockingService` in the release manifest. Nothing else needs to change.

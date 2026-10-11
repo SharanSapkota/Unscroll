@@ -4,7 +4,7 @@ _Last updated: [date of release]. Replace the bracketed parts before publishing,
 
 ## The app
 
-Unscroll is free to use, with every feature for every app you track: the live timer, limits, the swipe limit, blocking, section blocking (covering only Reels, For You or Shorts), stats and the fox. There is nothing to buy.
+Unscroll is free to use, with every feature for every app you track: the live timer, limits, the swipe limit, blocking, stats and the fox. There is nothing to buy.
 
 ## No warranty
 
@@ -19,7 +19,7 @@ Questions: [contact email].
 _Not part of the published terms while payments are off (`billingEnabled = false` in `app/build.gradle.kts`). When payments are switched back on (docs/RELEASE.md), restore these parts and update the date._
 
 "The app" paragraph:
-> Unscroll is free to use for one tracked app, with the live timer, limits, the swipe limit, blocking, stats and the fox included. Section blocking (covering only Reels, For You or Shorts) is part of Unscroll Plus. Your history and data are never locked, whatever plan you are on.
+> Unscroll is free to use for one tracked app, with the live timer, limits, the swipe limit, blocking, stats and the fox included. Section blocking (covering only Reels, For You or Shorts) is part of Unscroll Plus (only while section blocking is turned on). Your history and data are never locked, whatever plan you are on.
 
 Section, before "No warranty":
 > ## Unscroll Plus
@@ -31,3 +31,9 @@ Section, before "No warranty":
 > - **Refunds:** handled by Google Play under its refund policies.
 > - **When Plus ends:** nothing is deleted. The app you picked (or your most used one) stays tracked; the others are paused, with their history and settings kept. Subscribe again and they resume as they were.
 > - **Payments:** Google Play handles all payments. Unscroll has no accounts and no servers, and never sees your payment details or sends your usage data anywhere.
+
+## Enable when section blocking is turned on
+
+_Not part of the published terms while section blocking is off (`sectionBlockingEnabled = false` in `app/build.gradle.kts`). When it is switched back on (docs/RELEASE.md), restore this and update the date._
+
+"The app" paragraph (payments off): "… the live timer, limits, the swipe limit, blocking, section blocking (covering only Reels, For You or Shorts), stats and the fox. There is nothing to buy."

@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.BuildConfig
 import com.unscroll.app.R
+import com.unscroll.app.data.section.SectionBlockingConfig
 import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.plus.FreeTier
 import com.unscroll.app.domain.plus.PlusOffer
@@ -104,7 +105,8 @@ private fun PaywallContent(
                 verticalArrangement = Arrangement.spacedBy(Dimens.spaceM),
             ) {
                 Bullet(pluralStringResource(R.plurals.plus_bullet_apps, FreeTier.FREE_APPS, FreeTier.FREE_APPS))
-                Bullet(stringResource(R.string.plus_bullet_sections))
+                // Section blocking is only offered while it is switched on (SectionBlockingConfig).
+                if (SectionBlockingConfig.ENABLED) Bullet(stringResource(R.string.plus_bullet_sections))
                 Bullet(stringResource(R.string.plus_bullet_support))
                 Bullet(stringResource(R.string.plus_bullet_cancel))
             }

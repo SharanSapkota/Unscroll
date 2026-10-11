@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import com.unscroll.app.data.blocking.LimitRepository
+import com.unscroll.app.data.section.SectionBlockingEnabled
 import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.time.Clock
 import dagger.hilt.EntryPoint
@@ -36,6 +37,9 @@ import kotlinx.coroutines.sync.withLock
  * The alarm is exact where Android allows it without asking the user (below Android 12, or when
  * exact alarms are already permitted); otherwise it is an inexact allow-while-idle alarm, which
  * Android may delay a little. No permission is added for it.
+ *
+ * While section blocking is switched off (SectionBlockingConfig) only "Block entire app" is
+ * handled: a stored reels block is neither cleared nor scheduled.
  */
 @Singleton
 class BlockExpiryScheduler @Inject constructor(
@@ -43,6 +47,7 @@ class BlockExpiryScheduler @Inject constructor(
     private val limits: LimitRepository,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
+    @SectionBlockingEnabled private val sectionBlockingEnabled: Boolean,
 ) {
     private val mutex = Mutex()
 
@@ -57,7 +62,7 @@ class BlockExpiryScheduler @Inject constructor(
 
     suspend fun sync() = mutex.withLock {
         val next = try {
-            limits.clearExpiredBlocks(clock.now())
+            limits.clearExpiredBlocks(clock.now(), sectionBlockingEnabled)
         } catch (e: RuntimeException) {
             // A database error must never crash a receiver; the next sync tries again.
             Log.w(TAG, "Could not check timed blocks", e)

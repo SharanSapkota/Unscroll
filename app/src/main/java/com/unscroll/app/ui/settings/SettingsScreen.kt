@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.BuildConfig
 import com.unscroll.app.R
 import com.unscroll.app.data.plus.PlusConfig
+import com.unscroll.app.data.section.SectionBlockingConfig
 import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
@@ -104,7 +105,11 @@ fun SettingsScreen(
         if (PlusConfig.BILLING_ENABLED) {
             SectionHeader(
                 title = stringResource(R.string.plus_title),
-                info = pluralStringResource(R.plurals.settings_plus_info, FreeTier.FREE_APPS, FreeTier.FREE_APPS),
+                info = pluralStringResource(
+                    if (SectionBlockingConfig.ENABLED) R.plurals.settings_plus_info else R.plurals.settings_plus_info_no_sections,
+                    FreeTier.FREE_APPS,
+                    FreeTier.FREE_APPS,
+                ),
             )
             PlusGroup(onOpenPlus = onOpenPlus, onPickApps = onPickApps)
         }
@@ -192,11 +197,14 @@ fun SettingsScreen(
                     onClick = viewModel::insertSampleData,
                 )
                 if (PlusConfig.BILLING_ENABLED) PlusDebugRow()
-                SettingRow(
-                    title = stringResource(R.string.inspector_title),
-                    icon = R.drawable.ic_bug,
-                    onClick = onSectionInspector,
-                )
+                // With section blocking off, only a debug build made with the inspector flag has it.
+                if (SectionBlockingConfig.INSPECTOR_ALLOWED) {
+                    SettingRow(
+                        title = stringResource(R.string.inspector_title),
+                        icon = R.drawable.ic_bug,
+                        onClick = onSectionInspector,
+                    )
+                }
             }
         }
     }

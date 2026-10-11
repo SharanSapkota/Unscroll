@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release builds while payments AND section blocking are off (billingEnabled = false and
+     sectionBlockingEnabled = false in app/build.gradle.kts): both removals in one file, because a
+     build type takes only one extra manifest. Keep it in step with src/billingOff and src/sectionOff. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="com.android.vending.BILLING"
+        tools:node="remove" />
+
+    <application>
+        <service
+            android:name="com.unscroll.app.service.SectionBlockingService"
+            tools:node="remove" />
+    </application>
+</manifest>

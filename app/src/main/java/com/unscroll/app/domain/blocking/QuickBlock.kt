@@ -69,22 +69,32 @@ object QuickBlockRules {
         return if (isOn(settings, target, now)) remembered.withUntil(target, duration.untilFrom(now)) else remembered
     }
 
-    /** Clears blocks that are over (the toggle turns itself off). Returns the same object if nothing changed. */
-    fun clearExpired(settings: LimitSettings, now: Long): LimitSettings {
+    /**
+     * Clears blocks that are over (the toggle turns itself off). Returns the same object if nothing
+     * changed. With [sectionBlockingEnabled] false the reels block is left exactly as stored.
+     */
+    fun clearExpired(settings: LimitSettings, now: Long, sectionBlockingEnabled: Boolean): LimitSettings {
         var result = settings
-        QuickBlockTarget.entries.forEach { target ->
+        targets(sectionBlockingEnabled).forEach { target ->
             val until = result.untilFor(target)
             if (until != null && !TimedBlock.isActive(until, now)) result = result.withUntil(target, null)
         }
         return result
     }
 
-    /** The next moment a timed block of [settings] ends, or null (none running, or only "until off"). */
-    fun nextExpiry(settings: LimitSettings, now: Long): Long? =
-        QuickBlockTarget.entries
+    /**
+     * The next moment a timed block of [settings] ends, or null (none running, or only "until
+     * off"). With [sectionBlockingEnabled] false the reels block is ignored.
+     */
+    fun nextExpiry(settings: LimitSettings, now: Long, sectionBlockingEnabled: Boolean): Long? =
+        targets(sectionBlockingEnabled)
             .mapNotNull { settings.untilFor(it) }
             .filter { TimedBlock.isActive(it, now) && it != TimedBlock.FOREVER }
             .minOrNull()
+
+    /** The toggles that exist: only "Block entire app" while section blocking is switched off. */
+    private fun targets(sectionBlockingEnabled: Boolean): List<QuickBlockTarget> =
+        if (sectionBlockingEnabled) QuickBlockTarget.entries else listOf(QuickBlockTarget.ENTIRE_APP)
 
     private fun LimitSettings.untilFor(target: QuickBlockTarget): Long? = when (target) {
         QuickBlockTarget.REELS -> reelsBlockedUntil

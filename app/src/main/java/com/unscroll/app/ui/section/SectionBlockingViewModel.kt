@@ -26,6 +26,9 @@ class SectionBlockingViewModel @Inject constructor(
 
     val isPlus: StateFlow<Boolean> = repository.isPlus
 
+    /** The master switch (SectionBlockingConfig.ENABLED). */
+    val enabled: Boolean = repository.enabled
+
     /** Apps whose reels toggle is on. */
     val reelsBlockedApps: StateFlow<Set<String>> = repository.reelsBlockedApps
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())

@@ -118,8 +118,12 @@ class AppDetailViewModel @Inject constructor(
 
     val packageName: String = checkNotNull(savedStateHandle.get<String>(ARG_PACKAGE))
 
-    /** Identifiers exist for the installed version (read once per screen). */
-    private val reelsRulesAvailable = sectionBlocking.detectors.isAvailable(packageName, installedApps.versionCode(packageName))
+    /**
+     * Identifiers exist for the installed version (read once per screen). With section blocking
+     * switched off (SectionBlockingConfig) neither the version nor the rules are looked up.
+     */
+    private val reelsRulesAvailable =
+        sectionBlocking.enabled && sectionBlocking.detectors.isAvailable(packageName, installedApps.versionCode(packageName))
 
     private val _saved = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val saved: SharedFlow<Unit> = _saved.asSharedFlow()
@@ -157,10 +161,15 @@ class AppDetailViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrackingRowState())
 
-    /** "Always" / "After limit" for the reels toggle; null for apps that aren't Reels-capable. */
+    /**
+     * "Always" / "After limit" for the reels toggle; null for apps that aren't Reels-capable, and
+     * for every app while section blocking is switched off.
+     */
     val section: StateFlow<SectionAppState?> = sectionBlocking.settings
         .map { settings ->
-            ReelsCapableApps.sectionFor(packageName)?.let { SectionAppState(it, settings.modeFor(packageName)) }
+            ReelsCapableApps.sectionFor(packageName)
+                ?.takeIf { sectionBlocking.enabled }
+                ?.let { SectionAppState(it, settings.modeFor(packageName)) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -193,8 +202,8 @@ class AppDetailViewModel @Inject constructor(
     ) { settings, access, _ ->
         val now = clock.now()
         // A block that just ran out: its toggle shows off already; tidy up the stored state.
-        if (QuickBlockRules.clearExpired(settings, now) != settings) blockExpiry.syncAsync()
-        QuickControls.build(packageName, settings, now, access)
+        if (QuickBlockRules.clearExpired(settings, now, sectionBlocking.enabled) != settings) blockExpiry.syncAsync()
+        QuickControls.build(packageName, settings, now, access, sectionBlocking.enabled)
     }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -203,7 +212,7 @@ class AppDetailViewModel @Inject constructor(
         // "Block reels only" tapped before section blocking was set up: it turns on once the
         // disclosure was accepted and the service runs. "No thanks" drops the wish.
         // No ticker here: this only follows the setup state, also while the user is in Android settings.
-        if (ReelsCapableApps.isReelsCapable(packageName)) {
+        if (sectionBlocking.enabled && ReelsCapableApps.isReelsCapable(packageName)) {
             viewModelScope.launch {
                 combine(sectionAccess, sectionBlocking.settings) { access, settings -> access to settings.consent }
                     .collect { (access, consent) ->
@@ -331,7 +340,7 @@ class AppDetailViewModel @Inject constructor(
                 zone = zone,
                 packageName = packageName,
             ),
-            quickStatus = QuickControls.status(packageName, settings, now),
+            quickStatus = QuickControls.status(packageName, settings, now, sectionBlocking.enabled),
             todayMillis = todayMillis,
             friction = inputs.friction ?: FrictionSettings.DEFAULT,
             pillShown = packageName !in inputs.overlay.pillHiddenFor,

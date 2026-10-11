@@ -49,21 +49,29 @@ data class SectionCoverInputs(
      * section: BlockEvaluator.blocksSection.
      */
     val sectionBlocked: Boolean,
+    /** The section-blocking master switch (SectionBlockingConfig.ENABLED). Off never covers. */
+    val blockingEnabled: Boolean,
 )
 
-/** Pure rules for section blocking: consent, the kill switch, Plus and the per-app settings. */
+/**
+ * Pure rules for section blocking: the master switch, consent, the kill switch, Plus and the
+ * per-app settings.
+ */
 object SectionBlockingRules {
 
-    /** Blocking may run at all: the user agreed, didn't turn it off, and has Plus. */
-    fun isActive(settings: SectionBlockingSettings, isPlus: Boolean): Boolean =
-        settings.consent == ScrollConsent.AGREED && !settings.turnedOff && isPlus
+    /**
+     * Blocking may run at all: the feature is switched on in the build ([blockingEnabled],
+     * SectionBlockingConfig.ENABLED), the user agreed, didn't turn it off, and has Plus.
+     */
+    fun isActive(settings: SectionBlockingSettings, isPlus: Boolean, blockingEnabled: Boolean): Boolean =
+        blockingEnabled && settings.consent == ScrollConsent.AGREED && !settings.turnedOff && isPlus
 
     /**
      * Cover only what was positively identified as the blocked section (fail open): UNKNOWN and
      * IN_ALLOWED_SECTION never cover, and neither do excluded or untracked apps.
      */
     fun shouldCover(inputs: SectionCoverInputs): Boolean = with(inputs) {
-        isActive(settings, isPlus) &&
+        isActive(settings, isPlus, blockingEnabled) &&
             tracked &&
             !excluded &&
             sectionBlocked &&
@@ -79,6 +87,7 @@ object SectionBlockingRules {
      * The packages the section service listens to. Nothing without consent; while active, the
      * tracked apps whose reels toggle is on ([reelsBlockedApps]) and that have rules; in debug
      * builds with the inspector on, every tracked app (so identifiers can be captured for any).
+     * With the master switch off ([blockingEnabled] false) only the debug inspector listens.
      */
     fun monitoredPackages(
         settings: SectionBlockingSettings,
@@ -87,10 +96,11 @@ object SectionBlockingRules {
         rulePackages: Set<String>,
         inspectorAllowed: Boolean,
         reelsBlockedApps: Set<String>,
+        blockingEnabled: Boolean,
     ): Set<String> = when {
         settings.consent != ScrollConsent.AGREED -> emptySet()
         inspectorAllowed && settings.inspector -> trackedActive
-        isActive(settings, isPlus) -> trackedActive intersect reelsBlockedApps intersect rulePackages
+        isActive(settings, isPlus, blockingEnabled) -> trackedActive intersect reelsBlockedApps intersect rulePackages
         else -> emptySet()
     }
 }

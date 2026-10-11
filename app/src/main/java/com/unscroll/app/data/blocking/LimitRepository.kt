@@ -53,15 +53,16 @@ class LimitRepository @Inject constructor(
     /**
      * Turns off every quick block that ran out (the toggle turns itself off) and returns when the
      * next one ends, or null. Blocks already end on time without this (the evaluator compares
-     * with the clock); it only keeps the stored state and the UI tidy.
+     * with the clock); it only keeps the stored state and the UI tidy. With
+     * [sectionBlockingEnabled] false (SectionBlockingConfig) the reels block is left as stored.
      */
-    suspend fun clearExpiredBlocks(now: Long): Long? {
+    suspend fun clearExpiredBlocks(now: Long, sectionBlockingEnabled: Boolean): Long? {
         var next: Long? = null
         dao.getAllLimits().forEach { entity ->
             val limit = entity.toDomain()
-            val cleared = QuickBlockRules.clearExpired(limit.settings, now)
+            val cleared = QuickBlockRules.clearExpired(limit.settings, now, sectionBlockingEnabled)
             if (cleared != limit.settings) dao.upsertLimit(limit.copy(settings = cleared).toEntity())
-            QuickBlockRules.nextExpiry(cleared, now)?.let { next = minOf(next ?: it, it) }
+            QuickBlockRules.nextExpiry(cleared, now, sectionBlockingEnabled)?.let { next = minOf(next ?: it, it) }
         }
         return next
     }

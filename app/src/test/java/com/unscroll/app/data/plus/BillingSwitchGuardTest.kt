@@ -8,7 +8,8 @@ import org.junit.Test
 /**
  * Payments have one switch: `billingEnabled` in app/build.gradle.kts, read by the app only through
  * BuildConfig.BILLING_ENABLED (PlusConfig). With it off, release builds remove Play Billing's
- * BILLING permission with the billingOff manifest.
+ * BILLING permission with the billingOff manifest (billingOffSectionOff while section blocking is
+ * off too).
  */
 class BillingSwitchGuardTest {
 
@@ -21,7 +22,9 @@ class BillingSwitchGuardTest {
         val gradle = File(root, "app/build.gradle.kts").readText()
         assertEquals(1, Regex("""val billingEnabled\b""").findAll(gradle).count())
         assertTrue(gradle.contains("""buildConfigField("boolean", "BILLING_ENABLED", billingEnabled.toString())"""))
-        assertTrue(gradle.contains("""if (!billingEnabled) getByName("release").manifest.srcFile("src/billingOff/AndroidManifest.xml")"""))
+        assertTrue(gradle.contains("""!billingEnabled && !sectionBlockingEnabled -> "billingOffSectionOff""""))
+        assertTrue(gradle.contains("""!billingEnabled -> "billingOff""""))
+        assertTrue(gradle.contains("""getByName("release").manifest.srcFile("src/${'$'}it/AndroidManifest.xml")"""))
     }
 
     @Test
@@ -34,8 +37,10 @@ class BillingSwitchGuardTest {
     }
 
     @Test
-    fun billingOffManifest_removesTheBillingPermission() {
-        val manifest = File(root, "app/src/billingOff/AndroidManifest.xml").readText().replace(Regex("\\s+"), " ")
-        assertTrue(manifest.contains("""<uses-permission android:name="com.android.vending.BILLING" tools:node="remove" />"""))
+    fun billingOffManifests_removeTheBillingPermission() {
+        listOf("billingOff", "billingOffSectionOff").forEach { dir ->
+            val manifest = File(root, "app/src/$dir/AndroidManifest.xml").readText().replace(Regex("\\s+"), " ")
+            assertTrue(dir, manifest.contains("""<uses-permission android:name="com.android.vending.BILLING" tools:node="remove" />"""))
+        }
     }
 }

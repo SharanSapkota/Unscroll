@@ -3,6 +3,7 @@ package com.unscroll.app.ui.apps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.LimitRepository
+import com.unscroll.app.data.section.SectionBlockingEnabled
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
@@ -72,6 +73,7 @@ class AppsViewModel @Inject constructor(
     private val usage: UsageDataSource,
     private val evaluator: BlockEvaluator,
     private val clock: Clock,
+    @SectionBlockingEnabled private val sectionBlockingEnabled: Boolean,
 ) : ViewModel() {
 
     /** Ticks while the tab is visible, so "min left" stays current. */
@@ -129,7 +131,7 @@ class AppsViewModel @Inject constructor(
                 todayMillis = used,
                 status = apps.statusOf(packageName),
                 label = entry.label,
-                quickStatus = QuickControls.status(packageName, settings, now),
+                quickStatus = QuickControls.status(packageName, settings, now, sectionBlockingEnabled),
                 entireAppBlocked = settings.entireAppBlocked(now),
             )
         }

@@ -32,6 +32,27 @@ val missingSigningKeys: List<String> = signingKeys.filter { keystoreProperties.g
  */
 val billingEnabled: Boolean = providers.gradleProperty("unscroll.billingEnabled").orNull?.toBooleanStrict() ?: false
 
+/**
+ * THE master switch for section blocking ("Block reels only" / "Block Shorts only" / "Block For
+ * You feed"). Off for now: no reels toggle anywhere, no section detector, version lookup or
+ * node-tree reading, no disclosure, banner or Settings row, any stored reels block is ignored
+ * (kept, not deleted), and the SectionBlockingService (the only service with
+ * canRetrieveWindowContent) is removed from the merged manifest, so the app only declares scroll
+ * counting's service (no window content). The code, config and tests stay; to turn it back on,
+ * change `false` to `true` here (docs/RELEASE.md "Section blocking on or off"). For a one-off
+ * build, `-Punscroll.sectionBlockingEnabled=true` overrides it. The app reads it only through
+ * `BuildConfig.SECTION_BLOCKING_ENABLED` (SectionBlockingConfig).
+ */
+val sectionBlockingEnabled: Boolean = providers.gradleProperty("unscroll.sectionBlockingEnabled").orNull?.toBooleanStrict() ?: false
+
+/**
+ * Debug builds only: keep the Section Inspector (and the section service it needs) while section
+ * blocking is off, to capture identifiers. `-Punscroll.sectionInspector=true`; off by default, and
+ * release builds never have it.
+ */
+val sectionInspectorInDebug: Boolean =
+    providers.gradleProperty("unscroll.sectionInspector").orNull?.toBooleanStrict() ?: false
+
 android {
     // The Kotlin package and the R class keep this namespace; only the installed app ID (below) changed.
     namespace = "com.unscroll.app"
@@ -47,12 +68,28 @@ android {
 
         // Payments on or off, from billingEnabled above (the only place to change it).
         buildConfigField("boolean", "BILLING_ENABLED", billingEnabled.toString())
+        // Section blocking on or off, from sectionBlockingEnabled above (the only place to change it).
+        buildConfigField("boolean", "SECTION_BLOCKING_ENABLED", sectionBlockingEnabled.toString())
+        // Debug-only Section Inspector while section blocking is off (ignored in release builds).
+        buildConfigField("boolean", "SECTION_INSPECTOR_FLAG", sectionInspectorInDebug.toString())
     }
 
     sourceSets {
-        // With payments off, release builds remove the BILLING permission that Play Billing adds.
-        // Debug builds keep the library's manifest as it is.
-        if (!billingEnabled) getByName("release").manifest.srcFile("src/billingOff/AndroidManifest.xml")
+        // A build type takes one extra manifest, so each combination of switches has its own file:
+        // - payments off: release builds remove the BILLING permission that Play Billing adds
+        //   (debug builds keep the library's manifest as it is);
+        // - section blocking off: every build removes SectionBlockingService (the service with
+        //   canRetrieveWindowContent), except debug builds with the Section Inspector flag.
+        val releaseOverlay = when {
+            !billingEnabled && !sectionBlockingEnabled -> "billingOffSectionOff"
+            !billingEnabled -> "billingOff"
+            !sectionBlockingEnabled -> "sectionOff"
+            else -> null
+        }
+        releaseOverlay?.let { getByName("release").manifest.srcFile("src/$it/AndroidManifest.xml") }
+        if (!sectionBlockingEnabled && !sectionInspectorInDebug) {
+            getByName("debug").manifest.srcFile("src/sectionOff/AndroidManifest.xml")
+        }
     }
 
     signingConfigs {
@@ -84,7 +121,8 @@ android {
 
     buildFeatures {
         compose = true
-        // BuildConfig.DEBUG gates debug-only tools such as sample data; BILLING_ENABLED gates payments.
+        // BuildConfig.DEBUG gates debug-only tools such as sample data; BILLING_ENABLED gates payments;
+        // SECTION_BLOCKING_ENABLED gates section blocking.
         buildConfig = true
     }
 

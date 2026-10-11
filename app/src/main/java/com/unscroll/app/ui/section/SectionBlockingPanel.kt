@@ -120,7 +120,10 @@ fun SectionBlockingPanel(
     }
 }
 
-/** Home banner when the system switched the section-blocking service off after it had been working. */
+/**
+ * Home banner when the system switched the section-blocking service off after it had been working.
+ * Never shown while section blocking is switched off (SectionBlockingConfig).
+ */
 @Composable
 fun SectionBlockingBanner(
     modifier: Modifier = Modifier,
@@ -132,7 +135,7 @@ fun SectionBlockingBanner(
     val isPlus by viewModel.isPlus.collectAsStateWithLifecycle()
     val reelsBlockedApps by viewModel.reelsBlockedApps.collectAsStateWithLifecycle()
     // Only worth a banner while the user still wants it: on, Plus, and at least one app chosen.
-    val wanted = SectionBlockingRules.isActive(settings, isPlus) && reelsBlockedApps.isNotEmpty()
+    val wanted = SectionBlockingRules.isActive(settings, isPlus, viewModel.enabled) && reelsBlockedApps.isNotEmpty()
     if (status != ScrollCountingStatus.NEEDS_REENABLE || !wanted) return
     UnscrollCard(modifier = modifier.fillMaxWidth()) {
         Column(

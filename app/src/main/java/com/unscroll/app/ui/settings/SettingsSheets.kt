@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.data.section.SectionBlockingConfig
 import com.unscroll.app.domain.goals.DailyGoal
 import com.unscroll.app.domain.permission.HealthItem
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
@@ -33,7 +34,7 @@ import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
 
-/** Settings › Tracking: the tracking switch, the daily goal, scroll counting and section blocking. */
+/** Settings › Tracking: the tracking switch, the daily goal, scroll counting and (while switched on) section blocking. */
 @Composable
 internal fun TrackingGroup(
     trackingEnabled: Boolean,
@@ -79,22 +80,25 @@ internal fun TrackingGroup(
             onClick = { scrollOpen = true },
         )
         // Section blocking is part of Unscroll Plus: free users get the paywall. With payments off
-        // everyone has Plus, so this always opens the sheet.
-        SettingRow(
-            title = stringResource(R.string.section_title),
-            icon = R.drawable.ic_layers,
-            value = if (isPlus) {
-                stringResource(sectionValueRes(sectionStatus, sectionSettings.turnedOff))
-            } else {
-                stringResource(R.string.plus_badge)
-            },
-            valueColor = if (isPlus && sectionStatus == ScrollCountingStatus.NEEDS_REENABLE) {
-                UnscrollTheme.status.danger
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            onClick = { if (isPlus) sectionOpen = true else onOpenPlus() },
-        )
+        // everyone has Plus, so this always opens the sheet. Hidden while section blocking is
+        // switched off (SectionBlockingConfig), except in a debug build with the inspector flag.
+        if (SectionBlockingConfig.SETUP_SHOWN) {
+            SettingRow(
+                title = stringResource(R.string.section_title),
+                icon = R.drawable.ic_layers,
+                value = if (isPlus) {
+                    stringResource(sectionValueRes(sectionStatus, sectionSettings.turnedOff))
+                } else {
+                    stringResource(R.string.plus_badge)
+                },
+                valueColor = if (isPlus && sectionStatus == ScrollCountingStatus.NEEDS_REENABLE) {
+                    UnscrollTheme.status.danger
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                onClick = { if (isPlus) sectionOpen = true else onOpenPlus() },
+            )
+        }
     }
     if (goalOpen) {
         UnscrollSheet(title = stringResource(R.string.settings_daily_goal), onDismiss = { goalOpen = false }) {
@@ -121,7 +125,7 @@ internal fun TrackingGroup(
             )
         }
     }
-    if (sectionOpen) {
+    if (sectionOpen && SectionBlockingConfig.SETUP_SHOWN) {
         UnscrollSheet(title = stringResource(R.string.section_title), onDismiss = { sectionOpen = false }) {
             SectionBlockingPanel(
                 onSetUp = {

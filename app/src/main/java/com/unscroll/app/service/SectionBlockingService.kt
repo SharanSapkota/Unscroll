@@ -65,6 +65,11 @@ import kotlinx.coroutines.launch
  *   Never text, content descriptions or hints. Nothing is stored or sent; the release build
  *   logs nothing about screens.
  * - It fails open: no rules, an unknown screen or an unreadable tree never blocks anything.
+ *
+ * While section blocking is switched off (SectionBlockingConfig.ENABLED false) the service is
+ * removed from the merged manifest, so it can't be enabled at all. In a debug build made with the
+ * Section Inspector flag it can still run for the inspector (which logs identifiers), but it never
+ * runs the detector or covers anything.
  */
 @AndroidEntryPoint
 class SectionBlockingService : AccessibilityService() {
@@ -144,6 +149,7 @@ class SectionBlockingService : AccessibilityService() {
                     rulePackages = repository.detectors.packages,
                     inspectorAllowed = repository.inspectorAllowed,
                     reelsBlockedApps = reelsBlocked,
+                    blockingEnabled = repository.enabled,
                 )
             }.distinctUntilChanged().collect { packages ->
                 monitored = packages
@@ -202,6 +208,8 @@ class SectionBlockingService : AccessibilityService() {
         if (!consented || pkg !in monitored) return
         val screen = readScreen(pkg) ?: return
         if (inspectorOn()) inspect(screen, request.windowChange)
+        // Switched off: no detector and never a cover (only the inspector above).
+        if (!repository.enabled) return
 
         val settings = repository.settings.value
         val isPlus = repository.isPlus.value
@@ -220,6 +228,7 @@ class SectionBlockingService : AccessibilityService() {
             limitReached = afterLimit && verdict == SectionVerdict.IN_BLOCKED_SECTION && limitReached(pkg),
             verdict = verdict,
             sectionBlocked = sectionBlocked,
+            blockingEnabled = repository.enabled,
         )
         val coverView = cover ?: return
         if (detector != null && SectionBlockingRules.shouldCover(inputs)) {

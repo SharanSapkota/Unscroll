@@ -18,6 +18,7 @@ import com.unscroll.app.domain.blocking.QuickBlockTarget
 import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.section.SectionVerdict
 import com.unscroll.app.domain.time.Clock
+import com.unscroll.app.testing.SectionBlockingSwitch
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.flow.first
@@ -209,7 +210,7 @@ class LimitRepositoryTest {
                 assertTrue(restarted.blocksSection(settings, SectionVerdict.IN_BLOCKED_SECTION))
 
                 // The scheduler's cleanup turns the expired toggle off and points at the next end.
-                assertEquals(now + 60 * MINUTE, repo.clearExpiredBlocks(later))
+                assertEquals(now + 60 * MINUTE, repo.clearExpiredBlocks(later, SectionBlockingSwitch.ON))
                 settings = repo.getLimit(PKG).settings
                 assertNull(settings.entireAppBlockedUntil)
                 assertEquals(now + 60 * MINUTE, settings.reelsBlockedUntil)
@@ -217,13 +218,37 @@ class LimitRepositoryTest {
 
                 later = now + 60 * MINUTE
                 assertEquals(false, restarted.blocksSection(settings, SectionVerdict.IN_BLOCKED_SECTION))
-                assertNull(repo.clearExpiredBlocks(later))
+                assertNull(repo.clearExpiredBlocks(later, SectionBlockingSwitch.ON))
                 assertNull(repo.getLimit(PKG).settings.reelsBlockedUntil)
                 close()
             }
         } finally {
             context.deleteDatabase(RESTART_DB)
         }
+    }
+
+    @Test
+    fun switchedOff_reelsBlockIsKept_andHasNoEffect() = runTest {
+        repository.updateLimit(PKG) { it.copy(reelsBlockedUntil = now + 15 * MINUTE, lastReelsDuration = BlockDuration.MIN_15) }
+        repository.setQuickBlock(PKG, QuickBlockTarget.ENTIRE_APP, on = false, now = now)
+
+        // The app itself is not blocked by a stored reels block, with section blocking on or off.
+        assertEquals(BlockDecision.Allowed(remainingMillis = null), decide())
+
+        // Off: never scheduled or cleared, even long after it ran out. The data stays as stored.
+        assertNull(repository.clearExpiredBlocks(now, SectionBlockingSwitch.OFF))
+        assertNull(repository.clearExpiredBlocks(now + 60 * MINUTE, SectionBlockingSwitch.OFF))
+        val kept = repository.getLimit(PKG).settings
+        assertEquals(now + 15 * MINUTE, kept.reelsBlockedUntil)
+        assertEquals(BlockDuration.MIN_15, kept.lastReelsDuration)
+
+        // "Block entire app" still expires and is scheduled as before.
+        repository.setQuickBlockDuration(PKG, QuickBlockTarget.ENTIRE_APP, BlockDuration.MIN_30, now)
+        repository.setQuickBlock(PKG, QuickBlockTarget.ENTIRE_APP, on = true, now = now)
+        assertEquals(now + 30 * MINUTE, repository.clearExpiredBlocks(now, SectionBlockingSwitch.OFF))
+        assertNull(repository.clearExpiredBlocks(now + 30 * MINUTE, SectionBlockingSwitch.OFF))
+        assertNull(repository.getLimit(PKG).settings.entireAppBlockedUntil)
+        assertEquals(now + 15 * MINUTE, repository.getLimit(PKG).settings.reelsBlockedUntil)
     }
 
     private companion object {

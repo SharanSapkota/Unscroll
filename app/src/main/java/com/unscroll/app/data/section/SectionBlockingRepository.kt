@@ -5,7 +5,6 @@ import android.os.Process
 import android.os.SystemClock
 import android.provider.Settings
 import com.unscroll.app.data.blocking.LimitRepository
-import com.unscroll.app.data.plus.DebugBuild
 import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.blocking.TimedBlock
@@ -36,6 +35,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,6 +45,10 @@ import kotlinx.coroutines.launch
  * accessibility service is switched on in system settings (re-checked on resume, see [refresh])
  * and whether it is connected. Uses the same status rules as scroll counting
  * ([ScrollCountingRules]); the two services are separate and set up separately.
+ *
+ * While the master switch is off ([enabled] false, SectionBlockingConfig.ENABLED) nothing is
+ * active, no app counts as reels-blocked (a stored `reelsBlockedUntil` is ignored, never cleared),
+ * and the old per-app set is not migrated (it stays for when section blocking is switched on).
  */
 @Singleton
 class SectionBlockingRepository @Inject constructor(
@@ -54,7 +58,8 @@ class SectionBlockingRepository @Inject constructor(
     private val entitlement: EntitlementRepository,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
-    @DebugBuild val inspectorAllowed: Boolean,
+    @SectionBlockingEnabled val enabled: Boolean,
+    @SectionInspectorAllowed val inspectorAllowed: Boolean,
 ) {
     /** Every app section blocking has an entry for. */
     val detectors = SectionDetectors()
@@ -80,12 +85,16 @@ class SectionBlockingRepository @Inject constructor(
      * block that ran out since is turned off by BlockExpiryScheduler, and the service checks the
      * clock again before covering anything).
      */
-    val reelsBlockedApps: Flow<Set<String>> = limits.observeLimits()
-        .map { stored -> stored.filterValues { it.settings.reelsBlocked(clock.now()) }.keys }
-        .distinctUntilChanged()
+    val reelsBlockedApps: Flow<Set<String>> = if (!enabled) {
+        flowOf(emptySet())
+    } else {
+        limits.observeLimits()
+            .map { stored -> stored.filterValues { it.settings.reelsBlocked(clock.now()) }.keys }
+            .distinctUntilChanged()
+    }
 
-    /** Consent given, not turned off, and Plus. */
-    val isActive: Flow<Boolean> = combine(settings, isPlus) { s, plus -> SectionBlockingRules.isActive(s, plus) }
+    /** Switched on in the build, consent given, not turned off, and Plus. */
+    val isActive: Flow<Boolean> = combine(settings, isPlus) { s, plus -> SectionBlockingRules.isActive(s, plus, enabled) }
         .distinctUntilChanged()
 
     private val graceTicks: Flow<Unit> = flow {
@@ -137,9 +146,10 @@ class SectionBlockingRepository @Inject constructor(
     /**
      * Before the quick toggles, "Block Reels" was a per-app switch in DataStore. Moves any such
      * app to the reels toggle, on until the user turns it off, then forgets the old set. Runs once
-     * per process start; does nothing once the set is empty.
+     * per process start; does nothing once the set is empty, or while section blocking is off.
      */
     fun migrateLegacyBlockedApps() {
+        if (!enabled) return
         scope.launch {
             val legacy = preferences.settings.first().legacyBlockedApps
             if (legacy.isEmpty()) return@launch
@@ -152,7 +162,7 @@ class SectionBlockingRepository @Inject constructor(
         }
     }
 
-    /** Debug builds only; release builds ignore it. */
+    /** Debug builds only (and, while section blocking is off, only with the inspector flag). */
     suspend fun setInspector(on: Boolean) {
         if (inspectorAllowed) preferences.setInspector(on)
     }

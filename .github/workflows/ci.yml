@@ -63,6 +63,22 @@ jobs:
             grep -q 'com.android.vending.BILLING' "$manifest" || { echo "::error::Payments are on, but the release manifest lacks com.android.vending.BILLING."; exit 1; }
             echo "Payments on: BILLING permission present."
           fi
+          # Section blocking has one switch too (sectionBlockingEnabled). While it is off, the release
+          # manifest must not declare SectionBlockingService, the only accessibility service with
+          # canRetrieveWindowContent (app/src/sectionOff); scroll counting's service stays.
+          echo "--- Accessibility services ---"
+          tr '\n' ' ' < "$manifest" | grep -o '<service[^>]*BIND_ACCESSIBILITY_SERVICE[^>]*>' | grep -o 'android:name="[^"]*"' || true
+          if grep -Eq 'val sectionBlockingEnabled.*\?: false' app/build.gradle.kts; then
+            if grep -q 'SectionBlockingService' "$manifest"; then
+              echo "::error::Section blocking is off, but the release manifest still declares SectionBlockingService."
+              exit 1
+            fi
+            echo "Section blocking off: no SectionBlockingService in the release manifest."
+          else
+            grep -q 'SectionBlockingService' "$manifest" || { echo "::error::Section blocking is on, but the release manifest lacks SectionBlockingService."; exit 1; }
+            echo "Section blocking on: SectionBlockingService present."
+          fi
+          grep -q 'ScrollAccessibilityService' "$manifest" || { echo "::error::The release manifest lacks the scroll-counting service."; exit 1; }
 
       # Release builds need keystore.properties, which CI doesn't have: bundleRelease must stop
       # with the clear signing message (and not with any other error).

@@ -219,7 +219,8 @@ internal val BlockDuration.labelRes: Int
 private const val HALF_TURN = 180f
 private const val SECOND = 1_000L
 
-// Previews: a Reels-capable app and a normal app; off, on with a countdown, entire app on.
+// Previews: a Reels-capable app and a normal app; off, on with a countdown, entire app on. They
+// show the reels toggle as it looks with section blocking switched on (SectionBlockingConfig).
 
 private const val PREVIEW_NOW = 1_000_000_000L
 private val PREVIEW_ACCESS = SectionAccess(rulesAvailable = true, isPlus = true, consented = true, serviceOn = true, turnedOff = false)
@@ -229,7 +230,7 @@ private fun QuickPreview(packageName: String, settings: LimitSettings, access: S
     UnscrollTheme {
         Surface {
             Column(Modifier.padding(Dimens.spaceL)) {
-                QuickControlsSection(QuickControls.build(packageName, settings, PREVIEW_NOW, access), QuickActions())
+                QuickControlsSection(QuickControls.build(packageName, settings, PREVIEW_NOW, access, sectionBlockingEnabled = true), QuickActions())
             }
         }
     }

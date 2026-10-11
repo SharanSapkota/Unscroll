@@ -571,6 +571,11 @@
         <item quantity="one">Free tracks one app with the timer, limits, blocking and stats included. Plus tracks every app and adds section blocking. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
         <item quantity="other">Free tracks %d apps with the timer, limits, blocking and stats included. Plus tracks every app and adds section blocking. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
     </plurals>
+    <!-- settings_plus_info while section blocking is switched off (SectionBlockingConfig). -->
+    <plurals name="settings_plus_info_no_sections">
+        <item quantity="one">Free tracks one app with the timer, limits, blocking and stats included. Plus tracks every app. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
+        <item quantity="other">Free tracks %d apps with the timer, limits, blocking and stats included. Plus tracks every app. Your history is never locked. Purchases go through Google Play, which never gets your usage data.</item>
+    </plurals>
     <plurals name="settings_free_apps">
         <item quantity="one">Free app</item>
         <item quantity="other">Free apps</item>

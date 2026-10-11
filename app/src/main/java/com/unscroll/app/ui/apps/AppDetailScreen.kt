@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.data.section.SectionBlockingConfig
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.QuickBlockTarget
@@ -265,6 +266,7 @@ private fun AppDetailPreview() {
                 LimitSettings(reelsBlockedUntil = 12 * 60_000L),
                 now = 0L,
                 access = SectionAccess(rulesAvailable = true, isPlus = true, consented = true, serviceOn = true, turnedOff = false),
+                sectionBlockingEnabled = SectionBlockingConfig.ENABLED,
             ),
         )
     }
