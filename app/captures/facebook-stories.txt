@@ -1,0 +1,18 @@
+--------- beginning of main
+10-11 11:32:43.705  2231  2231 I SectionInspector: MARK OTHER package=com.facebook.katana window=com.facebook.stories.viewer.activity.StoryViewerActivity
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.FrameLayout selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.LinearLayout selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=android:id/content class=android.widget.FrameLayout selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.widget.FrameLayout selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.RelativeLayout selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.view.ViewGroup selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.view.ViewGroup selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.Button selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.view.TextureView selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.ProgressBar selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.ImageView selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.TextView selected=true
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=androidx.recyclerview.widget.RecyclerView selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=- class=android.widget.EditText selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.view.View selected=false
+10-11 11:32:43.705  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=androidx.recyclerview.widget.RecyclerView selected=false

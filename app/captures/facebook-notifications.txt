@@ -1,0 +1,17 @@
+--------- beginning of main
+10-11 11:29:07.411  2231  2231 I SectionInspector: MARK OTHER package=com.facebook.katana window=com.facebook.katana.activity.FbMainTabActivity
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=- class=android.widget.FrameLayout selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=- class=android.widget.LinearLayout selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=android:id/content class=android.widget.FrameLayout selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.view.View selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.widget.FrameLayout selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.widget.HorizontalScrollView selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=androidx.viewpager.widget.ViewPager selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=- class=android.widget.Button selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.view.ViewGroup selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=android:id/list class=androidx.recyclerview.widget.RecyclerView selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=- class=android.view.ViewGroup selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=- class=android.widget.ImageView selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=- class=android.view.View selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.widget.LinearLayout selected=false
+10-11 11:29:07.412  2231  2231 I SectionInspector:   id=com.facebook.katana:id/(name removed) class=android.view.View selected=true
