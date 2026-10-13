@@ -77,6 +77,10 @@ object Dimens {
     val foxWelcome = 200.dp
     val foxBubbleMaxWidth = 220.dp
 
+    /** Insights: the fox on the Home card and on the shared image. */
+    val foxInsight = 56.dp
+    val foxShare = 88.dp
+
     /** The breathing circle on the break screen. */
     val breathingCircle = 220.dp
 }

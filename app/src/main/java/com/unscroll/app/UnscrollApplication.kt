@@ -4,6 +4,7 @@ import android.app.Application
 import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.service.BlockExpiryScheduler
+import com.unscroll.app.service.WeeklyInsightScheduler
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -19,6 +20,9 @@ class UnscrollApplication : Application() {
     @Inject
     lateinit var sectionBlocking: SectionBlockingRepository
 
+    @Inject
+    lateinit var weeklyInsight: WeeklyInsightScheduler
+
     override fun onCreate() {
         super.onCreate()
         // Ask Play Billing whether the user has Plus, and listen for purchase changes. Until it
@@ -28,5 +32,7 @@ class UnscrollApplication : Application() {
         blockExpiry.start()
         // One-time move of the old per-app "Block Reels" switches to the reels toggle.
         sectionBlocking.migrateLegacyBlockedApps()
+        // The optional weekly insight notification follows its switch (off by default).
+        weeklyInsight.start()
     }
 }

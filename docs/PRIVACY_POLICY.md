@@ -19,6 +19,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 | How many times you swiped in a session (only if you turn on the optional swipe counter) | Swipe count, swipe stats, "take a break after N swipes" |
 | Sent nudges and "I need access" extensions | So nudges aren't repeated, and to log extensions |
 | Your settings: limits, schedules, goal, overlay, quiet hours, consent choices, and which apps' short-video sections you block | So the app works the way you set it up |
+| Insights: your tone choice, your age if you enter it (only for the life projection), the weekly notification switch, and which insight messages were shown recently (their IDs, not their numbers) | So Insights match your settings and don't repeat |
 
 ## Permissions and what they are used for
 
@@ -33,7 +34,9 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 
 ## Sharing
 
-Unscroll doesn't share data with anyone, because it never sends data off your phone. If you export your sessions as a CSV file (Settings › Your data), the file goes where you choose, and from then on it is yours to manage.
+Unscroll doesn't share data with anyone, because it never sends data off your phone. If you export your sessions as a CSV file (Settings › Your data), the file goes where you choose, and from then on it is yours to manage. The same goes for an insight you share: when you tap "Share", Unscroll draws the image on your phone and hands it to the app you pick in Android's share sheet. Unscroll uploads nothing itself.
+
+Insights (distances, time equivalents and the life projection) are calculated on your phone from the sessions above. Nothing about them is sent anywhere.
 
 ## Your choices
 

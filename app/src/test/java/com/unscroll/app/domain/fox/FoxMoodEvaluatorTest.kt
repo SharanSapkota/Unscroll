@@ -1,9 +1,6 @@
 package com.unscroll.app.domain.fox
 
-import kotlin.random.Random
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FoxMoodEvaluatorTest {
@@ -71,26 +68,5 @@ class FoxMoodEvaluatorTest {
     @Test
     fun zeroLimits_areIgnored() {
         assertEquals(FoxMood.HAPPY, evaluate(FoxAppUsage(busy, limitMillis = 0, swipes = 5, swipeAllowance = 0)))
-    }
-
-    @Test
-    fun messages_neverRepeatTheLastOne_andCoverAll() {
-        val random = Random(42)
-        var last: Int? = null
-        val seen = mutableSetOf<Int>()
-        repeat(500) {
-            val next = FoxMessages.nextIndex(20, last, random)
-            assertTrue(next in 0 until 20)
-            assertNotEquals(last, next)
-            seen += next
-            last = next
-        }
-        assertEquals(20, seen.size)
-    }
-
-    @Test
-    fun messages_singleMessage_andStaleLast() {
-        assertEquals(0, FoxMessages.nextIndex(1, last = 0))
-        assertTrue(FoxMessages.nextIndex(3, last = 7, random = Random(1)) in 0 until 3)
     }
 }

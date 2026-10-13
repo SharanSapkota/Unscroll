@@ -15,6 +15,7 @@ import com.unscroll.app.service.SessionManager
 import com.unscroll.app.service.TrackingService
 import com.unscroll.app.util.appLabel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import java.io.IOException
 import java.time.ZoneId
 import javax.inject.Inject
@@ -80,5 +81,12 @@ class HistoryRepository @Inject constructor(
         sessionManager.endCurrentSession()
         TrackingService.stop(context)
         wipeAllStorage(database, dataStore)
+        // A shared insight image left in the cache (the share sheet writes it there).
+        withContext(Dispatchers.IO) { File(context.cacheDir, SHARED_IMAGES).deleteRecursively() }
+    }
+
+    private companion object {
+        /** The cache folder of shared insight images (res/xml/file_paths.xml). */
+        const val SHARED_IMAGES = "shared"
     }
 }

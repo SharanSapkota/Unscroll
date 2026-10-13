@@ -1,6 +1,5 @@
 package com.unscroll.app.ui.fox
 
-import androidx.annotation.ArrayRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -28,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -61,8 +59,8 @@ fun ProvideFoxSettings(settings: Flow<FoxSettings>, content: @Composable () -> U
 
 /**
  * The fox in a screen corner, in the mood today's usage calls for. With messages on, a tap shows
- * a speech bubble with one short line for that mood (never the same twice in a row), which goes
- * away by itself. Nothing at all when the user hid the fox.
+ * a speech bubble with one short line for that mood from the Insights bank's fox section (never
+ * the same twice in a row), which goes away by itself. Nothing at all when the user hid the fox.
  */
 @Composable
 fun FoxCorner(
@@ -74,7 +72,6 @@ fun FoxCorner(
     val settings = LocalFoxSettings.current
     if (!settings.showFox) return
     val mood by viewModel.mood.collectAsStateWithLifecycle()
-    val messages = stringArrayResource(mood.messagesRes)
     var message by remember { mutableStateOf<String?>(null) }
     // Bumped on every tap, so a new message restarts the timer.
     var shownAt by remember { mutableIntStateOf(0) }
@@ -99,7 +96,7 @@ fun FoxCorner(
                 .then(
                     if (settings.messages) {
                         Modifier.clickable(role = Role.Button) {
-                            message = messages[viewModel.nextMessage(mood, messages.size)]
+                            message = viewModel.nextMessage(mood)
                             shownAt++
                         }
                     } else {
@@ -140,16 +137,6 @@ private fun SpeechBubble(text: String, foxSize: Dp) {
         }
     }
 }
-
-/** Twenty-plus short lines per mood, in strings.xml. */
-@get:ArrayRes
-val FoxMood.messagesRes: Int
-    get() = when (this) {
-        FoxMood.HAPPY, FoxMood.NEUTRAL -> R.array.fox_messages_happy
-        FoxMood.ALERT -> R.array.fox_messages_alert
-        FoxMood.CONCERNED -> R.array.fox_messages_concerned
-        FoxMood.SLEEPY -> R.array.fox_messages_sleepy
-    }
 
 val FoxMood.labelRes: Int
     get() = when (this) {

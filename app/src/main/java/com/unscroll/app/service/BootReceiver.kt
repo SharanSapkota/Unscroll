@@ -28,6 +28,8 @@ class BootReceiver : BroadcastReceiver() {
 
         fun blockExpiryScheduler(): BlockExpiryScheduler
 
+        fun weeklyInsightScheduler(): WeeklyInsightScheduler
+
         @ApplicationScope
         fun applicationScope(): CoroutineScope
     }
@@ -50,6 +52,8 @@ class BootReceiver : BroadcastReceiver() {
                 entryPoint.trackingController().startIfReady()
                 // Alarms don't survive a reboot: turn off blocks that ran out, set the next one.
                 entryPoint.blockExpiryScheduler().sync()
+                // The optional weekly insight notification's alarm, if it is on.
+                entryPoint.weeklyInsightScheduler().sync()
             } finally {
                 pendingResult.finish()
             }

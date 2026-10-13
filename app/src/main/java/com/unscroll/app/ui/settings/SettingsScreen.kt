@@ -44,8 +44,8 @@ import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
 
 /**
- * Settings: permission health at the top, then Unscroll Plus and four groups (Tracking, Timer pill,
- * Notifications, Data & privacy), plus Appearance (the fox; dynamic color on Android 12+) and debug tools in
+ * Settings: permission health at the top, then Unscroll Plus and five groups (Tracking, Insights,
+ * Timer pill, Notifications, Data & privacy), plus Appearance (the fox; dynamic color on Android 12+) and debug tools in
  * debug builds. Details open in bottom sheets, never more than one level deep.
  */
 @Composable
@@ -119,6 +119,12 @@ fun SettingsScreen(
             onSectionSetUp = onSectionSetUp,
             onOpenPlus = onOpenPlus,
         )
+
+        SectionHeader(
+            title = stringResource(R.string.settings_group_insights),
+            info = stringResource(R.string.settings_insights_info),
+        )
+        InsightsGroup()
 
         SectionHeader(
             title = stringResource(R.string.settings_group_pill),

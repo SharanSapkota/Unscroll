@@ -144,3 +144,14 @@ object FoxColors {
     val highlight = Color(0xFFFFFFFF)
     val blush = Color(0x40FF5A5F)
 }
+
+/**
+ * The shared insight image: fixed brand colors (the splash's dark teal), so the picture looks the
+ * same whichever theme the phone uses and wherever it is posted.
+ */
+object ShareCardColors {
+    val background = Color(0xFF0F3D3E)
+    val number = Color(0xFF4FD8C0)
+    val text = Color(0xFFFFFFFF)
+    val muted = Color(0xB3FFFFFF)
+}
