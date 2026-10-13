@@ -430,14 +430,14 @@
     <string name="insights_share_title">Share insight</string>
     <string name="insights_share_note">The image is made on your phone. You choose where it goes.</string>
     <string name="insights_share_chooser">Share with</string>
-    <string name="insights_share_failed">Couldn't create the image.</string>
+    <string name="insights_share_failed">Couldn\'t create the image.</string>
     <string name="insights_share_brand">Unscroll</string>
     <string name="insights_weekly_label">This week</string>
     <string name="insights_channel_name">Weekly insight</string>
     <string name="insights_channel_description">Your life projection, once a week on Sunday. Off unless you turn it on.</string>
     <string name="insights_weekly_title">Your week</string>
     <string name="settings_group_insights">Insights</string>
-    <string name="settings_insights_info">Insights turn your minutes and swipes into distances, time and a projection. Everything is worked out on this phone; only which messages were shown is saved, so they don't repeat. Without swipe counting, swipes are estimated (4 a minute) and marked "about".</string>
+    <string name="settings_insights_info">Insights turn your minutes and swipes into distances, time and a projection. Everything is worked out on this phone; only which messages were shown is saved, so they don\'t repeat. Without swipe counting, swipes are estimated (4 a minute) and marked \"about\".</string>
     <string name="settings_insights">Show insights</string>
     <string name="settings_insights_tone">Tone</string>
     <string name="insights_tone_gentle">Gentle</string>
