@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -44,6 +45,7 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.data.insights.InsightCardState
 import com.unscroll.app.data.plus.PlusConfig
 import com.unscroll.app.domain.fox.FoxMood
 import com.unscroll.app.domain.goals.Streak
@@ -81,9 +83,13 @@ fun HomeScreen(
     onOpenApp: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
+    insightViewModel: InsightViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val insightState by insightViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // The insight talks about the period Home shows.
+    LaunchedEffect(uiState.period) { insightViewModel.setPeriod(uiState.period) }
     HomeContent(
         state = uiState,
         actions = HomeActions(
@@ -102,6 +108,11 @@ fun HomeScreen(
         },
         // The fox peeks in from the top corner; tap it for a message.
         fox = { FoxCorner(size = Dimens.foxHome) },
+        insight = if (insightState.insight != null || insightState.weekly != null) {
+            { InsightSection(insightState, onNext = insightViewModel::next) }
+        } else {
+            null
+        },
     )
 }
 
@@ -119,6 +130,7 @@ internal fun HomeContent(
     modifier: Modifier = Modifier,
     banner: @Composable () -> Unit = {},
     fox: @Composable () -> Unit = {},
+    insight: (@Composable () -> Unit)? = null,
 ) {
     if (state.isLoading) {
         LoadingPlaceholder(modifier = modifier.fillMaxSize())
@@ -148,6 +160,8 @@ internal fun HomeContent(
             return@LazyColumn
         }
         item(key = "hero") { Hero(state, fox) }
+        // Under the top total: one insight at a time, and the weekly projection on its day.
+        insight?.let { item(key = "insight") { it() } }
         item(key = "period") {
             SegmentedControl(
                 options = UsagePeriod.entries,
@@ -353,5 +367,14 @@ private fun HomePreview() {
 private fun HomeEmptyPreview() {
     UnscrollTheme {
         HomeContent(state = HomeUiState(isLoading = false), actions = HomeActions())
+    }
+}
+
+/** The weekly projection (on its day) above today's insight. */
+@Composable
+private fun InsightSection(state: InsightCardState, onNext: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
+        state.weekly?.let { WeeklyInsightCard(it) }
+        state.insight?.let { InsightCard(it, canShowNext = state.canShowNext, onNext = onNext) }
     }
 }

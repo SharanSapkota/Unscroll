@@ -1,0 +1,49 @@
+# Words the Insights engine puts into {placeholders} (docs/insight-templates.md). Tab-separated:
+# key, form for exactly 1, form for any other count. {n} is the number, already formatted.
+# Translate the two text columns; keys and {n} stay as they are.
+period.today	today	today
+period.week	this week	this week
+period.month	this month	this month
+period.year	this year	this year
+period.all	so far	so far
+estimate	about {n}	about {n}
+distance.m	{n} m	{n} m
+distance.km	{n} km	{n} km
+time.hours_minutes	{h}h {m}m	{h}h {m}m
+time.hours	{n}h	{n}h
+time.minutes	{n}m	{n}m
+time.remaining_minutes	{n} min	{n} min
+hours	{n} hour	{n} hours
+years	{n} year	{n} years
+apps.generic	social apps	social apps
+movies	{n} full movie	{n} full movies
+movies.single	a full movie	a full movie
+pages	{n} page of a book	{n} pages of a book
+books	{n} book	{n} books
+books.single	a book	a book
+books.fraction	{n} of a book	{n} of a book
+walk	a {n} km walk	a {n} km walk
+walk.vowel	an {n} km walk	an {n} km walk
+flights	a flight to Tokyo	{n} flights to Tokyo
+dinners	{n} home-cooked dinner	{n} home-cooked dinners
+dinners.single	a home-cooked dinner	a home-cooked dinner
+calls	one 1-hour call	{n} 1-hour calls
+number.2	two	two
+number.3	three	three
+number.4	four	four
+number.5	five	five
+number.6	six	six
+number.7	seven	seven
+number.8	eight	eight
+number.9	nine	nine
+number.10	ten	ten
+landmark.pool	{n} Olympic pool	{n} Olympic pools
+landmark.liberty	{n} Statue of Liberty	{n} Statues of Liberty
+landmark.big_ben	{n} Big Ben	{n} Big Bens
+landmark.pitch	{n} football pitch	{n} football pitches
+landmark.eiffel	{n} Eiffel Tower	{n} Eiffel Towers
+landmark.empire_state	{n} Empire State Building	{n} Empire State Buildings
+landmark.burj_khalifa	{n} Burj Khalifa	{n} Burj Khalifas
+landmark.everest	{n} Mount Everest	{n} Mount Everests
+landmark.marathon	{n} marathon	{n} marathons
+landmark.great_wall	{n} Great Wall of China	{n} Great Walls of China

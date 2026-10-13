@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider: only the shared insight images in the app's cache, nothing else. -->
+<paths>
+    <cache-path
+        name="shared_insights"
+        path="shared/" />
+</paths>

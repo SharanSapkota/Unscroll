@@ -214,3 +214,16 @@ Each milestone = one PR. Don't start the next until the previous is merged and t
 - Store listing, privacy policy and terms without subscription, price or Plus; the paid texts are kept under "Enable when billing is turned on"
 - **Done when**: a fresh install and an update from a free user with locked apps both track every app, Settings shows no Plus rows, nothing opens a paywall, logcat shows no Play Billing activity, and the release manifest has no BILLING permission.
 
+
+## Insights 🟡 Built, awaiting device testing
+- State before this change (checked in the code): Home (hero total, Day/Week/Month/All, app tiles, "Hours invested" from `Equivalents`, a collapsible stats section), the fox with mood-based bubbles from `fox_messages_*` string arrays, session/swipe queries in `SessionDao`, opt-in swipe counting with per-app "Count swipes", per-app limits and a daily goal with streaks, and the "nudges", "breaks" and tracking notification channels
+- Message bank from `docs/insight-templates.md` (134 templates, [G]/[H]/[B] tones, placeholders, constants, landmarks, rotation rules), bundled as `assets/insights/templates.tsv` plus `phrases.tsv` for the words that fill placeholders; no message text in Kotlin, so it can be translated. A test keeps the asset identical to the docs, and the engine's placeholders identical to the docs' table
+- `InsightEngine` (pure, injectable random): plurals, thousands separators, m/km, landmarks with a count of 1–20, thumb distance (real swipes × 55 % of the screen height, fallback 6 cm; without swipe data 4 a minute, marked "about"), life projection (last 30 days, after 7+ days, 16 waking hours, to age 80 or 50 more years), wins and milestones from streaks, savings vs last week, time reclaimed and the first week. Templates whose data is missing are skipped. Numbers are rounded down, never inflated
+- Rotation: no repeat within the last 30, never the same category twice in a row, tone filter, no [B] in the first 3 days or after a good day, no negative messages on a day under the limit (Wins instead), life projection at most once a week, at most 10 a day
+- Home: an Insight card under the total (big bold number, the line, a muted label, the fox in the message's mood), "Next" and "Share". Sundays: the weekly life projection card; optional weekly notification on its own "insights" channel, off by default, at most once a week
+- Share: the card rendered to an image on the phone and sent through the system share sheet (FileProvider, `${applicationId}.fileprovider`); nothing is uploaded
+- Fox bubbles use the bank's fox section (by mood, filled with today's numbers); the old string arrays are removed
+- Settings › Insights: on/off, tone (Gentle / Honest / Brutal, default Honest; Brutal notes the messages are blunt), optional age, weekly notification
+- Privacy: computed on the device, no network; only settings and recent template ids are stored. Privacy policy and Data safety notes updated (shared images and the stored Insights settings); trust text unchanged (still true)
+- Tracking, blocking and overlay logic unchanged
+- **Done when**: Home shows an insight that matches the numbers on screen, "Next" never repeats one within 30 and stops at 10 a day, Brutal only shows when chosen, Sunday shows the projection (after a week of data), and Share opens the share sheet with the image.

@@ -132,6 +132,23 @@
         <receiver
             android:name=".service.BlockExpiryReceiver"
             android:exported="false" />
+
+        <!-- The optional weekly insight notification (Settings › Insights, off by default). -->
+        <receiver
+            android:name=".service.WeeklyInsightReceiver"
+            android:exported="false" />
+
+        <!-- Share an insight: the image is rendered on the phone into the app's cache and handed
+             to the app the user picks in the share sheet. Nothing is uploaded by Unscroll. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
