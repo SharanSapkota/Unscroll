@@ -24,6 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import com.unscroll.app.R
@@ -43,6 +45,8 @@ fun PermissionRow(
     modifier: Modifier = Modifier,
     @DrawableRes icon: Int? = null,
     note: String? = null,
+    /** The note's color; unspecified = the muted default. */
+    noteColor: Color = Color.Unspecified,
     actionLabel: String = stringResource(R.string.action_grant),
     trailingInfo: @Composable () -> Unit = {},
 ) {
@@ -71,7 +75,7 @@ fun PermissionRow(
                 Text(
                     text = note,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = noteColor.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant },
                 )
             }
         }

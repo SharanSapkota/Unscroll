@@ -1,35 +1,37 @@
 package com.unscroll.app.domain.permission
 
+import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PermissionHealthTest {
 
     @Test
-    fun allGranted_andScrollCountingOffOrActive_isAllSet() {
-        assertEquals(emptyList<HealthItem>(), PermissionHealth.issues(PermissionState.ALL, ScrollCountingStatus.OFF))
+    fun allGranted_andScrollCountingActive_isAllSet() {
         assertEquals(emptyList<HealthItem>(), PermissionHealth.issues(PermissionState.ALL, ScrollCountingStatus.ACTIVE))
-        assertEquals(
-            emptyList<HealthItem>(),
-            PermissionHealth.issues(PermissionState.ALL, ScrollCountingStatus.NEEDS_CONSENT),
-        )
+    }
+
+    @Test
+    fun swipeCountingNotRunning_isAnIssue_inEveryState() {
+        listOf(
+            ScrollCountingStatus.OFF,
+            ScrollCountingStatus.NEEDS_CONSENT,
+            ScrollCountingStatus.NEEDS_ENABLING,
+            ScrollCountingStatus.NEEDS_REENABLE,
+        ).forEach { status ->
+            assertEquals(status.name, listOf(HealthItem.ACCESSIBILITY), PermissionHealth.issues(PermissionState.ALL, status))
+        }
     }
 
     @Test
     fun missingPermissions_areListedInChecklistOrder() {
         val state = PermissionState(setOf(AppPermission.USAGE_ACCESS, AppPermission.OVERLAY))
         assertEquals(
-            listOf(HealthItem.NOTIFICATIONS, HealthItem.BATTERY),
+            listOf(HealthItem.NOTIFICATIONS, HealthItem.BATTERY, HealthItem.ACCESSIBILITY),
             PermissionHealth.issues(state, ScrollCountingStatus.OFF),
-        )
-    }
-
-    @Test
-    fun scrollCountingAgreedButNotRunning_isAnIssue() {
-        assertEquals(
-            listOf(HealthItem.ACCESSIBILITY),
-            PermissionHealth.issues(PermissionState.ALL, ScrollCountingStatus.NEEDS_ENABLING),
         )
         assertEquals(
             listOf(HealthItem.USAGE_ACCESS, HealthItem.OVERLAY, HealthItem.NOTIFICATIONS, HealthItem.BATTERY, HealthItem.ACCESSIBILITY),
@@ -38,15 +40,18 @@ class PermissionHealthTest {
     }
 
     @Test
-    fun checklist_listsAccessibilityOnlyWhenScrollCountingIsOn() {
-        fun items(scroll: ScrollCountingStatus) = PermissionHealth.checklist(PermissionState.NONE, scroll).map { it.first }
-        val base = listOf(HealthItem.USAGE_ACCESS, HealthItem.OVERLAY, HealthItem.NOTIFICATIONS, HealthItem.BATTERY)
+    fun checklist_alwaysListsAccessibility() {
+        val all = listOf(HealthItem.USAGE_ACCESS, HealthItem.OVERLAY, HealthItem.NOTIFICATIONS, HealthItem.BATTERY, HealthItem.ACCESSIBILITY)
+        ScrollCountingStatus.entries.forEach { status ->
+            assertEquals(all, PermissionHealth.checklist(PermissionState.NONE, status).map { it.first })
+        }
+    }
 
-        assertEquals(base, items(ScrollCountingStatus.OFF))
-        assertEquals(base, items(ScrollCountingStatus.NEEDS_CONSENT))
-        assertEquals(base + HealthItem.ACCESSIBILITY, items(ScrollCountingStatus.ACTIVE))
-        assertEquals(base + HealthItem.ACCESSIBILITY, items(ScrollCountingStatus.NEEDS_ENABLING))
-        assertEquals(base + HealthItem.ACCESSIBILITY, items(ScrollCountingStatus.NEEDS_REENABLE))
+    @Test
+    fun accessibilityButton_showsTheDisclosureUntilTheUserAgreed() {
+        assertTrue(PermissionHealth.accessibilityNeedsDisclosure(ScrollConsent.NOT_ASKED))
+        assertTrue(PermissionHealth.accessibilityNeedsDisclosure(ScrollConsent.DECLINED))
+        assertFalse(PermissionHealth.accessibilityNeedsDisclosure(ScrollConsent.AGREED))
     }
 
     @Test

@@ -26,7 +26,8 @@
     <string name="duration_seconds">%1$ds</string>
 
     <!-- Overlay timer -->
-    <string name="overlay_this_visit">this visit %1$s</string>
+    <!-- The pill: this visit's time after today's total (only with "Show session time"). -->
+    <string name="overlay_this_visit_short">· %1$s</string>
 
     <!-- Common -->
     <string name="action_cancel">Cancel</string>
@@ -97,11 +98,26 @@
 
     <string name="scroll_banner_title">Swipe counting stopped</string>
     <string name="scroll_banner_action">Turn back on</string>
+    <string name="scroll_setup_banner_title">Turn on swipe counting</string>
+    <string name="scroll_setup_banner_body">See your swipes on the timer. Optional.</string>
+    <string name="scroll_setup_banner_action">Turn on</string>
+    <string name="scroll_consent_banner_title">Finish setting up swipe counting</string>
+    <string name="scroll_consent_banner_body">It\'s on in Android, but nothing is counted until you agree in Unscroll.</string>
+    <string name="scroll_restricted_hint">Can\'t switch it on? On Android 13 and later, open App info, tap ⋮ (top right), then \"Allow restricted settings\", and try again.</string>
+    <string name="scroll_restricted_how">Show steps</string>
+    <string name="action_not_now">Not now</string>
+    <string name="action_enable">Enable</string>
 
-    <plurals name="overlay_swipes">
-        <item quantity="one">%d swipe</item>
-        <item quantity="other">%d swipes</item>
-    </plurals>
+    <!-- Onboarding: optional third page -->
+    <string name="onboarding_swipes_title">Count your swipes</string>
+    <string name="onboarding_swipes_enable">Enable</string>
+    <string name="onboarding_swipes_skip">Skip</string>
+    <string name="onboarding_swipes_on">Swipe counting is on.</string>
+    <string name="onboarding_swipes_almost">Almost there: switch on \"Unscroll swipe counter\".</string>
+    <string name="onboarding_next">Next</string>
+
+    <string name="settings_debug_swipes">Swipe debug</string>
+
 
     <string name="break_title">Time for a break?</string>
     <plurals name="break_summary">
@@ -135,10 +151,10 @@
     <!-- Swipe limit (hard stop) -->
     <string name="swipe_cover_title">Limit reached</string>
     <string name="swipe_cover_need_access">I need %1$d more swipes</string>
-    <string name="overlay_swipes_separator"> · %1$s</string>
-    <plurals name="overlay_swipes_left">
-        <item quantity="one">%d swipe left</item>
-        <item quantity="other">%d swipes left</item>
+    <!-- The pill near a swipe limit, after the swipe icon. -->
+    <plurals name="overlay_swipes_left_short">
+        <item quantity="one">%d left</item>
+        <item quantity="other">%d left</item>
     </plurals>
     <!-- Redesign: shared values and actions -->
     <string name="nav_home">Home</string>
@@ -348,7 +364,6 @@
     <string name="settings_pill_time_colors_note">With a daily limit: yellow from 60 %, red at the limit.</string>
     <string name="settings_pill_swipe_colors">Swipes today</string>
     <string name="settings_pill_reset_position">Reset position</string>
-    <string name="settings_pill_preview_app">Instagram</string>
     <string name="settings_notifications_system">Notifications</string>
     <string name="settings_quiet_hours">Quiet hours</string>
     <string name="settings_quiet_info">During quiet hours, open nudges, break reminders and limit warnings stay silent. Blocks and swipe limits still apply.</string>
@@ -370,8 +385,9 @@
     <string name="permission_notifications_note">Nudges and reminders</string>
     <string name="permission_battery">Battery: unrestricted</string>
     <string name="permission_battery_note">Keeps tracking alive</string>
-    <string name="permission_accessibility">Scroll counting</string>
-    <string name="permission_accessibility_note">Switch on in Accessibility</string>
+    <string name="permission_accessibility">Accessibility (swipe counting)</string>
+    <string name="permission_accessibility_on">On</string>
+    <string name="permission_accessibility_off">Off, tap to enable</string>
 
     <!-- Onboarding -->
     <string name="onboarding_welcome_title">Unscroll</string>

@@ -25,7 +25,7 @@ Doomscrolling steals hours you never get back. Unscroll shows you exactly how mu
 - Accessibility (optional, M7): to count scroll gestures in the tracked apps; no screen content is read or stored. Full wording below; Play declaration draft in docs/ACCESSIBILITY_DECLARATION.md.
 
 ## Accessibility prominent disclosure (in-app, required)
-Shown on its own screen (Settings › Scroll counting › Set up) before the user is sent to Accessibility settings, and only acted on after an explicit "I agree" tap. Keep the app's `scroll_disclosure_*` strings and this text in sync:
+Shown on its own screen (Settings › Scroll counting › Set up, also reached from the permission checklist and Home's "Turn on swipe counting" banner) and on the optional "Count your swipes" onboarding page before the user is sent to Accessibility settings, and only acted on after an explicit "I agree" (or, in onboarding, "Enable") tap. Keep the app's `scroll_disclosure_*` strings and this text in sync:
 
 > **Count your swipes (optional)**
 > Unscroll can count how many times you swipe in the apps you choose. You'll see the count on the timer and the dashboard, you can ask for a break after a number of swipes, and you can set a swipe limit that covers the app when you reach it.

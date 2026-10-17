@@ -32,6 +32,7 @@ import com.unscroll.app.domain.friction.QuietHours
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
 import com.unscroll.app.domain.plus.FreeTier
+import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.ui.components.RowDivider
 import com.unscroll.app.ui.components.SectionHeader
 import com.unscroll.app.ui.components.SettingRow
@@ -70,6 +71,7 @@ fun SettingsScreen(
     val scrollStatus by viewModel.scrollStatus.collectAsStateWithLifecycle()
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val fox by viewModel.fox.collectAsStateWithLifecycle()
+    val swipeDebug by viewModel.swipeDebug.collectAsStateWithLifecycle()
     var checklistOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -143,6 +145,7 @@ fun SettingsScreen(
                 onSwipeColors = viewModel::setSwipeThresholds,
                 onResetPosition = viewModel::resetPosition,
             ),
+            swipeCounting = scrollStatus == ScrollCountingStatus.ACTIVE,
         )
 
         SectionHeader(
@@ -196,6 +199,13 @@ fun SettingsScreen(
                     showChevron = false,
                     onClick = viewModel::insertSampleData,
                 )
+                // SwipeDebug: is the service connected, what came in last, what the count is.
+                SettingRow(
+                    title = stringResource(R.string.settings_debug_swipes),
+                    icon = R.drawable.ic_swipe,
+                    subtitle = swipeDebug,
+                    showChevron = false,
+                )
                 if (PlusConfig.BILLING_ENABLED) PlusDebugRow()
                 // With section blocking off, only a debug build made with the inspector flag has it.
                 if (SectionBlockingConfig.INSPECTOR_ALLOWED) {
@@ -210,7 +220,12 @@ fun SettingsScreen(
     }
 
     if (checklistOpen) {
-        PermissionChecklistSheet(health = health, onDismiss = { checklistOpen = false })
+        PermissionChecklistSheet(
+            health = health,
+            onDismiss = { checklistOpen = false },
+            onAccessibilitySetUp = onScrollCountingSetUp,
+            onRestrictedHelp = onRestrictedSettingHelp,
+        )
     }
 }
 

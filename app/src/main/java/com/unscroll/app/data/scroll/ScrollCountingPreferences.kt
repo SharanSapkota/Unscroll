@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.unscroll.app.domain.scroll.ScrollConsent
+import com.unscroll.app.domain.scroll.ScrollCountingRules
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +26,8 @@ data class ScrollCountingRecord(
     val connectedSinceConsent: Boolean = false,
     /** First time the service ever connected: swipe stats start here. Null = never enabled. */
     val countingSince: Long? = null,
+    /** When the user last dismissed Home's "Turn on swipe counting" banner, or null. */
+    val setupBannerDismissedAt: Long? = null,
 )
 
 /** Consent and history for the optional accessibility service, in the preferences DataStore. */
@@ -41,6 +44,7 @@ class ScrollCountingPreferences @Inject constructor(
                 consentAt = prefs[CONSENT_AT],
                 connectedSinceConsent = prefs[CONNECTED_SINCE_CONSENT] ?: false,
                 countingSince = prefs[COUNTING_SINCE],
+                setupBannerDismissedAt = prefs[SETUP_BANNER_DISMISSED_AT],
             )
         }
         .distinctUntilChanged()
@@ -52,6 +56,11 @@ class ScrollCountingPreferences @Inject constructor(
             it[CONSENT] = consent.name
             it[CONSENT_AT] = now
         }
+    }
+
+    /** "Not now" on Home's swipe-counting banner: hidden for a while ([ScrollCountingRules.BANNER_SNOOZE_MILLIS]). */
+    suspend fun dismissSetupBanner(now: Long) {
+        dataStore.edit { it[SETUP_BANNER_DISMISSED_AT] = now }
     }
 
     /** The service connected. Only counts as history once the user has agreed. */
@@ -78,5 +87,6 @@ class ScrollCountingPreferences @Inject constructor(
         val CONSENT_AT = longPreferencesKey("scroll_consent_at")
         val CONNECTED_SINCE_CONSENT = booleanPreferencesKey("scroll_connected_since_consent")
         val COUNTING_SINCE = longPreferencesKey("scroll_counting_since")
+        val SETUP_BANNER_DISMISSED_AT = longPreferencesKey("scroll_setup_banner_dismissed_at")
     }
 }

@@ -32,6 +32,13 @@ class AccessibilityConfigTest {
     }
 
     @Test
+    fun flags_includeNotImportantViews_only() {
+        // Full-screen video pagers mark their scrolling view not important for accessibility;
+        // without this flag Android drops their scroll events. No flag that reveals more.
+        assertEquals(setOf("flagDefault", "flagIncludeNotImportantViews"), attr("accessibilityFlags").split('|').toSet())
+    }
+
+    @Test
     fun listensOnlyToScrollAndWindowChanges() {
         assertEquals(setOf("typeViewScrolled", "typeWindowStateChanged"), attr("accessibilityEventTypes").split('|').toSet())
     }

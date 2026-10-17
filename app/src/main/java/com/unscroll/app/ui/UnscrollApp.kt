@@ -133,7 +133,13 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
             popEnterTransition = { fadeIn(tween(Motion.MEDIUM)) },
             popExitTransition = { fadeOut(tween(Motion.SHORT)) },
         ) {
-            composable(TopLevelDestination.HOME.route) { HomeScreen(onOpenApp = openApp) }
+            composable(TopLevelDestination.HOME.route) {
+                HomeScreen(
+                    onOpenApp = openApp,
+                    onScrollCountingSetUp = { navController.navigate(ROUTE_SCROLL_DISCLOSURE) { launchSingleTop = true } },
+                    onRestrictedSettingHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) { launchSingleTop = true } },
+                )
+            }
             composable(TopLevelDestination.APPS.route) {
                 AppsScreen(
                     onOpenApp = openApp,

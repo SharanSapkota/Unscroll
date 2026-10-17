@@ -1,5 +1,6 @@
 package com.unscroll.app.domain.permission
 
+import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 
 /** One line of the Settings permission checklist. */
@@ -9,7 +10,7 @@ enum class HealthItem {
     NOTIFICATIONS,
     BATTERY,
 
-    /** Only listed once the user opted into scroll counting; an issue while it isn't running. */
+    /** "Accessibility (swipe counting)": always listed, fine only while the service counts. */
     ACCESSIBILITY,
 }
 
@@ -17,24 +18,26 @@ enum class HealthItem {
 object PermissionHealth {
 
     /**
-     * Every checklist line, in order, with whether it is fine (a green check). Accessibility is
-     * only listed when the user turned scroll counting on.
+     * Every checklist line, in order, with whether it is fine (a green check). Accessibility (swipe
+     * counting) is always listed, so it can't be missed: green "On" only while the service is
+     * counting, red "Off, tap to enable" otherwise.
      */
-    fun checklist(permissions: PermissionState, scroll: ScrollCountingStatus): List<Pair<HealthItem, Boolean>> = buildList {
-        add(HealthItem.USAGE_ACCESS to permissions.isGranted(AppPermission.USAGE_ACCESS))
-        add(HealthItem.OVERLAY to permissions.isGranted(AppPermission.OVERLAY))
-        add(HealthItem.NOTIFICATIONS to permissions.isGranted(AppPermission.NOTIFICATIONS))
-        add(HealthItem.BATTERY to permissions.isGranted(AppPermission.IGNORE_BATTERY_OPTIMIZATIONS))
-        if (scrollCountingOn(scroll)) add(HealthItem.ACCESSIBILITY to !needsAccessibility(scroll))
-    }
+    fun checklist(permissions: PermissionState, scroll: ScrollCountingStatus): List<Pair<HealthItem, Boolean>> = listOf(
+        HealthItem.USAGE_ACCESS to permissions.isGranted(AppPermission.USAGE_ACCESS),
+        HealthItem.OVERLAY to permissions.isGranted(AppPermission.OVERLAY),
+        HealthItem.NOTIFICATIONS to permissions.isGranted(AppPermission.NOTIFICATIONS),
+        HealthItem.BATTERY to permissions.isGranted(AppPermission.IGNORE_BATTERY_OPTIMIZATIONS),
+        HealthItem.ACCESSIBILITY to (scroll == ScrollCountingStatus.ACTIVE),
+    )
 
-    /** The lines that need fixing. Scroll counting that is simply off is not an issue. */
+    /** The lines that need fixing, swipe counting included while it isn't running. */
     fun issues(permissions: PermissionState, scroll: ScrollCountingStatus): List<HealthItem> =
         checklist(permissions, scroll).filterNot { it.second }.map { it.first }
 
-    private fun scrollCountingOn(scroll: ScrollCountingStatus): Boolean =
-        scroll == ScrollCountingStatus.ACTIVE || needsAccessibility(scroll)
-
-    private fun needsAccessibility(scroll: ScrollCountingStatus): Boolean =
-        scroll == ScrollCountingStatus.NEEDS_ENABLING || scroll == ScrollCountingStatus.NEEDS_REENABLE
+    /**
+     * Where the accessibility line's button goes: the disclosure first while the user hasn't agreed
+     * in Unscroll (Play policy: the prominent disclosure always comes before the system screen),
+     * else straight to Accessibility settings.
+     */
+    fun accessibilityNeedsDisclosure(consent: ScrollConsent): Boolean = consent != ScrollConsent.AGREED
 }

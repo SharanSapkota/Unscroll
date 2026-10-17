@@ -26,11 +26,12 @@ Android has no other API that tells an app when the user scrolls inside another 
 
 ## What data is accessed
 
-- **Accessed:** only the event type (`TYPE_VIEW_SCROLLED`, `TYPE_WINDOW_STATE_CHANGED`) and the package name of the app the event came from.
+- **Accessed:** only the event type (`TYPE_VIEW_SCROLLED`, `TYPE_WINDOW_STATE_CHANGED`), the package name of the app the event came from and, for scroll events, the event's numeric item positions (`fromIndex`/`toIndex`: which item numbers the scrolled view shows, used to tell quick swipes in full-screen video feeds apart). Numbers only, nothing from the items themselves.
 - **Limited by configuration:**
   - `canRetrieveWindowContent="false"`, so the service never gets the screen's text, content descriptions or view hierarchy.
   - `packageNames` covers only the tracked apps.
   - `accessibilityEventTypes` covers only scroll and window-change events.
+  - `accessibilityFlags="flagDefault|flagIncludeNotImportantViews"`: full-screen video feeds mark their scrolling view as not important for accessibility, and Android only delivers those views' scroll events with this flag. It changes which scroll events arrive, not what they contain; no other flag is set.
 - **Stored:** one number per usage session (the swipe count), next to the session's package name and start and end times, in the app's private on-device database.
 - **Not accessed or stored:** screen content, text, messages, posts, usernames, passwords, keystrokes, contacts or any personal information. The service doesn't interact with other apps' interfaces: it never taps, types or reads them.
 - **One action, only for the user's own limit:** if the user's swipe limit is reached and Unscroll can't draw its cover (the "Display over other apps" permission was removed), the service calls `performGlobalAction(GLOBAL_ACTION_HOME)` to go to the home screen, and Unscroll shows its own block screen. That is the only action it performs.
@@ -42,7 +43,7 @@ Android has no other API that tells an app when the user scrolls inside another 
 
 ## User consent and control
 
-- Before Unscroll ever sends the user to Accessibility settings, it shows a dedicated in-app disclosure screen (Settings › Scroll counting › Set up). The screen explains what the service does, what it does not do, and that it is optional.
+- Before Unscroll ever sends the user to Accessibility settings, it shows the in-app disclosure: on the optional "Count your swipes" onboarding page ("Enable" / "Skip"), or on the disclosure screen (Settings › Scroll counting › Set up, the Settings permission checklist, or Home's dismissible "Turn on swipe counting" banner). It explains what the service does, what it does not do, and that it is optional.
 - The user must tap **"I agree"**; **"No thanks"** leaves the app fully working.
 - Consent is stored on the device. If the service is switched on in system settings without in-app consent, every event is ignored.
 - The user can turn the feature off at any time in Settings › Scroll counting (the service then calls `disableSelf()`), or in the system Accessibility settings.

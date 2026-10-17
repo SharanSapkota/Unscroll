@@ -13,6 +13,7 @@ import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillRules
+import com.unscroll.app.domain.overlay.PillSwipes
 import com.unscroll.app.domain.overlay.PillToday
 import com.unscroll.app.domain.overlay.PillTodayBase
 import com.unscroll.app.domain.overlay.ShownTotal
@@ -138,11 +139,13 @@ class OverlayTimerManager @Inject constructor(
             scrollCounting.isCounting,
             swipeLimitEnforcer.foreground,
         ) { swipes, settings, counting, limit ->
-            if (!counting || swipes == null) return@combine null
-            PillSwipes(
-                sessionCount = swipes.count,
-                showCount = settings.showsSwipesFor(swipes.packageName),
-                remaining = limit?.takeIf { it.packageName == swipes.packageName && it.status.showRemaining }
+            // Null while the accessibility service isn't connected: the pill shows the fox and the
+            // time only, never a "0" that just means "not counting".
+            PillRules.swipes(
+                counting = counting,
+                session = swipes,
+                showCount = swipes != null && settings.showsSwipesFor(swipes.packageName),
+                remaining = limit?.takeIf { it.packageName == swipes?.packageName && it.status.showRemaining }
                     ?.status?.remaining,
             )
         }.collect { info ->

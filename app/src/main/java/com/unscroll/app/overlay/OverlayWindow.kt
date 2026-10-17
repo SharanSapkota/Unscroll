@@ -14,6 +14,7 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillPositioner
+import com.unscroll.app.domain.overlay.PillSwipes
 import com.unscroll.app.domain.overlay.ScreenBounds
 import com.unscroll.app.domain.fox.FoxSettings
 import com.unscroll.app.ui.fox.ProvideFoxSettings
@@ -166,7 +167,7 @@ internal class OverlayWindow(
 
     private companion object {
         const val DEFAULT_MARGIN_DP = 8
-        const val ESTIMATED_WIDTH_DP = 140
+        const val ESTIMATED_WIDTH_DP = 96
     }
 }
 
