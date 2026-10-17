@@ -109,7 +109,7 @@ class OverlayPreferences @Inject constructor(
             dangerAfterMinutes = this[DANGER_MINUTES] ?: ColorThresholds.DEFAULT_DANGER_MINUTES,
         ).normalized(),
         size = this[SIZE]?.let { name -> PillSize.entries.firstOrNull { it.name == name } }
-            ?: PillSize.MEDIUM,
+            ?: PillSize.SMALL,
         opacity = OverlaySettings.clampOpacity(this[OPACITY] ?: OverlaySettings.DEFAULT_OPACITY),
         showSwipes = this[SHOW_SWIPES] ?: true,
         swipeThresholds = SwipeColorThresholds(

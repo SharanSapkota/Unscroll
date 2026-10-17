@@ -28,6 +28,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -60,6 +62,7 @@ import com.unscroll.app.domain.onboarding.OnboardingStep
 import com.unscroll.app.domain.onboarding.PrimaryAction
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.ui.components.InfoButton
 import com.unscroll.app.ui.components.InfoSheet
 import com.unscroll.app.ui.components.PermissionRow
@@ -69,10 +72,14 @@ import com.unscroll.app.ui.components.TrustFooter
 import com.unscroll.app.ui.components.TrustPromise
 import com.unscroll.app.ui.components.TrustSheet
 import com.unscroll.app.ui.fox.FoxMascot
+import com.unscroll.app.ui.scroll.DisclosureBlock
+import com.unscroll.app.ui.scroll.RestrictedSettingHint
+import com.unscroll.app.ui.scroll.ScrollCountingViewModel
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
+import com.unscroll.app.util.openAccessibilitySettings
 import com.unscroll.app.util.openSettings
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -80,8 +87,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun OnboardingScreen(
     modifier: Modifier = Modifier,
     viewModel: OnboardingViewModel = hiltViewModel(),
+    scrollViewModel: ScrollCountingViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val scrollStatus by scrollViewModel.status.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val state = uiState ?: return
 
     BackHandler(enabled = state.canGoBack) { viewModel.onBack() }
@@ -92,10 +102,19 @@ fun OnboardingScreen(
         onPageChanged = viewModel::onPageChanged,
         onNotificationPermissionResult = viewModel::onPermissionResult,
         modifier = modifier,
+        scrollStatus = scrollStatus,
+        onEnableSwipes = {
+            // The page shows the disclosure text; "Enable" is the user's agreement.
+            scrollViewModel.agree()
+            context.openAccessibilitySettings()
+        },
     )
 }
 
-/** Two swipeable pages: welcome, then the permissions with a "Grant" button each. */
+/**
+ * Three swipeable pages: welcome, the permissions with a "Grant" button each, then the optional
+ * "Count your swipes" with the scroll-counting disclosure, "Enable" and "Skip".
+ */
 @Composable
 private fun OnboardingContent(
     state: OnboardingUiState,
@@ -103,6 +122,8 @@ private fun OnboardingContent(
     onPageChanged: (Int) -> Unit,
     onNotificationPermissionResult: () -> Unit,
     modifier: Modifier = Modifier,
+    scrollStatus: ScrollCountingStatus = ScrollCountingStatus.OFF,
+    onEnableSwipes: () -> Unit = {},
 ) {
     val pagerState = rememberPagerState(initialPage = state.page) { OnboardingStep.entries.size }
     // The view model owns the page: follow it, and report swipes back.
@@ -123,6 +144,7 @@ private fun OnboardingContent(
                 when (OnboardingStep.entries[page]) {
                     OnboardingStep.WELCOME -> WelcomePage()
                     OnboardingStep.PERMISSIONS -> PermissionsPage(state.permissions, onNotificationPermissionResult)
+                    OnboardingStep.SWIPES -> SwipesPage(scrollStatus, onEnableSwipes)
                 }
             }
             PageDots(current = state.page)
@@ -134,7 +156,14 @@ private fun OnboardingContent(
                     .padding(top = Dimens.spaceL),
             ) {
                 Text(
-                    text = stringResource(state.primaryAction.labelRes),
+                    text = stringResource(
+                        // The optional last page: "Skip" until swipe counting is on, then "Done".
+                        if (state.step == OnboardingStep.SWIPES && scrollStatus != ScrollCountingStatus.ACTIVE) {
+                            R.string.onboarding_swipes_skip
+                        } else {
+                            state.primaryAction.labelRes
+                        },
+                    ),
                     modifier = Modifier.padding(vertical = Dimens.spaceS),
                 )
             }
@@ -146,6 +175,7 @@ private fun OnboardingContent(
 private val PrimaryAction.labelRes: Int
     get() = when (this) {
         PrimaryAction.GET_STARTED -> R.string.onboarding_get_started
+        PrimaryAction.NEXT -> R.string.onboarding_next
         PrimaryAction.FINISH -> R.string.onboarding_done
     }
 
@@ -275,6 +305,81 @@ private fun PermissionsPage(permissions: PermissionState, onNotificationPermissi
     }
 }
 
+/**
+ * Optional: "Count your swipes". The scroll-counting disclosure (the same text as the Settings
+ * disclosure screen), "Enable" (agree, then the swipe counter's switch in Accessibility settings)
+ * and, in the bottom button, "Skip". When the user comes back without the switch on, Android 13+
+ * gets the "Allow restricted settings" help.
+ */
+@Composable
+private fun SwipesPage(status: ScrollCountingStatus, onEnable: () -> Unit) {
+    var restrictedSteps by rememberSaveable { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
+    ) {
+        Text(
+            text = stringResource(R.string.onboarding_swipes_title),
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(text = stringResource(R.string.scroll_disclosure_intro), style = MaterialTheme.typography.bodyLarge)
+        DisclosureBlock(
+            title = stringResource(R.string.scroll_disclosure_does_title),
+            body = stringResource(R.string.scroll_disclosure_does_body),
+        )
+        DisclosureBlock(
+            title = stringResource(R.string.scroll_disclosure_does_not_title),
+            body = stringResource(R.string.scroll_disclosure_does_not_body),
+            highlight = true,
+        )
+        DisclosureBlock(
+            title = stringResource(R.string.scroll_disclosure_optional_title),
+            body = stringResource(R.string.scroll_disclosure_optional_body),
+        )
+        when (status) {
+            ScrollCountingStatus.ACTIVE -> Text(
+                text = stringResource(R.string.onboarding_swipes_on),
+                style = MaterialTheme.typography.titleMedium,
+                color = UnscrollTheme.status.good,
+            )
+            ScrollCountingStatus.NEEDS_ENABLING -> {
+                Text(
+                    text = stringResource(R.string.onboarding_swipes_almost),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FilledTonalButton(onClick = onEnable, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.scroll_open_accessibility))
+                }
+                RestrictedSettingHint(status = status, onHelp = { restrictedSteps = true })
+            }
+            else -> {
+                Text(
+                    text = stringResource(R.string.scroll_disclosure_next),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FilledTonalButton(onClick = onEnable, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.onboarding_swipes_enable))
+                }
+            }
+        }
+    }
+    if (restrictedSteps) {
+        val steps = stringArrayResource(R.array.scroll_restricted_steps)
+        InfoSheet(
+            title = stringResource(R.string.scroll_restricted_title),
+            body = (listOf(stringResource(R.string.scroll_restricted_intro)) +
+                steps.mapIndexed { index, step -> stringResource(R.string.scroll_restricted_step, index + 1, step) } +
+                stringResource(R.string.scroll_restricted_note)).joinToString("\n\n"),
+            onDismiss = { restrictedSteps = false },
+        )
+    }
+}
+
 @get:StringRes
 private val DeviceManufacturer.hintRes: Int?
     get() = when (this) {
@@ -337,6 +442,20 @@ private fun OnboardingPermissionsPreview() {
             onContinue = {},
             onPageChanged = {},
             onNotificationPermissionResult = {},
+        )
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun OnboardingSwipesPreview() {
+    UnscrollTheme {
+        OnboardingContent(
+            state = OnboardingUiState(OnboardingStep.SWIPES, PermissionState.ALL),
+            onContinue = {},
+            onPageChanged = {},
+            onNotificationPermissionResult = {},
+            scrollStatus = ScrollCountingStatus.NEEDS_ENABLING,
         )
     }
 }

@@ -26,6 +26,20 @@ enum class ScrollCountingStatus {
     NEEDS_REENABLE,
 }
 
+/** Which swipe-counting banner Home shows, if any. */
+enum class SwipeBanner {
+    NONE,
+
+    /** Never enabled: "Turn on swipe counting" (dismissible for a week). */
+    SET_UP,
+
+    /** Switched on in Android without agreeing in Unscroll, so nothing is counted (dismissible). */
+    FINISH_CONSENT,
+
+    /** Was counting, then the phone switched it off (stays until fixed or turned off). */
+    NEEDS_REENABLE,
+}
+
 /** Everything that decides the [ScrollCountingStatus]. */
 data class ScrollCountingInputs(
     val consent: ScrollConsent,
@@ -55,6 +69,37 @@ object ScrollCountingRules {
             else -> ScrollCountingStatus.NEEDS_ENABLING
         }
     }
+
+    /** "Not now" on the set-up banner hides it this long. */
+    const val BANNER_SNOOZE_MILLIS = 7L * 24 * 60 * 60 * 1_000
+
+    /** Android 13: "Restricted setting" for apps installed outside an app store. */
+    const val RESTRICTED_SETTINGS_SDK = 33
+
+    /**
+     * Home's banner. [everEnabled]: the service connected at least once (swipe stats exist); a user
+     * who had it and turned it off on purpose isn't asked again, but one whose phone switched it
+     * off is ([ScrollCountingStatus.NEEDS_REENABLE]).
+     */
+    fun banner(status: ScrollCountingStatus, everEnabled: Boolean, dismissedAt: Long?, now: Long): SwipeBanner {
+        if (status == ScrollCountingStatus.NEEDS_REENABLE) return SwipeBanner.NEEDS_REENABLE
+        if (status == ScrollCountingStatus.ACTIVE) return SwipeBanner.NONE
+        val snoozed = dismissedAt != null && now - dismissedAt in 0 until BANNER_SNOOZE_MILLIS
+        return when {
+            snoozed -> SwipeBanner.NONE
+            status == ScrollCountingStatus.NEEDS_CONSENT -> SwipeBanner.FINISH_CONSENT
+            everEnabled -> SwipeBanner.NONE
+            else -> SwipeBanner.SET_UP
+        }
+    }
+
+    /**
+     * Show the "Allow restricted settings" help: the user agreed and was sent to Accessibility
+     * settings, came back, and the service still isn't on, on Android 13+ where sideloaded apps
+     * can't switch it on until restricted settings are allowed.
+     */
+    fun showRestrictedHelp(status: ScrollCountingStatus, sdkInt: Int): Boolean =
+        status == ScrollCountingStatus.NEEDS_ENABLING && sdkInt >= RESTRICTED_SETTINGS_SDK
 
     /** Swipes are only counted with consent, while the service runs. */
     fun shouldCount(consent: ScrollConsent, connected: Boolean): Boolean =

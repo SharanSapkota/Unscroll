@@ -3,19 +3,24 @@ package com.unscroll.app.ui.settings
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
 import com.unscroll.app.domain.goals.DailyGoal
+import com.unscroll.app.data.scroll.scrollServiceComponent
 import com.unscroll.app.domain.permission.HealthItem
+import com.unscroll.app.domain.permission.PermissionHealth
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.ui.components.ChipGroup
 import com.unscroll.app.ui.components.PermissionRow
@@ -25,12 +30,15 @@ import com.unscroll.app.ui.components.SettingSwitchRow
 import com.unscroll.app.ui.components.SettingsGroup
 import com.unscroll.app.ui.components.UnscrollSheet
 import com.unscroll.app.ui.components.shortMinutes
+import com.unscroll.app.ui.scroll.RestrictedSettingHint
 import com.unscroll.app.ui.scroll.ScrollCountingPanel
 import com.unscroll.app.ui.section.SectionBlockingPanel
 import com.unscroll.app.ui.section.SectionBlockingViewModel
 import com.unscroll.app.ui.section.sectionValueRes
+import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
+import com.unscroll.app.util.openAccessibilitySettings
 import com.unscroll.app.util.openSettings
 
 /** Settings › Tracking: the tracking switch, the daily goal, scroll counting and section blocking. */
@@ -147,24 +155,60 @@ private val ScrollCountingStatus.valueRes: Int
         ScrollCountingStatus.NEEDS_REENABLE -> R.string.scroll_value_reenable
     }
 
-/** The checklist behind "Fix 2 issues": each line with a one-tap button to the right system screen. */
+/**
+ * The checklist behind "Fix 2 issues": each line with a one-tap button to the right system screen.
+ * The accessibility line (swipe counting) is red "Off, tap to enable" or green "On"; its button
+ * shows the disclosure first while the user hasn't agreed in Unscroll.
+ */
 @Composable
-internal fun PermissionChecklistSheet(health: PermissionHealthState, onDismiss: () -> Unit) {
+internal fun PermissionChecklistSheet(
+    health: PermissionHealthState,
+    onDismiss: () -> Unit,
+    onAccessibilitySetUp: () -> Unit,
+    onRestrictedHelp: () -> Unit,
+) {
     val context = LocalContext.current
     UnscrollSheet(title = stringResource(R.string.settings_health_permissions), onDismiss = onDismiss) {
         SettingsGroup {
             health.checklist.forEachIndexed { index, (item, ok) ->
                 if (index > 0) RowDivider()
+                val accessibility = item == HealthItem.ACCESSIBILITY
                 PermissionRow(
                     title = stringResource(item.titleRes),
                     icon = item.iconRes,
-                    note = stringResource(item.noteRes),
+                    note = if (accessibility) {
+                        stringResource(if (ok) R.string.permission_accessibility_on else R.string.permission_accessibility_off)
+                    } else {
+                        stringResource(item.noteRes)
+                    },
+                    noteColor = when {
+                        !accessibility -> Color.Unspecified
+                        ok -> UnscrollTheme.status.good
+                        else -> UnscrollTheme.status.danger
+                    },
                     granted = ok,
-                    actionLabel = stringResource(R.string.action_fix),
-                    onGrant = { context.openSettings(item.intent(context)) },
+                    actionLabel = stringResource(if (accessibility) R.string.action_enable else R.string.action_fix),
+                    onGrant = {
+                        when {
+                            !accessibility -> context.openSettings(item.intent(context))
+                            PermissionHealth.accessibilityNeedsDisclosure(health.scrollConsent) -> {
+                                onDismiss()
+                                onAccessibilitySetUp()
+                            }
+                            else -> context.openAccessibilitySettings()
+                        }
+                    },
                 )
             }
         }
+        RestrictedSettingHint(
+            status = health.scrollStatus,
+            onHelp = {
+                onDismiss()
+                onRestrictedHelp()
+            },
+            modifier = Modifier.padding(top = Dimens.spaceS),
+        )
     }
 }
 
@@ -183,7 +227,7 @@ private val HealthItem.noteRes: Int
         HealthItem.OVERLAY -> R.string.permission_overlay_note
         HealthItem.NOTIFICATIONS -> R.string.permission_notifications_note
         HealthItem.BATTERY -> R.string.permission_battery_note
-        HealthItem.ACCESSIBILITY -> R.string.permission_accessibility_note
+        HealthItem.ACCESSIBILITY -> R.string.permission_accessibility_off
     }
 
 private val HealthItem.iconRes: Int
@@ -200,5 +244,5 @@ private fun HealthItem.intent(context: Context): Intent = when (this) {
     HealthItem.OVERLAY -> SystemSettings.overlay(context)
     HealthItem.NOTIFICATIONS -> SystemSettings.appNotifications(context)
     HealthItem.BATTERY -> SystemSettings.batteryOptimization()
-    HealthItem.ACCESSIBILITY -> SystemSettings.accessibility()
+    HealthItem.ACCESSIBILITY -> SystemSettings.accessibilityHighlighting(scrollServiceComponent(context))
 }

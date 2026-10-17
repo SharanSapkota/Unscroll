@@ -62,11 +62,19 @@ object Dimens {
     val pillFoxSmall = 22.dp
     val pillFoxMedium = 28.dp
     val pillFoxInset = 2.dp
-    val pillPaddingHSmall = 10.dp
-    val pillPaddingHMedium = 14.dp
-    val pillPaddingVSmall = 5.dp
-    val pillPaddingVMedium = 7.dp
-    val pillShadow = 6.dp
+    val pillHeightSmall = 28.dp
+    val pillHeightMedium = 34.dp
+    val pillPaddingHSmall = 8.dp
+    val pillPaddingHMedium = 10.dp
+    val pillGap = 4.dp
+    val pillIconSmall = 16.dp
+    val pillIconMedium = 20.dp
+    val pillSwipeIconSmall = 12.dp
+    val pillSwipeIconMedium = 14.dp
+    /** The level dot in place of the fox when the fox is switched off. */
+    val pillLevelDot = 8.dp
+    val pillBorder = 1.5.dp
+    val pillShadow = 4.dp
     val pillMessageMaxWidth = 280.dp
     val pillPreviewHeight = 72.dp
 

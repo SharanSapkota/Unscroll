@@ -23,6 +23,7 @@ import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.R
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.SystemSettings
+import com.unscroll.app.util.openAccessibilitySettings
 import com.unscroll.app.util.openSettings
 
 /**
@@ -67,7 +68,7 @@ fun RestrictedSettingHelpScreen(onBack: () -> Unit) {
             Text(stringResource(R.string.scroll_open_app_info))
         }
         OutlinedButton(
-            onClick = { context.openSettings(SystemSettings.accessibility()) },
+            onClick = { context.openAccessibilitySettings() },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(stringResource(R.string.scroll_open_accessibility))

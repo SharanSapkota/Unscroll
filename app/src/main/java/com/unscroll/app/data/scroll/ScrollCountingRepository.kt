@@ -1,16 +1,22 @@
 package com.unscroll.app.data.scroll
 
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Context
 import android.os.Process
 import android.os.SystemClock
 import android.provider.Settings
+import android.util.Log
+import android.view.accessibility.AccessibilityManager
+import com.unscroll.app.data.plus.DebugBuild
 import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingInputs
 import com.unscroll.app.domain.scroll.ScrollCountingRules
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
+import com.unscroll.app.domain.scroll.SwipeDebugFormat
+import com.unscroll.app.domain.scroll.SwipeDebugInfo
 import com.unscroll.app.domain.time.Clock
-import com.unscroll.app.service.ScrollAccessibilityService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,6 +48,7 @@ class ScrollCountingRepository @Inject constructor(
     private val preferences: ScrollCountingPreferences,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
+    @DebugBuild private val debugBuild: Boolean,
 ) {
     private val _connected = MutableStateFlow(false)
 
@@ -49,6 +56,9 @@ class ScrollCountingRepository @Inject constructor(
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
     private val enabledInSettings = MutableStateFlow(checkEnabledInSettings())
+
+    /** The swipe counter is switched on in Accessibility settings (as of the last [refresh]). */
+    val serviceEnabled: StateFlow<Boolean> = enabledInSettings.asStateFlow()
 
     private val _turnOffRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -99,6 +109,24 @@ class ScrollCountingRepository @Inject constructor(
     /** First time counting was switched on, or null if it never was (dashboard cards stay hidden). */
     val countingSince: Flow<Long?> = preferences.record.map { it.countingSince }.distinctUntilChanged()
 
+    /** Debug builds: the service reports every event ([reportDebug]); release builds skip it. */
+    val debugEnabled: Boolean = debugBuild
+
+    private val _debugInfo = MutableStateFlow(SwipeDebugInfo())
+
+    /** Debug builds only: the last event the service handled (stays empty in release builds). */
+    val debugInfo: StateFlow<SwipeDebugInfo> = _debugInfo.asStateFlow()
+
+    /**
+     * Debug builds only: records the last event and logs it (tag SwipeDebug): connected, event type,
+     * package, outcome and the session's swipe count. Release builds do and log nothing.
+     */
+    fun reportDebug(info: SwipeDebugInfo) {
+        if (!debugEnabled) return
+        _debugInfo.value = info
+        Log.d(DEBUG_TAG, SwipeDebugFormat.line(_connected.value, info))
+    }
+
     /** Accessibility settings give no callback; call this whenever the app comes back. */
     fun refresh() {
         enabledInSettings.value = checkEnabledInSettings()
@@ -106,6 +134,11 @@ class ScrollCountingRepository @Inject constructor(
 
     suspend fun setConsent(consent: ScrollConsent) {
         preferences.setConsent(consent, clock.now())
+    }
+
+    /** "Not now" on Home's "Turn on swipe counting" banner. */
+    suspend fun dismissSetupBanner() {
+        preferences.dismissSetupBanner(clock.now())
     }
 
     /** "Turn off": withdraws consent and asks the running service to switch itself off. */
@@ -125,14 +158,35 @@ class ScrollCountingRepository @Inject constructor(
         refresh()
     }
 
-    private fun checkEnabledInSettings(): Boolean = ScrollCountingRules.isServiceEnabled(
-        enabledServices = Settings.Secure.getString(
+    /**
+     * Switched on in Accessibility settings: the secure setting lists our component, or (some OEM
+     * builds are late to write the setting) AccessibilityManager reports it enabled. The component
+     * is always built from context.packageName ([scrollServiceComponent]).
+     */
+    private fun checkEnabledInSettings(): Boolean {
+        val component = scrollServiceComponent(context)
+        val enabledServices = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
-        ),
-        packageName = context.packageName,
-        className = ScrollAccessibilityService::class.java.name,
-    )
+        )
+        return isAccessibilityServiceEnabled(enabledServices, component) || enabledInAccessibilityManager(component)
+    }
+
+    private fun enabledInAccessibilityManager(component: ComponentName): Boolean = try {
+        context.getSystemService(AccessibilityManager::class.java)
+            ?.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .orEmpty()
+            .any { info ->
+                val service = info.resolveInfo?.serviceInfo
+                service != null && service.packageName == component.packageName && service.name == component.className
+            }
+    } catch (e: RuntimeException) {
+        false
+    }
+
+    private companion object {
+        const val DEBUG_TAG = "SwipeDebug"
+    }
 
     private fun sinceProcessStart(): Long = SystemClock.elapsedRealtime() - Process.getStartElapsedRealtime()
 }

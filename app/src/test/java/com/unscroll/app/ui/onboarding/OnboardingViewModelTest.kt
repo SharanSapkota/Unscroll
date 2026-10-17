@@ -77,7 +77,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun permissionsPage_blocksUntilRequiredGranted_thenFinishes() = runTest {
+    fun permissionsPage_blocksUntilRequiredGranted_thenOptionalSwipesPage_thenFinishes() = runTest {
         val viewModel = createViewModel()
         viewModel.onContinue()
         assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
@@ -88,6 +88,13 @@ class OnboardingViewModelTest {
         assertFalse(onboardingRepository.completed.value)
 
         grant(REQUIRED_ONLY)
+        assertTrue(viewModel.uiState.value!!.canContinue)
+        assertEquals(PrimaryAction.NEXT, viewModel.uiState.value?.primaryAction)
+        viewModel.onContinue()
+        assertEquals(OnboardingStep.SWIPES, viewModel.step())
+        assertFalse(onboardingRepository.completed.value)
+
+        // "Skip" (or "Done"): swipe counting is optional.
         assertTrue(viewModel.uiState.value!!.canContinue)
         viewModel.onContinue()
         assertTrue(onboardingRepository.completed.value)
@@ -104,8 +111,10 @@ class OnboardingViewModelTest {
 
         viewModel.onPageChanged(1)
         assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
+        viewModel.onPageChanged(2)
+        assertEquals(OnboardingStep.SWIPES, viewModel.step())
         viewModel.onPageChanged(5)
-        assertEquals(OnboardingStep.PERMISSIONS, viewModel.step())
+        assertEquals(OnboardingStep.SWIPES, viewModel.step())
     }
 
     @Test

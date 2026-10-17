@@ -1,6 +1,7 @@
 package com.unscroll.app.domain.onboarding
 
 import com.unscroll.app.domain.onboarding.OnboardingStep.PERMISSIONS
+import com.unscroll.app.domain.onboarding.OnboardingStep.SWIPES
 import com.unscroll.app.domain.onboarding.OnboardingStep.WELCOME
 import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
@@ -17,9 +18,9 @@ class OnboardingFlowTest {
     private val usageOnly = PermissionState(setOf(AppPermission.USAGE_ACCESS))
 
     @Test
-    fun twoPages_welcomeThenPermissions() {
-        assertEquals(listOf(WELCOME, PERMISSIONS), OnboardingStep.entries)
-        assertEquals(2, OnboardingFlow.stepCount)
+    fun threePages_welcomePermissionsThenSwipes() {
+        assertEquals(listOf(WELCOME, PERMISSIONS, SWIPES), OnboardingStep.entries)
+        assertEquals(3, OnboardingFlow.stepCount)
     }
 
     @Test
@@ -43,17 +44,28 @@ class OnboardingFlowTest {
     }
 
     @Test
-    fun advance_welcomeGoesToPermissions_permissionsFinishOnlyWhenRequiredGranted() {
+    fun swipesPage_isOptional_butCanOnlyFinishWithTheRequiredPermissions() {
+        // Swipe counting never blocks; the required permissions still do (the page can be swiped to early).
+        assertTrue(OnboardingFlow.canContinue(SWIPES, requiredOnly))
+        assertFalse(OnboardingFlow.canContinue(SWIPES, usageOnly))
+        assertEquals(OnboardingAdvance.Finish, OnboardingFlow.advance(SWIPES, requiredOnly))
+        assertEquals(OnboardingAdvance.ToStep(PERMISSIONS), OnboardingFlow.advance(SWIPES, usageOnly))
+    }
+
+    @Test
+    fun advance_welcomeGoesToPermissions_permissionsGoToSwipesOnlyWhenRequiredGranted() {
         assertEquals(OnboardingAdvance.ToStep(PERMISSIONS), OnboardingFlow.advance(WELCOME, none))
         assertEquals(OnboardingAdvance.ToStep(PERMISSIONS), OnboardingFlow.advance(PERMISSIONS, usageOnly))
-        assertEquals(OnboardingAdvance.Finish, OnboardingFlow.advance(PERMISSIONS, requiredOnly))
+        assertEquals(OnboardingAdvance.ToStep(SWIPES), OnboardingFlow.advance(PERMISSIONS, requiredOnly))
     }
 
     @Test
     fun previous_andPrimaryAction() {
         assertNull(OnboardingFlow.previous(WELCOME))
         assertEquals(WELCOME, OnboardingFlow.previous(PERMISSIONS))
+        assertEquals(PERMISSIONS, OnboardingFlow.previous(SWIPES))
         assertEquals(PrimaryAction.GET_STARTED, OnboardingFlow.primaryAction(WELCOME))
-        assertEquals(PrimaryAction.FINISH, OnboardingFlow.primaryAction(PERMISSIONS))
+        assertEquals(PrimaryAction.NEXT, OnboardingFlow.primaryAction(PERMISSIONS))
+        assertEquals(PrimaryAction.FINISH, OnboardingFlow.primaryAction(SWIPES))
     }
 }

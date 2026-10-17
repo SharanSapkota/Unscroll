@@ -1,6 +1,9 @@
 package com.unscroll.app.service
 
+import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.plus.TrackedAppsState
+import com.unscroll.app.domain.scroll.ScrollPosition
+import com.unscroll.app.domain.scroll.SwipeDetector
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
@@ -342,6 +345,31 @@ class SessionManagerTest {
         assertEquals(3, manager.swipes.value?.count)
         assertEquals(1L, manager.swipes.value?.sessionId)
         assertEquals(3, store.sessions.single().scrollCount)
+    }
+
+    @Test
+    fun pagerScrollEvents_throughTheDetector_reachTheSession_thePillAndTheDatabase() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        // The accessibility service's path: scroll events -> SwipeDetector -> onSwipe.
+        val swipeDetector = SwipeDetector(Clock { testScheduler.currentTime }, isCounted = { it == INSTAGRAM })
+        var t = 1_000L
+        repeat(3) { page ->
+            // Three quick Reels swipes with no pause: two pages while moving, then it lands.
+            listOf(ScrollPosition(page, page + 1), ScrollPosition(page + 1, page + 1)).forEach { position ->
+                advanceTo(t)
+                if (swipeDetector.onScrollEvent(INSTAGRAM, screenOn = true, position)) swipe(INSTAGRAM)
+                t += 150
+            }
+        }
+
+        // One StateFlow for the pill, the same count in the session row Home reads.
+        assertEquals(3, manager.swipes.value?.count)
+        assertEquals(3, store.sessions.single().scrollCount)
+        val pill = PillRules.swipes(counting = true, session = manager.swipes.value, showCount = true, remaining = null)
+        assertEquals(3, PillRules.shownSwipes(pill, todaySwipes = pill!!.sessionCount))
+        // Service off: same session, but the pill shows no swipes.
+        assertNull(PillRules.swipes(counting = false, session = manager.swipes.value, showCount = true, remaining = null))
     }
 
     @Test

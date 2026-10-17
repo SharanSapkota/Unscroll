@@ -1,6 +1,7 @@
 package com.unscroll.app.service
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.os.PowerManager
 import android.util.Log
@@ -8,6 +9,9 @@ import android.view.accessibility.AccessibilityEvent
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.scroll.ScrollConsent
+import com.unscroll.app.domain.scroll.ScrollPosition
+import com.unscroll.app.domain.scroll.SwipeDebugInfo
+import com.unscroll.app.domain.scroll.SwipeDebugOutcome
 import com.unscroll.app.domain.scroll.SwipeDetector
 import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.AndroidEntryPoint
@@ -24,9 +28,14 @@ import kotlinx.coroutines.launch
  * Optional, opt-in scroll counting (M7). Turned on by the user in Accessibility settings, only
  * after agreeing on the in-app disclosure screen; without that agreement every event is ignored.
  *
- * Privacy: the service only ever looks at an event's type and package name.
+ * Privacy: the service only ever looks at an event's type, package name and, for scroll events,
+ * the numeric position values (fromIndex/toIndex, see [ScrollPosition]).
  * - canRetrieveWindowContent is false in accessibility_service_config.xml, so Android does not
  *   even hand this service the screen's text or view hierarchy.
+ * - flagIncludeNotImportantViews: full-screen video pagers (Reels, TikTok, Shorts) mark their
+ *   scrolling view "not important for accessibility", and Android drops such views' events for
+ *   services without this flag, so swipes there were never seen. The flag changes which events
+ *   arrive, not what they contain.
  * - It is limited to TYPE_VIEW_SCROLLED and TYPE_WINDOW_STATE_CHANGED events, and to the tracked
  *   apps: the XML config lists the default apps, and the list is replaced from
  *   TrackedAppsRepository when the service connects and every time the user adds, removes or
@@ -97,6 +106,8 @@ class ScrollAccessibilityService : AccessibilityService() {
     private fun updateMonitoredPackages(packages: Set<String>) {
         val info = serviceInfo ?: return
         info.packageNames = packages.ifEmpty { setOf(packageName) }.toTypedArray()
+        // Also set in the XML; kept here so an OEM that rebuilds the info can't drop it.
+        info.flags = info.flags or AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
         try {
             serviceInfo = info
         } catch (e: RuntimeException) {
@@ -105,23 +116,47 @@ class ScrollAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || !consented || !::detector.isInitialized) return
-        // Only the type and the package name are read. Untracked apps are dropped at once.
+        if (event == null || !::detector.isInitialized) return
+        // Only the type, the package name and (for scrolls) the position numbers are read.
         val packageName = event.packageName?.toString()
-        if (packageName == null || packageName !in monitored) return
-        when (event.eventType) {
+        val eventType = event.eventType
+        if (!consented) return debug(eventType, packageName, SwipeDebugOutcome.NO_CONSENT)
+        // Untracked apps are dropped at once.
+        if (packageName == null || packageName !in monitored) return debug(eventType, packageName, SwipeDebugOutcome.UNTRACKED)
+        when (eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 detector.reset()
                 // A tracked app came up: cover it at once if its swipe limit is already used up.
                 swipeLimitEnforcer.onAppWindow(packageName)
+                debug(eventType, packageName, SwipeDebugOutcome.WINDOW)
             }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 val screenOn = powerManager?.isInteractive ?: true
-                if (detector.onScrollEvent(packageName, screenOn)) {
-                    scope?.launch { sessionManager.onSwipe(packageName) }
+                val position = ScrollPosition(fromIndex = event.fromIndex, toIndex = event.toIndex)
+                val newSwipe = detector.onScrollEvent(packageName, screenOn, position)
+                when {
+                    newSwipe -> scope?.launch {
+                        val added = sessionManager.onSwipe(packageName)
+                        debug(eventType, packageName, if (added) SwipeDebugOutcome.COUNTED else SwipeDebugOutcome.NO_SESSION)
+                    }
+                    packageName in counted && screenOn -> debug(eventType, packageName, SwipeDebugOutcome.SAME_SWIPE)
+                    else -> debug(eventType, packageName, SwipeDebugOutcome.NOT_COUNTED)
                 }
             }
         }
+    }
+
+    /** Debug builds only (the repository ignores it otherwise): the SwipeDebug line and log. */
+    private fun debug(eventType: Int, packageName: String?, outcome: SwipeDebugOutcome) {
+        if (!repository.debugEnabled) return
+        repository.reportDebug(
+            SwipeDebugInfo(
+                lastEventType = AccessibilityEvent.eventTypeToString(eventType),
+                packageName = packageName,
+                outcome = outcome,
+                sessionSwipes = sessionManager.swipes.value?.takeIf { it.packageName == packageName }?.count,
+            ),
+        )
     }
 
     override fun onInterrupt() = Unit
