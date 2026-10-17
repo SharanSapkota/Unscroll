@@ -42,6 +42,38 @@ class SectionPrivacyGuardTest {
         assertEquals("Content accessors on the section detection path", emptyList<String>(), offenders)
     }
 
+    /**
+     * What "Copy diagnostics" can share, and the log lines it includes: the same rule. Detector
+     * state there is the verdict and rule IDs (ReelsDebugFormat), never anything read from a screen.
+     */
+    private val diagnosticsPath: List<File> = listOf(
+        File(sources, "domain/diagnostics/Diagnostics.kt"),
+        File(sources, "data/diagnostics/DiagnosticsRepository.kt"),
+        File(sources, "util/AppLog.kt"),
+        File(sources, "overlay/OverlayCoordinator.kt"),
+    )
+
+    @Test
+    fun diagnosticsPath_neverReadsContent() {
+        assertTrue("diagnostics path not found", diagnosticsPath.all { it.exists() })
+        val offenders = diagnosticsPath.flatMap { file ->
+            file.readLines().mapIndexedNotNull { index, line ->
+                val code = line.substringBefore("//")
+                FORBIDDEN.firstOrNull { it.containsMatchIn(code) && !isComment(code) }
+                    ?.let { "${file.name}:${index + 1}: $line" }
+            }
+        }
+        assertEquals("Content accessors on the diagnostics path", emptyList<String>(), offenders)
+    }
+
+    @Test
+    fun swipeCounter_neverAsksForOtherWindows() {
+        // Screen checks only look at the active window of Instagram/TikTok, never the window list.
+        val config = File(root, "app/src/main/res/xml/accessibility_service_config.xml").readText()
+        assertTrue(config.contains("flagReportViewIds"))
+        assertTrue(!Regex("""android:accessibilityFlags="[^"]*flagRetrieveInteractiveWindows""").containsMatchIn(config))
+    }
+
     @Test
     fun onlyTheSnapshotTouchesAccessibilityNodeInfo() {
         val users = sources.walkTopDown()
