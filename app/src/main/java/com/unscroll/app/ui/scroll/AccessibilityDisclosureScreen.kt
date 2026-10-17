@@ -25,8 +25,7 @@ import com.unscroll.app.ui.theme.Dimens
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.unscroll.app.R
 import com.unscroll.app.ui.theme.UnscrollTheme
-import com.unscroll.app.util.SystemSettings
-import com.unscroll.app.util.openSettings
+import com.unscroll.app.util.openAccessibilitySettings
 
 /**
  * The prominent disclosure for the accessibility service, shown before the user is ever sent to
@@ -42,7 +41,7 @@ fun AccessibilityDisclosureScreen(
     AccessibilityDisclosureContent(
         onAgree = {
             viewModel.agree()
-            context.openSettings(SystemSettings.accessibility())
+            context.openAccessibilitySettings()
             onFinished()
         },
         onDecline = {

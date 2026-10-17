@@ -91,6 +91,80 @@ class SwipeDetectorTest {
         assertEquals(0, swipes(5_000, packageName = "com.example.notcounted"))
     }
 
+    // --- Full-screen video pagers (Reels, TikTok, Shorts) ---------------------------------------
+
+    /** One scroll event at [time] whose view shows items [from]..[to]. */
+    private fun pager(time: Long, from: Int, to: Int = from): Boolean {
+        now = time
+        return detector.onScrollEvent(INSTAGRAM, screenOn = true, ScrollPosition(from, to))
+    }
+
+    @Test
+    fun pagerSwipe_isOneSwipe_whileTwoPagesShowAndWhenItLands() {
+        // Page 5 -> 6: two pages on screen while it moves, then it lands on 6.
+        val results = listOf(pager(1_000, 5, 6), pager(1_100, 5, 6), pager(1_200, 5, 6), pager(1_300, 6))
+        assertEquals(listOf(true, false, false, false), results)
+    }
+
+    @Test
+    fun quickPagerSwipesWithoutAPause_countEachPage() {
+        // Swiping again the moment each video lands: no 300 ms gap between the events at all.
+        var count = 0
+        var t = 1_000L
+        for (page in 5 until 9) {
+            if (pager(t, page, page + 1)) count++
+            t += 100
+            if (pager(t, page, page + 1)) count++
+            t += 100
+            if (pager(t, page + 1)) count++
+            t += 100
+        }
+        assertEquals(4, count)
+    }
+
+    @Test
+    fun pagerSwipingBack_countsToo() {
+        var count = 0
+        if (pager(1_000, 5, 6)) count++
+        if (pager(1_100, 6)) count++
+        if (pager(1_200, 5, 6)) count++
+        if (pager(1_300, 5)) count++
+        assertEquals(2, count)
+    }
+
+    @Test
+    fun snappingBackToTheSamePage_isOneSwipe() {
+        assertEquals(listOf(true, false, false), listOf(pager(1_000, 5, 6), pager(1_100, 5, 6), pager(1_200, 5)))
+    }
+
+    @Test
+    fun pagerThatRestsAndScrollsInPlace_doesNotCountAgain() {
+        // Events while resting on one page (e.g. the view re-reports its position) aren't swipes.
+        assertEquals(listOf(true, false, false, false), listOf(pager(1_000, 5, 6), pager(1_100, 6), pager(1_200, 6), pager(1_300, 6)))
+    }
+
+    @Test
+    fun listsShowingSeveralItems_onlyUseTheGap() {
+        // A feed: several items on screen, indexes move during one fling, still one swipe.
+        val results = listOf(pager(1_000, 3, 5), pager(1_100, 4, 6), pager(1_200, 5, 7), pager(1_300, 6, 8))
+        assertEquals(listOf(true, false, false, false), results)
+    }
+
+    @Test
+    fun viewsWithoutPositions_onlyUseTheGap() {
+        assertEquals(null, ScrollPosition.UNKNOWN.settledPage)
+        assertEquals(1, swipes(1_000, 1_100, 1_200))
+    }
+
+    @Test
+    fun windowChange_forgetsThePage() {
+        pager(1_000, 5, 6)
+        pager(1_100, 6)
+        detector.reset()
+        // New window: the first event is a new swipe, its landing page doesn't count twice.
+        assertEquals(listOf(true, false), listOf(pager(1_200, 0, 1), pager(1_300, 1)))
+    }
+
     private companion object {
         const val ANY_APP = "com.example.anyapp"
     }

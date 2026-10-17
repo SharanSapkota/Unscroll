@@ -60,11 +60,9 @@ val Typography = Typography(
 
 /** Text sizes for the floating pill, which is drawn outside the app's theme scale on purpose. */
 object PillType {
-    val appNameSmall = 11.sp
-    val appNameMedium = 12.sp
-    val timeSmall = 14.sp
-    val timeMedium = 17.sp
-    val detailSmall = 10.sp
-    val detailMedium = 11.sp
+    val timeSmall = 12.sp
+    val timeMedium = 14.sp
+    val detailSmall = 11.sp
+    val detailMedium = 13.sp
     val message = 14.sp
 }

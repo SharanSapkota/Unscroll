@@ -9,7 +9,8 @@ data class OverlaySettings(
     val showSessionTime: Boolean = false,
     /** Colors by today's total in an app without a daily limit (with one: 60 % and 100 % of it). */
     val thresholds: ColorThresholds = ColorThresholds(),
-    val size: PillSize = PillSize.MEDIUM,
+    /** Small (28 dp high) by default. */
+    val size: PillSize = PillSize.SMALL,
     /** 0.4 (faint) to 1.0 (solid). */
     val opacity: Float = DEFAULT_OPACITY,
     /** Show today's swipe count for the app next to the timer while scroll counting is on (M7). */

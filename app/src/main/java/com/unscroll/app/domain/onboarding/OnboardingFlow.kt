@@ -9,9 +9,9 @@ sealed interface OnboardingAdvance {
 }
 
 /** The label the primary button shows on a page. */
-enum class PrimaryAction { GET_STARTED, FINISH }
+enum class PrimaryAction { GET_STARTED, NEXT, FINISH }
 
-/** Pure navigation rules for the two-page onboarding. */
+/** Pure navigation rules for the onboarding: welcome, permissions, then optional swipe counting. */
 object OnboardingFlow {
 
     private val steps = OnboardingStep.entries
@@ -25,20 +25,26 @@ object OnboardingFlow {
     fun startStep(onboardingCompleted: Boolean, permissions: PermissionState): OnboardingStep =
         if (onboardingCompleted && !permissions.requiredGranted) OnboardingStep.PERMISSIONS else OnboardingStep.WELCOME
 
-    /** The permissions page blocks until both required permissions are granted. */
+    /**
+     * The permissions page blocks until both required permissions are granted, and so does the
+     * last page (swiped to early): onboarding can only finish with them. Swipe counting never
+     * blocks.
+     */
     fun canContinue(step: OnboardingStep, permissions: PermissionState): Boolean =
-        step != OnboardingStep.PERMISSIONS || permissions.requiredGranted
+        step == OnboardingStep.WELCOME || permissions.requiredGranted
 
     fun previous(step: OnboardingStep): OnboardingStep? = steps.getOrNull(step.ordinal - 1)
 
     fun advance(step: OnboardingStep, permissions: PermissionState): OnboardingAdvance = when {
         step == OnboardingStep.WELCOME -> OnboardingAdvance.ToStep(OnboardingStep.PERMISSIONS)
-        permissions.requiredGranted -> OnboardingAdvance.Finish
-        else -> OnboardingAdvance.ToStep(OnboardingStep.PERMISSIONS)
+        !permissions.requiredGranted -> OnboardingAdvance.ToStep(OnboardingStep.PERMISSIONS)
+        step == OnboardingStep.PERMISSIONS -> OnboardingAdvance.ToStep(OnboardingStep.SWIPES)
+        else -> OnboardingAdvance.Finish
     }
 
     fun primaryAction(step: OnboardingStep): PrimaryAction = when (step) {
         OnboardingStep.WELCOME -> PrimaryAction.GET_STARTED
-        OnboardingStep.PERMISSIONS -> PrimaryAction.FINISH
+        OnboardingStep.PERMISSIONS -> PrimaryAction.NEXT
+        OnboardingStep.SWIPES -> PrimaryAction.FINISH
     }
 }

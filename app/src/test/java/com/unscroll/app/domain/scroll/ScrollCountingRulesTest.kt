@@ -93,4 +93,64 @@ class ScrollCountingRulesTest {
         assertFalse(ScrollCountingRules.isServiceEnabled("com.unscroll.app/$cls", pkg, cls))
         assertFalse(ScrollCountingRules.isServiceEnabled("$pkg/.service.ScrollAccessibilityService", pkg, cls))
     }
+
+    // --- Home banner and restricted-setting help ------------------------------------------------
+
+    private val day = 24 * 60 * 60 * 1_000L
+
+    @Test
+    fun banner_neverEnabled_asksToSetUp() {
+        assertEquals(SwipeBanner.SET_UP, ScrollCountingRules.banner(ScrollCountingStatus.OFF, everEnabled = false, dismissedAt = null, now = 0))
+        // Agreed but not switched on yet: still "Turn on" (the button then opens Accessibility settings).
+        assertEquals(
+            SwipeBanner.SET_UP,
+            ScrollCountingRules.banner(ScrollCountingStatus.NEEDS_ENABLING, everEnabled = false, dismissedAt = null, now = 0),
+        )
+    }
+
+    @Test
+    fun banner_dismissed_staysHiddenForSevenDays() {
+        val dismissed = 10 * day
+        assertEquals(SwipeBanner.NONE, ScrollCountingRules.banner(ScrollCountingStatus.OFF, false, dismissed, dismissed + 6 * day))
+        assertEquals(SwipeBanner.NONE, ScrollCountingRules.banner(ScrollCountingStatus.OFF, false, dismissed, dismissed + 7 * day - 1))
+        assertEquals(SwipeBanner.SET_UP, ScrollCountingRules.banner(ScrollCountingStatus.OFF, false, dismissed, dismissed + 7 * day))
+    }
+
+    @Test
+    fun banner_activeOrEnabledBefore_showsNothing_unlessThePhoneSwitchedItOff() {
+        assertEquals(SwipeBanner.NONE, ScrollCountingRules.banner(ScrollCountingStatus.ACTIVE, false, null, 0))
+        // Had it, turned it off on purpose: not asked again.
+        assertEquals(SwipeBanner.NONE, ScrollCountingRules.banner(ScrollCountingStatus.OFF, true, null, 0))
+        // Had it, the phone switched it off: always shown, even if the set-up banner was dismissed.
+        assertEquals(SwipeBanner.NEEDS_REENABLE, ScrollCountingRules.banner(ScrollCountingStatus.NEEDS_REENABLE, true, 0, 1))
+    }
+
+    @Test
+    fun banner_onInAndroidWithoutConsent_asksToFinishSetUp() {
+        assertEquals(SwipeBanner.FINISH_CONSENT, ScrollCountingRules.banner(ScrollCountingStatus.NEEDS_CONSENT, false, null, 0))
+        assertEquals(SwipeBanner.FINISH_CONSENT, ScrollCountingRules.banner(ScrollCountingStatus.NEEDS_CONSENT, true, null, 0))
+        assertEquals(SwipeBanner.NONE, ScrollCountingRules.banner(ScrollCountingStatus.NEEDS_CONSENT, false, 0, day))
+    }
+
+    @Test
+    fun restrictedHelp_onlyAfterAgreeing_withoutTheService_onAndroid13Plus() {
+        assertTrue(ScrollCountingRules.showRestrictedHelp(ScrollCountingStatus.NEEDS_ENABLING, sdkInt = 33))
+        assertTrue(ScrollCountingRules.showRestrictedHelp(ScrollCountingStatus.NEEDS_ENABLING, sdkInt = 36))
+        assertFalse(ScrollCountingRules.showRestrictedHelp(ScrollCountingStatus.NEEDS_ENABLING, sdkInt = 32))
+        ScrollCountingStatus.entries.filter { it != ScrollCountingStatus.NEEDS_ENABLING }.forEach {
+            assertFalse(it.name, ScrollCountingRules.showRestrictedHelp(it, sdkInt = 36))
+        }
+    }
+
+    @Test
+    fun swipeDebugLine_hasTheConnectionTheEventThePackageAndTheCount() {
+        assertEquals(
+            "connected yes · TYPE_VIEW_SCROLLED · com.instagram.android · counted · 86 swipes",
+            SwipeDebugFormat.line(
+                connected = true,
+                info = SwipeDebugInfo("TYPE_VIEW_SCROLLED", "com.instagram.android", SwipeDebugOutcome.COUNTED, 86),
+            ),
+        )
+        assertEquals("connected no · no event yet · no session", SwipeDebugFormat.line(false, SwipeDebugInfo()))
+    }
 }

@@ -1,5 +1,6 @@
 package com.unscroll.app.domain.overlay
 
+import com.unscroll.app.domain.session.SessionSwipes
 import java.util.Locale
 
 enum class PillLevel { CALM, WARNING, DANGER }
@@ -16,6 +17,19 @@ object PillRules {
         settings: OverlaySettings,
         canDrawOverlays: Boolean,
     ): Boolean = foregroundPackage != null && settings.showsPillFor(foregroundPackage) && canDrawOverlays
+
+    /**
+     * Swipe info for the pill, or null when the pill shows only the fox and the time. Swipes only
+     * appear while scroll counting really runs ([counting]: consent given and the accessibility
+     * service connected), so the pill never shows a "0" that only means "not counting".
+     */
+    fun swipes(counting: Boolean, session: SessionSwipes?, showCount: Boolean, remaining: Int?): PillSwipes? {
+        if (!counting || session == null) return null
+        return PillSwipes(sessionCount = session.count, showCount = showCount, remaining = remaining)
+    }
+
+    /** The number next to the swipe icon (today's swipes in the app), or null to hide icon and number. */
+    fun shownSwipes(swipes: PillSwipes?, todaySwipes: Int): Int? = swipes?.takeIf { it.showCount }?.let { todaySwipes }
 
     /** With a daily limit: yellow from this share of it, red at 100 %. */
     const val LIMIT_WARNING_PERCENT = 60

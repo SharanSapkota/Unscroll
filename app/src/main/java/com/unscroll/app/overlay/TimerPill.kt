@@ -3,14 +3,17 @@ package com.unscroll.app.overlay
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -36,19 +41,21 @@ import com.unscroll.app.ui.theme.PillType
 
 /** Everything the pill needs to draw one frame. */
 data class TimerPillState(
-    val appName: String,
     /** Today's total in the app, already formatted ("47:12"). */
     val elapsedText: String,
-    /** This visit's time ("this visit 3:05"), or null to hide it. */
+    /** This visit's time ("3:05"), or null to hide it ("Show session time", off by default). */
     val visitText: String?,
     val level: PillLevel,
     val size: PillSize,
     val opacity: Float,
     val collapsed: Boolean,
-    /** "86 swipes", already formatted, or null to hide. Shown right after the time. */
-    val swipesText: String? = null,
-    /** "12 swipes left" near a swipe limit, or null. */
-    val remainingText: String? = null,
+    /**
+     * Today's swipes in the app, or null to hide the swipe icon and number: while scroll counting
+     * isn't running (never a "0" that only means "not counting") or the count is switched off.
+     */
+    val swipes: Int? = null,
+    /** Swipes left near a swipe limit; shown instead of [swipes] ("12 left"). */
+    val swipesLeft: Int? = null,
 )
 
 /** Fixed traffic-light colors from the theme: they must read the same over any app, light or dark. */
@@ -58,23 +65,26 @@ private fun PillLevel.background(): Color = when (this) {
     PillLevel.DANGER -> PillColors.danger
 }
 
-/** The collapsed pill's fox follows the pill's own level. */
+/** The level as a tint on the dark capsule (border, swipe icon, and the time once it isn't calm). */
+private fun PillLevel.tint(): Color = when (this) {
+    PillLevel.CALM -> PillColors.calmTint
+    PillLevel.WARNING -> PillColors.warningTint
+    PillLevel.DANGER -> PillColors.dangerTint
+}
+
+/** The pill's fox follows the pill's own level. */
 private fun PillLevel.foxMood(): FoxMood = when (this) {
     PillLevel.CALM -> FoxMood.HAPPY
     PillLevel.WARNING -> FoxMood.ALERT
     PillLevel.DANGER -> FoxMood.CONCERNED
 }
 
-private fun PillLevel.content(): Color = when (this) {
-    PillLevel.CALM -> PillColors.onCalm
-    PillLevel.WARNING -> PillColors.onWarning
-    PillLevel.DANGER -> PillColors.onDanger
-}
-
 /**
- * The floating timer: a compact capsule with a soft shadow, the time bold, the app name and the
- * swipe count smaller ("Instagram 12:41 · 86 swipes"), or, collapsed, a level-colored dot with the
- * fox face inside (a plain dot with the fox off). Colors cross-fade between levels.
+ * The floating timer: a tiny dark capsule (28 dp high when small) with the fox face, today's time
+ * in bold tabular digits and, while scroll counting runs, a swipe icon and today's swipes
+ * ("🦊 12:41 ☝ 86"). The level (green, yellow, red) tints the border, the swipe icon and, once it
+ * isn't calm, the time. Collapsed, it is a level-colored dot with the fox face inside (a plain dot
+ * with the fox off). Colors cross-fade between levels.
  */
 @Composable
 fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
@@ -83,108 +93,118 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
         animationSpec = tween(durationMillis = Motion.PILL_COLOR),
         label = "pillBackground",
     )
-    val content by animateColorAsState(
-        targetValue = state.level.content(),
+    val tint by animateColorAsState(
+        targetValue = state.level.tint(),
         animationSpec = tween(durationMillis = Motion.PILL_COLOR),
-        label = "pillContent",
+        label = "pillTint",
     )
     val small = state.size == PillSize.SMALL
+    val showFox = LocalFoxSettings.current.showFox
     // Room for the shadow inside the overlay window.
     Box(modifier = modifier.padding(Dimens.pillShadow)) {
-        if (state.collapsed && LocalFoxSettings.current.showFox) {
-            // The dot keeps its level color; the app's fox face sits inside it. Still (no idle
-            // animation): it sits over other apps and must not draw attention.
-            Box(
-                modifier = Modifier
-                    .alpha(state.opacity)
-                    .size(if (small) Dimens.pillFoxSmall else Dimens.pillFoxMedium)
-                    .shadow(Dimens.pillShadow, CircleShape)
-                    .background(background, CircleShape)
-                    .padding(Dimens.pillFoxInset),
-            ) {
-                FoxMascot(
-                    mood = state.level.foxMood(),
-                    modifier = Modifier.fillMaxSize(),
-                    showTail = false,
-                    animate = false,
-                )
-            }
-            return@Box
-        }
         if (state.collapsed) {
-            Box(
-                modifier = Modifier
-                    .alpha(state.opacity)
-                    .size(if (small) Dimens.pillDotSmall else Dimens.pillDotMedium)
-                    .shadow(Dimens.pillShadow, CircleShape)
-                    .background(background, CircleShape),
-            )
+            CollapsedPill(state, background, small, showFox)
             return@Box
         }
+        val timeColor = if (state.level == PillLevel.CALM) PillColors.onSurface else tint
+        val detailSize = if (small) PillType.detailSmall else PillType.detailMedium
         Row(
             modifier = Modifier
                 .alpha(state.opacity)
+                .height(if (small) Dimens.pillHeightSmall else Dimens.pillHeightMedium)
                 .shadow(Dimens.pillShadow, CircleShape)
-                .background(background, CircleShape)
-                .padding(
-                    horizontal = if (small) Dimens.pillPaddingHSmall else Dimens.pillPaddingHMedium,
-                    vertical = if (small) Dimens.pillPaddingVSmall else Dimens.pillPaddingVMedium,
-                ),
+                .background(PillColors.surface, CircleShape)
+                .border(Dimens.pillBorder, tint, CircleShape)
+                .padding(horizontal = if (small) Dimens.pillPaddingHSmall else Dimens.pillPaddingHMedium),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(if (small) Dimens.spaceXs + Dimens.spaceXxs else Dimens.spaceS),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.pillGap),
         ) {
+            if (showFox) {
+                // Still (no idle animation): it sits over other apps and must not draw attention.
+                FoxMascot(
+                    mood = state.level.foxMood(),
+                    modifier = Modifier.size(if (small) Dimens.pillIconSmall else Dimens.pillIconMedium),
+                    showTail = false,
+                    animate = false,
+                )
+            } else {
+                Box(Modifier.size(Dimens.pillLevelDot).background(tint, CircleShape))
+            }
             Text(
-                text = state.appName,
-                color = content.copy(alpha = SECONDARY_ALPHA),
-                fontSize = if (small) PillType.appNameSmall else PillType.appNameMedium,
-                fontWeight = FontWeight.Medium,
+                text = state.elapsedText,
+                color = timeColor,
+                fontSize = if (small) PillType.timeSmall else PillType.timeMedium,
+                fontWeight = FontWeight.Bold,
+                // Tabular digits so the pill doesn't jiggle every second.
+                style = TextStyle(fontFeatureSettings = "tnum"),
                 maxLines = 1,
             )
-            Column(horizontalAlignment = Alignment.End) {
-                // "12:41 · 86 swipes"
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = state.elapsedText,
-                        color = content,
-                        fontSize = if (small) PillType.timeSmall else PillType.timeMedium,
-                        fontWeight = FontWeight.Bold,
-                        // Tabular digits so the pill doesn't jiggle every second.
-                        style = TextStyle(fontFeatureSettings = "tnum"),
-                        maxLines = 1,
-                    )
-                    state.swipesText?.let {
-                        Text(
-                            text = stringResource(R.string.overlay_swipes_separator, it),
-                            color = content.copy(alpha = SECONDARY_ALPHA),
-                            fontSize = if (small) PillType.detailSmall else PillType.detailMedium,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                        )
-                    }
-                }
-                state.remainingText?.let {
-                    Text(
-                        text = it,
-                        color = content,
-                        fontSize = if (small) PillType.detailSmall else PillType.detailMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                    )
-                }
-                state.visitText?.let {
-                    Text(
-                        text = it,
-                        color = content.copy(alpha = SECONDARY_ALPHA),
-                        fontSize = if (small) PillType.detailSmall else PillType.detailMedium,
-                        maxLines = 1,
-                    )
-                }
+            state.visitText?.let {
+                Text(
+                    text = stringResource(R.string.overlay_this_visit_short, it),
+                    color = PillColors.onSurface.copy(alpha = SECONDARY_ALPHA),
+                    fontSize = detailSize,
+                    style = TextStyle(fontFeatureSettings = "tnum"),
+                    maxLines = 1,
+                )
+            }
+            val left = state.swipesLeft
+            val swipes = state.swipes
+            if (left != null || swipes != null) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_swipe),
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(if (small) Dimens.pillSwipeIconSmall else Dimens.pillSwipeIconMedium),
+                )
+                Text(
+                    text = if (left != null) {
+                        pluralStringResource(R.plurals.overlay_swipes_left_short, left, left)
+                    } else {
+                        swipes.toString()
+                    },
+                    color = if (left != null) tint else PillColors.onSurface.copy(alpha = SECONDARY_ALPHA),
+                    fontSize = detailSize,
+                    fontWeight = if (left != null) FontWeight.Bold else FontWeight.Medium,
+                    style = TextStyle(fontFeatureSettings = "tnum"),
+                    maxLines = 1,
+                )
             }
         }
     }
 }
 
-private const val SECONDARY_ALPHA = 0.85f
+@Composable
+private fun CollapsedPill(state: TimerPillState, background: Color, small: Boolean, showFox: Boolean) {
+    if (showFox) {
+        // The dot keeps its level color; the fox face sits inside it.
+        Box(
+            modifier = Modifier
+                .alpha(state.opacity)
+                .size(if (small) Dimens.pillFoxSmall else Dimens.pillFoxMedium)
+                .shadow(Dimens.pillShadow, CircleShape)
+                .background(background, CircleShape)
+                .padding(Dimens.pillFoxInset),
+        ) {
+            FoxMascot(
+                mood = state.level.foxMood(),
+                modifier = Modifier.fillMaxSize(),
+                showTail = false,
+                animate = false,
+            )
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .alpha(state.opacity)
+                .size(if (small) Dimens.pillDotSmall else Dimens.pillDotMedium)
+                .shadow(Dimens.pillShadow, CircleShape)
+                .background(background, CircleShape),
+        )
+    }
+}
+
+private const val SECONDARY_ALPHA = 0.8f
 
 @Preview
 @Composable
@@ -193,22 +213,21 @@ private fun TimerPillPreview() {
         PillLevel.entries.forEach { level ->
             TimerPill(
                 TimerPillState(
-                    appName = "Instagram",
                     elapsedText = "12:41",
-                    visitText = "this visit 3:05",
+                    visitText = null,
                     level = level,
-                    size = PillSize.MEDIUM,
+                    size = PillSize.SMALL,
                     opacity = 0.9f,
                     collapsed = false,
-                    swipesText = "86 swipes",
+                    swipes = 86,
                 ),
             )
         }
+        // Scroll counting off: the fox and the time only.
+        TimerPill(TimerPillState("1:03:07", null, PillLevel.CALM, PillSize.SMALL, 1f, collapsed = false))
         TimerPill(
-            TimerPillState("TikTok", "03:07", null, PillLevel.CALM, PillSize.SMALL, 1f, collapsed = false),
+            TimerPillState("47:12", "3:05", PillLevel.WARNING, PillSize.MEDIUM, 1f, collapsed = false, swipesLeft = 12),
         )
-        TimerPill(
-            TimerPillState("TikTok", "03:07", null, PillLevel.DANGER, PillSize.MEDIUM, 1f, collapsed = true),
-        )
+        TimerPill(TimerPillState("03:07", null, PillLevel.DANGER, PillSize.SMALL, 1f, collapsed = true))
     }
 }

@@ -23,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import com.unscroll.app.R
@@ -66,6 +65,8 @@ internal fun TimerPillGroup(
     canDrawOverlays: Boolean,
     positionReset: Boolean,
     actions: PillActions,
+    /** Scroll counting runs (consent and service connected): the preview shows swipes only then. */
+    swipeCounting: Boolean = false,
 ) {
     var opacity by remember(settings.opacity) { mutableFloatStateOf(settings.opacity) }
     var time by remember(settings.thresholds) {
@@ -82,7 +83,7 @@ internal fun TimerPillGroup(
         swipeThresholds = SwipeColorThresholds(swipes.start.roundToInt(), swipes.endInclusive.roundToInt()).normalized(),
     )
     SettingsGroup {
-        PillPreview(draft)
+        PillPreview(draft, swipeCounting)
         if (!canDrawOverlays) {
             Text(
                 text = stringResource(R.string.settings_pill_no_permission),
@@ -199,7 +200,7 @@ private fun SliderLabel(title: String, value: String) {
  * swipes) shows without opening another app.
  */
 @Composable
-internal fun PillPreview(settings: OverlaySettings) {
+internal fun PillPreview(settings: OverlaySettings, swipeCounting: Boolean) {
     val thresholds = settings.thresholds
     val sampleMinutes = listOf(
         thresholds.warningAfterMinutes / 2,
@@ -222,22 +223,14 @@ internal fun PillPreview(settings: OverlaySettings) {
     ) {
         TimerPill(
             TimerPillState(
-                appName = stringResource(R.string.settings_pill_preview_app),
                 elapsedText = PillRules.formatTime(today),
-                visitText = if (settings.showSessionTime) {
-                    stringResource(R.string.overlay_this_visit, PillRules.formatTime(PREVIEW_VISIT_MILLIS))
-                } else {
-                    null
-                },
+                visitText = if (settings.showSessionTime) PillRules.formatTime(PREVIEW_VISIT_MILLIS) else null,
                 level = PillRules.levelForToday(today, dailyLimitMillis = null, thresholds = thresholds),
                 size = settings.size,
                 opacity = settings.opacity,
                 collapsed = false,
-                swipesText = if (settings.showSwipes) {
-                    pluralStringResource(R.plurals.overlay_swipes, PREVIEW_SWIPES, PREVIEW_SWIPES)
-                } else {
-                    null
-                },
+                // Like the real pill: the swipe icon and count only while scroll counting runs.
+                swipes = PREVIEW_SWIPES.takeIf { settings.showSwipes && swipeCounting },
             ),
         )
     }
@@ -261,6 +254,7 @@ private fun TimerPillGroupPreview() {
                     canDrawOverlays = false,
                     positionReset = true,
                     actions = PillActions(),
+                    swipeCounting = true,
                 )
             }
         }

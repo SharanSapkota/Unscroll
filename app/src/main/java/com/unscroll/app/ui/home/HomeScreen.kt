@@ -82,6 +82,8 @@ import java.time.LocalDate
 fun HomeScreen(
     onOpenApp: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onScrollCountingSetUp: () -> Unit = {},
+    onRestrictedSettingHelp: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     insightViewModel: InsightViewModel = hiltViewModel(),
 ) {
@@ -102,7 +104,7 @@ fun HomeScreen(
         banner = {
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
                 if (PlusConfig.BILLING_ENABLED) PlusEndedBanner()
-                ScrollCountingBanner()
+                ScrollCountingBanner(onSetUp = onScrollCountingSetUp, onRestrictedHelp = onRestrictedSettingHelp)
                 SectionBlockingBanner()
             }
         },

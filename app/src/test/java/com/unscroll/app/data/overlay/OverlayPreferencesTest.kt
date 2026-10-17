@@ -36,6 +36,8 @@ class OverlayPreferencesTest {
         // This visit's time is extra and off by default; colors follow today's total (30/60 min).
         assertEquals(false, settings.showSessionTime)
         assertEquals(ColorThresholds(30, 60), settings.thresholds)
+        // The tiny pill by default.
+        assertEquals(PillSize.SMALL, settings.size)
     }
 
     @Test
@@ -45,7 +47,7 @@ class OverlayPreferencesTest {
         preferences.setEnabled(false)
         preferences.setShowSessionTime(true)
         preferences.setThresholds(ColorThresholds(30, 5))
-        preferences.setSize(PillSize.SMALL)
+        preferences.setSize(PillSize.MEDIUM)
         preferences.setOpacity(0.1f)
 
         assertEquals(
@@ -53,7 +55,7 @@ class OverlayPreferencesTest {
                 enabled = false,
                 showSessionTime = true,
                 thresholds = ColorThresholds(30, 31),
-                size = PillSize.SMALL,
+                size = PillSize.MEDIUM,
                 opacity = OverlaySettings.MIN_OPACITY,
             ),
             preferences.settings.first(),

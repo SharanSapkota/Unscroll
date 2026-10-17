@@ -17,7 +17,9 @@ import com.unscroll.app.domain.overlay.SwipeColorThresholds
 import com.unscroll.app.domain.permission.HealthItem
 import com.unscroll.app.domain.permission.PermissionHealth
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
+import com.unscroll.app.domain.scroll.SwipeDebugFormat
 import com.unscroll.app.service.TrackingController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -29,8 +31,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** The permission checklist: each line and whether it is fine. */
-data class PermissionHealthState(val checklist: List<Pair<HealthItem, Boolean>> = emptyList()) {
+/** The permission checklist: each line and whether it is fine, plus swipe counting's state for its line. */
+data class PermissionHealthState(
+    val checklist: List<Pair<HealthItem, Boolean>> = emptyList(),
+    val scrollStatus: ScrollCountingStatus = ScrollCountingStatus.OFF,
+    val scrollConsent: ScrollConsent = ScrollConsent.NOT_ASKED,
+) {
     val issues: Int get() = checklist.count { !it.second }
 }
 
@@ -42,7 +48,7 @@ class SettingsViewModel @Inject constructor(
     private val quietHoursPreferences: QuietHoursPreferences,
     private val appearancePreferences: AppearancePreferences,
     private val permissionRepository: PermissionRepository,
-    scrollCounting: ScrollCountingRepository,
+    private val scrollCounting: ScrollCountingRepository,
 ) : ViewModel() {
 
     val quietHours: StateFlow<QuietHours> = quietHoursPreferences.quietHours
@@ -66,8 +72,16 @@ class SettingsViewModel @Inject constructor(
     val health: StateFlow<PermissionHealthState> = combine(
         permissionRepository.permissions,
         scrollCounting.status,
-    ) { permissions, scroll -> PermissionHealthState(PermissionHealth.checklist(permissions, scroll)) }
+        scrollCounting.record,
+    ) { permissions, scroll, record ->
+        PermissionHealthState(PermissionHealth.checklist(permissions, scroll), scroll, record.consent)
+    }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PermissionHealthState())
+
+    /** Debug builds only: the SwipeDebug line (service connected, last event, package, count). */
+    val swipeDebug: StateFlow<String?> = combine(scrollCounting.connected, scrollCounting.debugInfo) { connected, info ->
+        if (scrollCounting.debugEnabled) SwipeDebugFormat.line(connected, info) else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val scrollStatus: StateFlow<ScrollCountingStatus> = scrollCounting.status
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScrollCountingStatus.OFF)

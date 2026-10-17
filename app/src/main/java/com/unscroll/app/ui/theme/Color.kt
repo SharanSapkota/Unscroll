@@ -125,6 +125,13 @@ object PillColors {
     val onWarning = Color(0xFF1F1600)
     val onDanger = Color(0xFFFFFFFF)
 
+    /** The expanded pill: a dark capsule; the level shows as a tint on its border, icon and time. */
+    val surface = Color(0xE6141A19)
+    val onSurface = Color(0xFFFFFFFF)
+    val calmTint = Color(0xFF4CD58E)
+    val warningTint = Color(0xFFF2B33D)
+    val dangerTint = Color(0xFFFF6B61)
+
     /** Message card under the pill. */
     val messageBackground = Color(0xF2161D1B)
     val onMessage = Color(0xFFFFFFFF)

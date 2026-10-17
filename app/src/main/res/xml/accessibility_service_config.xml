@@ -8,6 +8,13 @@
       the first event; the service replaces it with the user's tracked list (TrackedAppsRepository)
       when it connects and whenever the list changes, and drops events from any other app.
 
+    flagIncludeNotImportantViews: full-screen video pagers (Instagram Reels, TikTok, YouTube Shorts)
+    mark their scrolling view as "not important for accessibility", and Android drops events from
+    such views for every service that doesn't set this flag. Without it, swipes in exactly the apps
+    Unscroll is for never arrived. It changes which events arrive, not what they contain: with
+    canRetrieveWindowContent="false" there is still no text or view hierarchy. No other flag is set
+    (no flagReportViewIds, no flagRetrieveInteractiveWindows).
+
     isAccessibilityTool="false": Unscroll is a digital-wellbeing app, not a tool that helps people
     with disabilities use their device (like a screen reader or switch access). Claiming otherwise
     would be inaccurate and against Google Play policy, so we declare it as false and complete the
@@ -17,7 +24,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:accessibilityEventTypes="typeViewScrolled|typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault"
+    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews"
     android:canRetrieveWindowContent="false"
     android:description="@string/accessibility_service_description"
     android:isAccessibilityTool="false"

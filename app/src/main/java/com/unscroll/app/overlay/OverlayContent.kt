@@ -18,12 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.unscroll.app.R
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillRules
+import com.unscroll.app.domain.overlay.PillSwipes
 import com.unscroll.app.domain.overlay.PillToday
 import com.unscroll.app.domain.overlay.PillTodayBase
 import com.unscroll.app.ui.theme.Dimens
@@ -33,17 +33,6 @@ import java.time.ZoneId
 import kotlinx.coroutines.delay
 
 private const val SECOND = 1_000L
-
-/**
- * Swipe info for the pill: the open session's count (today's earlier swipes are added from the
- * base) and swipes left near a swipe limit.
- */
-data class PillSwipes(
-    val sessionCount: Int,
-    val showCount: Boolean,
-    /** Swipes left under the app's swipe limit, once within the last 20 %; else null. */
-    val remaining: Int? = null,
-)
 
 /** What the overlay window shows. Produced by [OverlayTimerManager]. */
 data class OverlayUiState(
@@ -85,15 +74,12 @@ fun OverlayContent(
     val zone = ZoneId.systemDefault()
     val todayMillis = PillToday.totalMillis(state.today, currentTime, zone)
     val visitText = if (state.settings.showSessionTime) {
-        stringResource(R.string.overlay_this_visit, PillRules.formatTime(PillToday.sessionMillis(state.today, currentTime)))
+        PillRules.formatTime(PillToday.sessionMillis(state.today, currentTime))
     } else {
         null
     }
+    // Null while scroll counting isn't running: the pill then shows only the fox and the time.
     val todaySwipes = swipes?.let { PillToday.swipes(state.today, it.sessionCount, currentTime, zone) }
-    val swipesText = swipes?.takeIf { it.showCount }?.let {
-        pluralStringResource(R.plurals.overlay_swipes, todaySwipes ?: 0, todaySwipes ?: 0)
-    }
-    val remainingText = swipes?.remaining?.let { pluralStringResource(R.plurals.overlay_swipes_left, it, it) }
     val level = PillRules.combinedLevel(
         timeLevel = PillRules.levelForToday(todayMillis, state.dailyLimitMillis, state.settings.thresholds),
         swipeLevel = todaySwipes?.let { PillRules.levelForSwipes(it, state.settings.swipeThresholds) },
@@ -101,7 +87,6 @@ fun OverlayContent(
     val pill = @Composable {
         TimerPill(
             state = TimerPillState(
-                appName = state.appName,
                 elapsedText = PillRules.formatTime(todayMillis),
                 visitText = visitText,
                 level = level,
@@ -109,8 +94,8 @@ fun OverlayContent(
                 opacity = state.settings.opacity,
                 // A message always expands a collapsed pill.
                 collapsed = state.collapsed && state.message == null,
-                swipesText = swipesText,
-                remainingText = remainingText,
+                swipes = todaySwipes?.let { PillRules.shownSwipes(swipes, it) },
+                swipesLeft = swipes?.remaining,
             ),
             modifier = Modifier
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }

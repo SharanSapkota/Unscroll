@@ -94,4 +94,14 @@ class ScrollCountingPreferencesTest {
         assertNull(preferences.record.first().countingSince)
         assertEquals(ScrollConsent.AGREED, preferences.record.first().consent)
     }
+
+    @Test
+    fun dismissingTheSetupBanner_isRemembered() = runTest {
+        val preferences = createPreferences()
+        assertNull(preferences.record.first().setupBannerDismissedAt)
+
+        preferences.dismissSetupBanner(now = 5_000)
+
+        assertEquals(5_000L, preferences.record.first().setupBannerDismissedAt)
+    }
 }

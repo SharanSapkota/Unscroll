@@ -1,7 +1,9 @@
 package com.unscroll.app.domain.overlay
 
+import com.unscroll.app.domain.session.SessionSwipes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -102,5 +104,39 @@ class PillRulesTest {
     private companion object {
         const val IG = "com.instagram.android"
         const val TIKTOK = "com.zhiliaoapp.musically"
+    }
+
+    // --- Swipes on the pill: only while the accessibility service counts -------------------------
+
+    private val session = SessionSwipes(sessionId = 1, packageName = "com.instagram.android", count = 12)
+
+    @Test
+    fun serviceOff_hidesSwipes_noZeroIsShown() {
+        // Not counting (service off, not connected, or no consent): the pill is the fox and the time only.
+        assertNull(PillRules.swipes(counting = false, session = session, showCount = true, remaining = null))
+        assertNull(PillRules.swipes(counting = false, session = SessionSwipes(1, "x", 0), showCount = true, remaining = 5))
+        assertNull(PillRules.shownSwipes(swipes = null, todaySwipes = 0))
+    }
+
+    @Test
+    fun serviceOn_showsTodaysSwipes_includingZero() {
+        val swipes = PillRules.swipes(counting = true, session = session, showCount = true, remaining = null)
+        assertEquals(PillSwipes(sessionCount = 12, showCount = true), swipes)
+        assertEquals(86, PillRules.shownSwipes(swipes, todaySwipes = 86))
+        // Counting and nothing swiped yet: a real 0.
+        val fresh = PillRules.swipes(counting = true, session = SessionSwipes(2, "x", 0), showCount = true, remaining = null)
+        assertEquals(0, PillRules.shownSwipes(fresh, todaySwipes = 0))
+    }
+
+    @Test
+    fun serviceOn_withoutAnOpenSession_hasNoSwipes() {
+        assertNull(PillRules.swipes(counting = true, session = null, showCount = true, remaining = null))
+    }
+
+    @Test
+    fun showSwipesOff_hidesTheNumber_butKeepsSwipesForColorsAndTheLimit() {
+        val swipes = PillRules.swipes(counting = true, session = session, showCount = false, remaining = 7)
+        assertEquals(PillSwipes(sessionCount = 12, showCount = false, remaining = 7), swipes)
+        assertNull(PillRules.shownSwipes(swipes, todaySwipes = 86))
     }
 }
