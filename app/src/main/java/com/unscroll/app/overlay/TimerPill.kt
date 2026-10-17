@@ -56,6 +56,11 @@ data class TimerPillState(
     val swipes: Int? = null,
     /** Swipes left near a swipe limit; shown instead of [swipes] ("12 left"). */
     val swipesLeft: Int? = null,
+    /**
+     * Instagram/TikTok off Reels ("Always while in the app"): dimmed to about 60 %, a pause mark
+     * before the time, and the numbers frozen until Reels is back.
+     */
+    val paused: Boolean = false,
 )
 
 /** Fixed traffic-light colors from the theme: they must read the same over any app, light or dark. */
@@ -110,7 +115,7 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
         val detailSize = if (small) PillType.detailSmall else PillType.detailMedium
         Row(
             modifier = Modifier
-                .alpha(state.opacity)
+                .alpha(if (state.paused) state.opacity * PAUSED_ALPHA else state.opacity)
                 .height(if (small) Dimens.pillHeightSmall else Dimens.pillHeightMedium)
                 .shadow(Dimens.pillShadow, CircleShape)
                 .background(PillColors.surface, CircleShape)
@@ -129,6 +134,14 @@ fun TimerPill(state: TimerPillState, modifier: Modifier = Modifier) {
                 )
             } else {
                 Box(Modifier.size(Dimens.pillLevelDot).background(tint, CircleShape))
+            }
+            if (state.paused) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_pause),
+                    contentDescription = stringResource(R.string.overlay_paused),
+                    tint = PillColors.onSurface,
+                    modifier = Modifier.size(if (small) Dimens.pillSwipeIconSmall else Dimens.pillSwipeIconMedium),
+                )
             }
             Text(
                 text = state.elapsedText,
@@ -206,6 +219,9 @@ private fun CollapsedPill(state: TimerPillState, background: Color, small: Boole
 
 private const val SECONDARY_ALPHA = 0.8f
 
+/** The dimmed pill off Reels: about 60 % of the user's opacity. */
+private const val PAUSED_ALPHA = 0.6f
+
 @Preview
 @Composable
 private fun TimerPillPreview() {
@@ -229,5 +245,7 @@ private fun TimerPillPreview() {
             TimerPillState("47:12", "3:05", PillLevel.WARNING, PillSize.MEDIUM, 1f, collapsed = false, swipesLeft = 12),
         )
         TimerPill(TimerPillState("03:07", null, PillLevel.DANGER, PillSize.SMALL, 1f, collapsed = true))
+        // Instagram in Messages: dimmed, paused, frozen.
+        TimerPill(TimerPillState("12:41", null, PillLevel.CALM, PillSize.SMALL, 0.9f, collapsed = false, swipes = 86, paused = true))
     }
 }

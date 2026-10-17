@@ -34,7 +34,7 @@ import kotlinx.coroutines.delay
 
 private const val SECOND = 1_000L
 
-/** What the overlay window shows. Produced by [OverlayTimerManager]. */
+/** What the pill window shows. Produced by [OverlayCoordinator]. */
 data class OverlayUiState(
     val appName: String,
     /** Today's earlier time and swipes in the app; the open session is added live. */
@@ -45,6 +45,11 @@ data class OverlayUiState(
     val collapsed: Boolean,
     /** A break reminder or limit warning to show under the pill, or null. */
     val message: PillMessage? = null,
+    /**
+     * Set while the pill is paused (Instagram/TikTok off Reels): the moment its numbers froze.
+     * The pill then shows the total at that moment, dimmed, and doesn't tick.
+     */
+    val frozenAt: Long? = null,
 )
 
 /**
@@ -63,7 +68,12 @@ fun OverlayContent(
     /** Swipes for the pill, or null when scroll counting is off. */
     swipes: PillSwipes? = null,
 ) {
-    val currentTime by produceState(now(), state.today) {
+    val currentTime by produceState(state.frozenAt ?: now(), state.today, state.frozenAt) {
+        // Paused off Reels: frozen, no ticking (and no wake-ups) until Reels is back.
+        state.frozenAt?.let {
+            value = it
+            return@produceState
+        }
         while (true) {
             value = now()
             // Wake up right after the total's next whole second, so the display never skips one.
@@ -96,6 +106,7 @@ fun OverlayContent(
                 collapsed = state.collapsed && state.message == null,
                 swipes = todaySwipes?.let { PillRules.shownSwipes(swipes, it) },
                 swipesLeft = swipes?.remaining,
+                paused = state.frozenAt != null,
             ),
             modifier = Modifier
                 .pointerInput(Unit) { detectTapGestures(onTap = { onTap() }) }
@@ -111,7 +122,8 @@ fun OverlayContent(
                 },
         )
     }
-    val message = state.message
+    // Messages only on a ticking pill: never while paused off Reels.
+    val message = state.message?.takeIf { state.frozenAt == null }
     if (message == null) {
         pill()
     } else {

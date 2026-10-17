@@ -3,11 +3,11 @@ package com.unscroll.app.service
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.friction.NudgeKind
 import com.unscroll.app.data.friction.QuietHoursPreferences
+import com.unscroll.app.data.reels.ReelsDetectionRepository
 import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.friction.BreakReminders
@@ -16,15 +16,16 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.reels.SectionGate
 import com.unscroll.app.domain.scroll.SwipeBreakTracker
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.time.Clock
+import com.unscroll.app.overlay.OverlayCoordinator
 import com.unscroll.app.overlay.OverlayMessages
-import com.unscroll.app.overlay.OverlayTimerManager
 import com.unscroll.app.overlay.PillMessage
 import com.unscroll.app.overlay.PillMessageKind
-import com.unscroll.app.overlay.TintOverlay
 import com.unscroll.app.ui.scroll.BreakActivity
+import com.unscroll.app.util.AppLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.ZoneId
 import javax.inject.Inject
@@ -34,6 +35,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -48,6 +50,11 @@ import kotlinx.coroutines.withContext
  * - the experimental gray tint after the limit while an extension runs,
  * - the "take a break" screen after N swipes, when scroll counting is on (M7).
  * Quiet hours silence the nudges, reminders and warnings, never the break screen or blocking.
+ *
+ * Instagram and TikTok: break reminders, limit warnings (on Reels time), the tint and the break
+ * screen only ever appear while Reels is on screen (OverlayCoordinator.interruptionsAllowed).
+ * Anything due elsewhere waits, unrecorded, until the user is back in Reels; with detection
+ * unavailable nothing interrupts at all (fail open). Open-count notifications are unchanged.
  */
 @Singleton
 class FrictionCoordinator @Inject constructor(
@@ -59,16 +66,19 @@ class FrictionCoordinator @Inject constructor(
     private val limits: LimitRepository,
     private val usage: UsageDataSource,
     private val quietHours: QuietHoursPreferences,
-    private val overlay: OverlayTimerManager,
+    private val overlay: OverlayCoordinator,
     private val messages: OverlayMessages,
-    private val tint: TintOverlay,
     private val notifier: NudgeNotifier,
+    private val reels: ReelsDetectionRepository,
     private val clock: Clock,
 ) {
     val swipeBreaks = SwipeBreakTracker()
 
     /** Break reminders already shown, per session id. */
     private val breaksShown = mutableMapOf<Long, Int>()
+
+    /** The app the tint was asked for, so leaving it clears the wish. */
+    @Volatile private var tintFor: String? = null
     private var nextMessageId = 1L
 
     suspend fun run() = coroutineScope {
@@ -77,16 +87,12 @@ class FrictionCoordinator @Inject constructor(
             launch { watchSwipeBreaks() }
             watchForegroundSession()
         } finally {
-            withContext(Dispatchers.Main.immediate + NonCancellable) {
-                tint.hide()
-                messages.dismiss()
-            }
+            withContext(Dispatchers.Main.immediate + NonCancellable) { messages.dismiss() }
         }
     }
 
-    /** Removes the tint and any pill message right away. Main thread; used by onDestroy. */
+    /** Removes any pill message right away (the coordinator removes the tint). Used by onDestroy. */
     fun hideNow() {
-        tint.hide()
         messages.dismiss()
     }
 
@@ -96,6 +102,8 @@ class FrictionCoordinator @Inject constructor(
         // Swipes only arrive while the accessibility service counts them; otherwise this is idle.
         sessionManager.swipes.filterNotNull().collect { swipes ->
             if (swipes.count == 0 || !isSafe(swipes.packageName)) return@collect
+            // Instagram/TikTok: only in Reels (their swipes only count there anyway).
+            if (!overlay.interruptionsAllowed(swipes.packageName)) return@collect
             val settings = friction.getSettings(swipes.packageName)
             if (!swipeBreaks.onSwipeCount(swipes.sessionId, swipes.count, settings.swipeBreakAfter)) return@collect
             // The block screen wins.
@@ -120,9 +128,9 @@ class FrictionCoordinator @Inject constructor(
         try {
             context.startActivities(arrayOf(home, breakScreen))
         } catch (e: ActivityNotFoundException) {
-            Log.w(TAG, "Could not open the break screen", e)
+            AppLog.w(TAG, "Could not open the break screen", e)
         } catch (e: SecurityException) {
-            Log.w(TAG, "Could not open the break screen", e)
+            AppLog.w(TAG, "Could not open the break screen", e)
         }
     }
 
@@ -157,9 +165,20 @@ class FrictionCoordinator @Inject constructor(
     // --- Break reminders, limit warnings, tint --------------------------------------------------
 
     private suspend fun watchForegroundSession() {
-        sessionManager.foregroundSession.collectLatest { session ->
+        // Restarts when the app on screen changes, and when Reels starts or stops in Instagram or
+        // TikTok, so whatever waited for Reels shows as soon as the user is back there.
+        combine(sessionManager.foregroundSession, reels.live) { session, live ->
+            session to session?.let { SectionGate.of(it.packageName, live[it.packageName]).allowsInterruptions }
+        }.distinctUntilChanged().collectLatest { (session, allowed) ->
             if (session == null || !isSafe(session.packageName)) {
-                withContext(Dispatchers.Main.immediate) { tint.hide() }
+                tintFor?.let { overlay.setTint(it, wanted = false) }
+                tintFor = null
+                messages.dismiss()
+                return@collectLatest
+            }
+            if (allowed != true) {
+                // Off Reels (or no detection): nothing interrupts; due reminders wait.
+                overlay.setTint(session.packageName, wanted = false)
                 messages.dismiss()
                 return@collectLatest
             }
@@ -201,11 +220,12 @@ class FrictionCoordinator @Inject constructor(
         // Limit warnings and the tint need a daily limit.
         val limitMinutes = limits.getLimit(packageName).settings.dailyLimitMinutes
         if (limitMinutes == null) {
-            withContext(Dispatchers.Main.immediate) { tint.hide() }
+            overlay.setTint(packageName, wanted = false)
             return nextCheck
         }
         val today = localDate(now, zone)
-        val used = usage.appTotals(TimeRange(startOfDay(today, zone), now), now)[packageName] ?: 0L
+        // Reels time for Instagram/TikTok, the whole app for every other app.
+        val used = blockEnforcer.usedTodayMillis(packageName, now)
 
         if (settings.limitWarningsEnabled) {
             val sent = friction.sentNudges(packageName, today, NudgeKind.LIMIT)
@@ -220,9 +240,9 @@ class FrictionCoordinator @Inject constructor(
         // Tint: limit exceeded and the user chose to continue (an extension is running).
         val overLimit = used >= limitMinutes * MINUTE
         val extended = limits.activeExtensionUntil(packageName, now) != null
-        withContext(Dispatchers.Main.immediate) {
-            if (settings.tintEnabled && overLimit && extended) tint.show() else tint.hide()
-        }
+        val tinted = settings.tintEnabled && overLimit && extended
+        overlay.setTint(packageName, tinted)
+        tintFor = packageName.takeIf { tinted }
         return nextCheck
     }
 

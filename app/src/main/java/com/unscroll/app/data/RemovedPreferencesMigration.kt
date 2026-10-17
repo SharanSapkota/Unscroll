@@ -6,13 +6,15 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 
 /**
  * Deletes preferences of features that were removed, so nothing stale stays on the device: the
  * cooldown and friction settings (wait vs typed phrase, cooldown length, a pending friction change
  * and the debug 10-second cooldown; changes apply immediately now), and the pill's per-session
  * color thresholds and "today's total" switch (the pill shows today's total and colors by it now,
- * with new daily threshold keys). Runs once, when the DataStore is first read and one of the keys
+ * with new daily threshold keys), and the old "Show timer only in Reels" switch (replaced by
+ * "Timer visibility", which starts at "Always while in the app" for everyone). Runs once, when the DataStore is first read and one of the keys
  * is still there.
  */
 object RemovedPreferencesMigration : DataMigration<Preferences> {
@@ -29,6 +31,7 @@ object RemovedPreferencesMigration : DataMigration<Preferences> {
         intPreferencesKey("overlay_danger_minutes"),
         intPreferencesKey("overlay_swipe_warning"),
         intPreferencesKey("overlay_swipe_danger"),
+        stringSetPreferencesKey("overlay_reels_only_off_for"),
     )
 
     override suspend fun shouldMigrate(currentData: Preferences): Boolean =

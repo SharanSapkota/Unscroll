@@ -44,16 +44,21 @@ internal object SectionNodeSnapshot {
             val found = ArrayList<SectionNode>()
             viewIds.forEach { id ->
                 val fullId = if (':' in id) id else "$packageName:$id"
-                root.findAccessibilityNodeInfosByViewId(fullId).orEmpty().forEach { node ->
-                    if (found.size < MAX_PROBED_NODES) {
-                        found += SectionNode(
-                            viewId = node.viewIdResourceName,
-                            className = node.className?.toString(),
-                            isSelected = node.isSelected,
-                            isVisible = node.isVisibleToUser,
-                        )
+                val nodes = root.findAccessibilityNodeInfosByViewId(fullId).orEmpty()
+                try {
+                    nodes.forEach { node ->
+                        if (found.size < MAX_PROBED_NODES) {
+                            found += SectionNode(
+                                viewId = node.viewIdResourceName,
+                                className = node.className?.toString(),
+                                isSelected = node.isSelected,
+                                isVisible = node.isVisibleToUser,
+                            )
+                        }
                     }
-                    release(node)
+                } finally {
+                    // Every node returned is ours to recycle, even if reading one failed midway.
+                    nodes.forEach(::release)
                 }
             }
             SectionNode(viewId = root.viewIdResourceName, className = root.className?.toString(), children = found)
@@ -80,7 +85,18 @@ internal object SectionNodeSnapshot {
             emptyList()
         } else {
             (0 until node.childCount).mapNotNull { index ->
-                if (budget[0] <= 0) null else node.getChild(index)?.let { copy(it, depth + 1, budget) }
+                if (budget[0] <= 0) {
+                    null
+                } else {
+                    node.getChild(index)?.let { child ->
+                        // Children are new instances: recycle each once copied (below Android 13).
+                        try {
+                            copy(child, depth + 1, budget)
+                        } finally {
+                            release(child)
+                        }
+                    }
+                }
             }
         }
         return SectionNode(

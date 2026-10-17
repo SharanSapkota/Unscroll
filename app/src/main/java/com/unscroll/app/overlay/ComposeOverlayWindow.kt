@@ -2,7 +2,6 @@ package com.unscroll.app.overlay
 
 import android.content.Context
 import android.os.Looper
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -13,6 +12,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.unscroll.app.util.AppLog
 
 /**
  * One Compose window added straight to the WindowManager, outside any Activity: the swipe-limit
@@ -20,7 +20,8 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  *
  * Main thread only ([add] returns false elsewhere). One window at most: [isShowing] is set as
  * soon as the window is added (not when it attaches, a frame later). Adding never throws: a
- * refused window is logged and reported as `false`.
+ * refused window is logged and reported as `false`. WindowManager calls go through [WindowOps].
+ * On [remove] the composition is disposed and the lifecycle owner destroyed, so nothing leaks.
  */
 internal class ComposeOverlayWindow(private val tag: String) {
     private var windowManager: WindowManager? = null
@@ -44,7 +45,7 @@ internal class ComposeOverlayWindow(private val tag: String) {
         content: @Composable () -> Unit,
     ): Boolean {
         if (Looper.myLooper() != Looper.getMainLooper()) {
-            Log.w(tag, "add() off the main thread")
+            AppLog.w(tag, "add() off the main thread")
             return false
         }
         if (isShowing) return true
@@ -63,19 +64,7 @@ internal class ComposeOverlayWindow(private val tag: String) {
         }
         composeView.setOwners(lifecycleOwner)
         lifecycleOwner.onCreate()
-        val added = try {
-            manager.addView(frame, params)
-            true
-        } catch (e: WindowManager.BadTokenException) {
-            Log.w(tag, "Window not shown", e)
-            false
-        } catch (e: SecurityException) {
-            Log.w(tag, "Window not shown", e)
-            false
-        } catch (e: IllegalStateException) {
-            Log.w(tag, "Window not shown", e)
-            false
-        }
+        val added = WindowOps.add(manager, frame, params, tag)
         if (!added) {
             composeView.disposeComposition()
             lifecycleOwner.onDestroy()
@@ -92,16 +81,9 @@ internal class ComposeOverlayWindow(private val tag: String) {
     /** Removes the window. Main thread; safe when nothing is shown or twice. */
     fun remove() {
         val frame = root
-        if (frame != null) {
-            try {
-                // Added but maybe not attached yet: remove it either way, or it would stay up.
-                windowManager?.removeViewImmediate(frame)
-            } catch (e: IllegalArgumentException) {
-                Log.w(tag, "Window was not attached", e)
-            } catch (e: IllegalStateException) {
-                Log.w(tag, "Window could not be removed", e)
-            }
-        }
+        val manager = windowManager
+        // Added but maybe not attached yet: remove it either way, or it would stay up.
+        if (frame != null && manager != null) WindowOps.remove(manager, frame, tag)
         compose?.disposeComposition()
         owner?.onDestroy()
         windowManager = null

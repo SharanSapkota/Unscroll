@@ -11,7 +11,6 @@ import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -19,7 +18,9 @@ import com.unscroll.app.MainActivity
 import com.unscroll.app.R
 import com.unscroll.app.data.tracking.TrackingPreferences
 import com.unscroll.app.domain.tracking.ScreenStateSource
-import com.unscroll.app.overlay.OverlayTimerManager
+import com.unscroll.app.domain.blocking.CoverRequests
+import com.unscroll.app.overlay.OverlayCoordinator
+import com.unscroll.app.util.AppLog
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -33,11 +34,19 @@ import kotlinx.coroutines.launch
 
 /**
  * Foreground service (type specialUse) that keeps session tracking alive while the app is in the
- * background. It wires [AppDetector] to [SessionManager] and owns the overlay timer's lifecycle
- * ([OverlayTimerManager]) and blocking ([BlockEnforcer]); all the logic lives in those classes.
+ * background. It wires [AppDetector] to [SessionManager] and owns the overlay's lifecycle
+ * ([OverlayCoordinator]: pill, cover, messages, tint) and the enforcers ([BlockEnforcer],
+ * [SwipeLimitEnforcer], [FrictionCoordinator]); all the logic lives in those classes.
  *
- * START_STICKY: if the system kills the process, Android restarts the service with a null intent,
- * and [SessionManager.run] first closes the session the dead process left open.
+ * Restarts:
+ * - Killed by the system: START_STICKY, Android restarts it with a null intent, and
+ *   [SessionManager.run] first closes the session the dead process left open (last heartbeat).
+ * - Reboot and app update: BootReceiver (BOOT_COMPLETED, MY_PACKAGE_REPLACED).
+ * - Swiped away from Recents: [onTaskRemoved] keeps tracking (the service is independent of the
+ *   task); a few OEMs kill the process anyway, then START_STICKY or the next app open restarts it.
+ * - A permission revoked at runtime never crashes it: the overlay disappears (polled), usage
+ *   access errors are caught in AppDetector, and the Home banner / Settings checklist say what to
+ *   fix (re-checked on every resume).
  */
 @AndroidEntryPoint
 class TrackingService : Service() {
@@ -49,7 +58,10 @@ class TrackingService : Service() {
     lateinit var trackingPreferences: TrackingPreferences
 
     @Inject
-    lateinit var overlayTimerManager: OverlayTimerManager
+    lateinit var overlay: OverlayCoordinator
+
+    @Inject
+    lateinit var coverRequests: CoverRequests
 
     @Inject
     lateinit var blockEnforcer: BlockEnforcer
@@ -92,7 +104,7 @@ class TrackingService : Service() {
                     stopTracking()
                     return@launch
                 }
-                launch { overlayTimerManager.run() }
+                launch { overlay.run() }
                 launch { blockEnforcer.run() }
                 launch { frictionCoordinator.run() }
                 launch { swipeLimitEnforcer.run() }
@@ -106,18 +118,27 @@ class TrackingService : Service() {
 
     override fun onDestroy() {
         isRunning = false
-        // Remove the overlay synchronously so it can never outlive the service.
-        overlayTimerManager.hide()
+        // Remove every window synchronously so none can outlive the service.
+        overlay.hide()
         frictionCoordinator.hideNow()
-        swipeLimitEnforcer.hideNow()
+        coverRequests.clearAll()
         // Cancelling run() closes the open session.
         scope.cancel()
         super.onDestroy()
     }
 
+    /**
+     * The user swiped Unscroll away from Recents. Tracking is a foreground service, independent of
+     * the task, so it keeps running; nothing to stop. Logged for diagnostics.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        AppLog.i(TAG, "Task removed; tracking keeps running")
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        overlayTimerManager.onConfigurationChanged()
+        overlay.onConfigurationChanged()
     }
 
     private fun stopTracking() {
@@ -137,10 +158,10 @@ class TrackingService : Service() {
             true
         } catch (e: IllegalStateException) {
             // ForegroundServiceStartNotAllowedException (Android 12+) is an IllegalStateException.
-            Log.w(TAG, "Not allowed to run in the foreground right now", e)
+            AppLog.w(TAG, "Not allowed to run in the foreground right now", e)
             false
         } catch (e: SecurityException) {
-            Log.w(TAG, "Not allowed to run in the foreground", e)
+            AppLog.w(TAG, "Not allowed to run in the foreground", e)
             false
         }
     }
@@ -191,10 +212,10 @@ class TrackingService : Service() {
             true
         } catch (e: IllegalStateException) {
             // Includes ForegroundServiceStartNotAllowedException (Android 12+).
-            Log.w(TAG, "Tracking not started: not allowed from here", e)
+            AppLog.w(TAG, "Tracking not started: not allowed from here", e)
             false
         } catch (e: SecurityException) {
-            Log.w(TAG, "Tracking not started", e)
+            AppLog.w(TAG, "Tracking not started", e)
             false
         }
 

@@ -6,11 +6,11 @@ import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillSize
 import com.unscroll.app.domain.overlay.ScreenOrientation
+import com.unscroll.app.domain.reels.TimerVisibility
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -64,17 +64,17 @@ class OverlayPreferencesTest {
     }
 
     @Test
-    fun reelsOnly_isOnByDefault_andSavedPerApp() = runTest {
+    fun timerVisibility_isAlwaysByDefault_andSavedPerApp() = runTest {
         val preferences = createPreferences()
-        assertTrue(preferences.settings.first().reelsOnlyFor("com.instagram.android"))
+        assertEquals(TimerVisibility.ALWAYS, preferences.settings.first().visibilityFor("com.instagram.android"))
 
-        preferences.setReelsOnlyFor("com.instagram.android", on = false)
+        preferences.setTimerVisibility("com.instagram.android", TimerVisibility.ONLY_REELS)
         val settings = preferences.settings.first()
-        assertFalse(settings.reelsOnlyFor("com.instagram.android"))
-        assertTrue(settings.reelsOnlyFor("com.zhiliaoapp.musically"))
+        assertEquals(TimerVisibility.ONLY_REELS, settings.visibilityFor("com.instagram.android"))
+        assertEquals(TimerVisibility.ALWAYS, settings.visibilityFor("com.zhiliaoapp.musically"))
 
-        preferences.setReelsOnlyFor("com.instagram.android", on = true)
-        assertTrue(preferences.settings.first().reelsOnlyFor("com.instagram.android"))
+        preferences.setTimerVisibility("com.instagram.android", TimerVisibility.ALWAYS)
+        assertEquals(TimerVisibility.ALWAYS, preferences.settings.first().visibilityFor("com.instagram.android"))
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.unscroll.app.data.db.BlockingDao
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDuration
 import com.unscroll.app.domain.blocking.BlockSchedule
+import com.unscroll.app.domain.blocking.LimitDefaults
 import com.unscroll.app.domain.blocking.QuickBlockRules
 import com.unscroll.app.domain.blocking.QuickBlockTarget
 import com.unscroll.app.domain.blocking.TimedBlock
@@ -14,7 +15,11 @@ import com.unscroll.app.domain.blocking.SwipeLimitScope
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 
 /**
  * Per-app limits and block-screen extensions. Every change is written straight to the stored
@@ -24,11 +29,25 @@ import kotlinx.coroutines.flow.map
 class LimitRepository @Inject constructor(
     private val dao: BlockingDao,
 ) {
+    private val _extensionChanges = MutableStateFlow(0)
+
+    /** Bumped on every "I need access" extension, so the enforcers re-check at once. */
+    val extensionChanges: StateFlow<Int> = _extensionChanges.asStateFlow()
+
     fun observeLimits(): Flow<Map<String, AppLimit>> =
         dao.observeLimits().map { rows -> rows.associate { it.packageName to it.toDomain() } }
 
     suspend fun getLimit(packageName: String): AppLimit =
         dao.getLimit(packageName)?.toDomain() ?: AppLimit(packageName)
+
+    /**
+     * Stores [LimitDefaults.NEW_APP] (time limit on at 30 minutes) for [packageName] unless it
+     * already has stored limits: a newly tracked app gets the defaults, an existing user's saved
+     * values (even "no limit") are never touched.
+     */
+    suspend fun insertDefaultsIfAbsent(packageName: String) {
+        dao.insertLimitIfAbsent(AppLimit(packageName, LimitDefaults.NEW_APP).toEntity())
+    }
 
     /** Applies [edit] to the app's settings and saves the result right away. Returns it. */
     suspend fun updateLimit(packageName: String, edit: (LimitSettings) -> LimitSettings): AppLimit {
@@ -76,6 +95,7 @@ class LimitRepository @Inject constructor(
                 method = METHOD_TAP,
             ),
         )
+        _extensionChanges.update { it + 1 }
     }
 
     suspend fun activeExtensionUntil(packageName: String, now: Long): Long? =
@@ -86,6 +106,7 @@ class LimitRepository @Inject constructor(
         dao.insertOverride(
             BlockOverrideEntity(packageName = packageName, grantedAt = now, expiresAt = now, method = METHOD_SWIPES),
         )
+        _extensionChanges.update { it + 1 }
     }
 
     suspend fun swipeExtensionsSince(packageName: String, since: Long): Int =

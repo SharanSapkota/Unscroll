@@ -21,6 +21,10 @@ interface BlockingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLimit(limit: AppLimitEntity)
 
+    /** Defaults for a newly tracked app; never overwrites stored limits. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertLimitIfAbsent(limit: AppLimitEntity)
+
     @Insert
     suspend fun insertOverride(override: BlockOverrideEntity): Long
 

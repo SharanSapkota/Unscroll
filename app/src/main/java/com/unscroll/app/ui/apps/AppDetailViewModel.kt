@@ -17,6 +17,7 @@ import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockDuration
 import com.unscroll.app.domain.blocking.BlockEvaluator
+import com.unscroll.app.domain.blocking.LimitDefaults
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.QuickBlockRules
 import com.unscroll.app.domain.blocking.QuickBlockTarget
@@ -36,8 +37,10 @@ import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.overlay.OverlaySettings
-import com.unscroll.app.domain.reels.ReelsTimerStatus
+import com.unscroll.app.domain.reels.ReelsLimitScope
 import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
+import com.unscroll.app.domain.reels.ReelsTimerStatus
+import com.unscroll.app.domain.reels.TimerVisibility
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.domain.section.BlockedSection
@@ -80,6 +83,8 @@ data class AppDetailUiState(
     val pillEnabledGlobally: Boolean = true,
     /** Swipe limits and swipe breaks only work while the opt-in scroll counting runs. */
     val scrollCountingActive: Boolean = false,
+    /** The user already agreed to swipe counting ("Turn on swipe counting" goes straight to Android settings). */
+    val scrollCountingConsented: Boolean = false,
     /** The last 7 days, oldest first; today is last. */
     val week: List<DayUsage> = emptyList(),
     val weekOpens: Int = 0,
@@ -89,11 +94,12 @@ data class AppDetailUiState(
     val reels: ReelsTimerUi? = null,
 )
 
-/** App detail's Reels line, its "Show timer only in Reels" switch and the fallback note. */
+/** App detail's Reels line, "Timer visibility" and the fail-open note (Instagram and TikTok only). */
 data class ReelsTimerUi(
     /** TikTok says "For You" instead of "Reels". */
     val forYou: Boolean,
-    val toggleOn: Boolean,
+    val visibility: TimerVisibility,
+    /** ACTIVE, or why detection is unavailable (then the pill counts the whole app and limits don't block). */
     val availability: ReelsTimerStatus,
     val todayMillis: Long,
     val todaySwipes: Int,
@@ -154,11 +160,11 @@ class AppDetailViewModel @Inject constructor(
     val uiState: StateFlow<AppDetailUiState> = combine(
         combine(limits.observeLimits(), friction.observeSettings()) { l, f -> l to f },
         combine(overlay.settings, reelsDetection.availability(packageName)) { o, r -> o to r },
-        scrollCounting.isCounting,
+        combine(scrollCounting.isCounting, scrollCounting.record) { counting, record -> counting to (record.consent == ScrollConsent.AGREED) },
         usage.observeChanges(),
         ticks,
-    ) { (stored, frictionSettings), (overlaySettings, reelsAvailability), counting, _, _ ->
-        Inputs(stored[packageName] ?: AppLimit(packageName), frictionSettings[packageName], overlaySettings, counting, reelsAvailability)
+    ) { (stored, frictionSettings), (overlaySettings, reelsAvailability), (counting, consented), _, _ ->
+        Inputs(stored[packageName] ?: AppLimit(packageName), frictionSettings[packageName], overlaySettings, counting, consented, reelsAvailability)
     }
         .mapLatest { build(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppDetailUiState(packageName))
@@ -285,10 +291,16 @@ class AppDetailViewModel @Inject constructor(
 
     // Limits
 
-    fun setDailyLimit(minutes: Int?) = change { it.copy(dailyLimitMinutes = minutes?.coerceIn(1, MAX_LIMIT_MINUTES)) }
+    /** "Time limit" switch: on keeps the last value or starts at 30 minutes; off applies at once. */
+    fun setTimeLimitOn(on: Boolean) = change { LimitDefaults.withTimeLimit(it, on) }
 
-    fun setSwipeLimit(swipes: Int?) =
-        change { it.copy(swipeLimit = swipes?.coerceIn(SwipeLimitRules.MIN_LIMIT, SwipeLimitRules.MAX_LIMIT)) }
+    fun setDailyLimit(minutes: Int) = change { it.copy(dailyLimitMinutes = minutes.coerceIn(1, MAX_LIMIT_MINUTES)) }
+
+    /** "Swipe limit" switch: on starts at 100 per day; off applies at once. */
+    fun setSwipeLimitOn(on: Boolean) = change { LimitDefaults.withSwipeLimit(it, on) }
+
+    fun setSwipeLimit(swipes: Int) =
+        change { it.copy(swipeLimit = swipes.coerceIn(SwipeLimitRules.MIN_LIMIT, SwipeLimitRules.MAX_LIMIT)) }
 
     fun setSwipeLimitScope(scope: SwipeLimitScope) = change { it.copy(swipeLimitScope = scope) }
 
@@ -320,8 +332,8 @@ class AppDetailViewModel @Inject constructor(
 
     fun resetFriction() = save { friction.resetToDefaults(packageName) }
 
-    /** "Show timer only in Reels" (Instagram and TikTok). */
-    fun setReelsOnly(on: Boolean) = save { overlay.setReelsOnlyFor(packageName, on) }
+    /** "Timer visibility" (Instagram and TikTok). */
+    fun setTimerVisibility(visibility: TimerVisibility) = save { overlay.setTimerVisibility(packageName, visibility) }
 
     /** Limits apply at once, stronger or weaker (no cooldown). */
     private fun change(transform: (LimitSettings) -> LimitSettings) = save { limits.updateLimit(packageName, transform) }
@@ -345,13 +357,15 @@ class AppDetailViewModel @Inject constructor(
         val stats = usage.appSessionStats(weekRange, now).firstOrNull { it.packageName == packageName }
         val todayMillis = usage.appTotals(TimeRange(todayStart, now), now)[packageName] ?: 0L
         val settings = inputs.limit.settings
+        val reelsToday = if (ReelsOnlyPillConfig.appliesTo(packageName)) reelsUsage.today(now, zone)[packageName] else null
         return AppDetailUiState(
             packageName = packageName,
             isLoading = false,
             settings = settings,
             decision = evaluator.evaluate(
                 settings = settings,
-                usedTodayMillis = todayMillis,
+                // Instagram/TikTok: the time limit counts Reels time only.
+                usedTodayMillis = if (ReelsLimitScope.reelsOnly(packageName)) reelsToday?.millis ?: 0L else todayMillis,
                 extensionUntil = limits.activeExtensionUntil(packageName, now),
                 now = now,
                 zone = zone,
@@ -364,15 +378,15 @@ class AppDetailViewModel @Inject constructor(
             swipesShown = packageName !in inputs.overlay.swipesHiddenFor,
             pillEnabledGlobally = inputs.overlay.enabled,
             scrollCountingActive = inputs.counting,
+            scrollCountingConsented = inputs.consented,
             week = week,
             weekOpens = stats?.opens ?: 0,
             weekAverageMillis = stats?.let { if (it.opens > 0) it.totalDurationMillis / it.opens else 0L } ?: 0L,
             weekLongestMillis = stats?.longestMillis ?: 0L,
             reels = if (ReelsOnlyPillConfig.appliesTo(packageName)) {
-                val reelsToday = reelsUsage.today(now, zone)[packageName]
                 ReelsTimerUi(
-                    forYou = packageName !in ReelsCapableApps.INSTAGRAM,
-                    toggleOn = inputs.overlay.reelsOnlyFor(packageName),
+                    forYou = ReelsCapableApps.saysForYou(packageName),
+                    visibility = inputs.overlay.visibilityFor(packageName),
                     availability = inputs.reelsAvailability,
                     todayMillis = reelsToday?.millis ?: 0L,
                     todaySwipes = reelsToday?.swipes ?: 0,
@@ -388,6 +402,7 @@ class AppDetailViewModel @Inject constructor(
         val friction: FrictionSettings?,
         val overlay: OverlaySettings,
         val counting: Boolean,
+        val consented: Boolean,
         val reelsAvailability: ReelsTimerStatus,
     )
 

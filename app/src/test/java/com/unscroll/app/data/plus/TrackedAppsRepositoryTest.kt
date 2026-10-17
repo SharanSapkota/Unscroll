@@ -9,8 +9,10 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.unscroll.app.data.apps.InstalledApps
 import com.unscroll.app.data.apps.TrackedAppsPreferences
+import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.db.AppLimitEntity
 import com.unscroll.app.data.db.SessionEntity
+import com.unscroll.app.data.db.TrackedAppEntity
 import com.unscroll.app.data.db.UnscrollDatabase
 import com.unscroll.app.data.plus.FakeBillingGateway.Companion.plus
 import com.unscroll.app.domain.apps.AddResult
@@ -109,6 +111,7 @@ class TrackedAppsRepositoryTest {
             usage = usage,
             clock = Clock { NOW },
             scope = backgroundScope,
+            limits = LimitRepository(database.blockingDao()),
         )
     }
 
@@ -136,6 +139,41 @@ class TrackedAppsRepositoryTest {
         assertEquals(setOf(TIKTOK), state.active)
         assertTrue(repository.isActive(TIKTOK))
         assertFalse(repository.isActive(INSTAGRAM))
+    }
+
+    @Test
+    fun limitDefaults_newlyTrackedApps_getA30MinuteTimeLimit_andNoSwipeLimit() = runTest {
+        installed.installed += VIDEO
+        val repository = repository()
+        becomePlus()
+        repository.state.first { it.isPlus && it.entries.size == 3 }
+        val dao = database.blockingDao()
+        dao.observeLimits().first { rows -> rows.size == DEFAULTS_SEEDED }
+        listOf(INSTAGRAM, TIKTOK, TIKTOK_ASIA, FACEBOOK).forEach {
+            assertEquals(it, 30, dao.getLimit(it)?.dailyLimitMinutes)
+            assertNull(it, dao.getLimit(it)?.swipeLimit)
+        }
+
+        assertEquals(AddResult.ADDED, repository.add(VIDEO, "Video"))
+        assertEquals(30, dao.getLimit(VIDEO)?.dailyLimitMinutes)
+        assertNull(dao.getLimit(VIDEO)?.swipeLimit)
+    }
+
+    @Test
+    fun limitDefaults_neverChangeAnExistingUsersApps() = runTest {
+        // Tracked before the default existed: a row in the list, no stored limits ("no limit").
+        database.trackedAppDao().insertIgnore(listOf(TrackedAppEntity(packageName = INSTAGRAM, cachedLabel = null, addedAt = 0)))
+        // And an app whose limit the user switched off.
+        database.blockingDao().upsertLimit(
+            AppLimitEntity(TIKTOK, dailyLimitMinutes = null, blockedAlways = false, scheduleEnabled = false, scheduleDays = 0, scheduleStartMinute = 0, scheduleEndMinute = 0),
+        )
+        val repository = repository()
+        repository.state.first { it.entries.size == 3 }
+        database.blockingDao().observeLimits().first { rows -> rows.any { it.packageName == FACEBOOK } }
+
+        assertNull(database.blockingDao().getLimit(INSTAGRAM))
+        assertNull(database.blockingDao().getLimit(TIKTOK)?.dailyLimitMinutes)
+        assertEquals(30, database.blockingDao().getLimit(FACEBOOK)?.dailyLimitMinutes)
     }
 
     @Test
@@ -412,5 +450,8 @@ class TrackedAppsRepositoryTest {
         const val NOW = 1_700_000_000_000L
         const val HOUR = 3_600_000L
         const val VIDEO = "com.example.video"
+
+        /** Instagram, both TikTok packages and Facebook. */
+        const val DEFAULTS_SEEDED = 4
     }
 }

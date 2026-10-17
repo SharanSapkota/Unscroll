@@ -1,7 +1,6 @@
 package com.unscroll.app.data.reels
 
 import com.unscroll.app.data.apps.InstalledApps
-import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.reels.ReelsTimerStatus
@@ -18,6 +17,7 @@ import com.unscroll.app.domain.section.SectionResult
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * The Reels-only timer's state per app (Instagram, TikTok): whether it runs or why it falls back
@@ -33,35 +34,41 @@ import kotlinx.coroutines.flow.stateIn
  * ScrollAccessibilityService reports ([observe], debounced by [ReelsHysteresis]).
  *
  * Only the verdict, the matched rule's identifiers and the version are kept, in memory; nothing
- * about a screen is stored or sent.
+ * about a screen is stored or sent. [observe] runs on the service's background dispatcher; every
+ * method is thread-safe.
  */
 @Singleton
 class ReelsDetectionRepository @Inject constructor(
-    private val overlay: OverlayPreferences,
     private val scrollCounting: ScrollCountingRepository,
     private val installedApps: InstalledApps,
-    @ApplicationScope scope: CoroutineScope,
+    @ApplicationScope private val scope: CoroutineScope,
 ) : ReelsTracking {
 
     val detectors = SectionDetectors()
 
-    private val versions = MutableStateFlow(readVersions())
+    /** Installed versions, read off the main thread (PackageManager); empty until the first read. */
+    private val versions = MutableStateFlow<Map<String, AppVersion>>(emptyMap())
+
+    init {
+        refresh()
+    }
 
     private val lock = Any()
     private val hysteresis = HashMap<String, ReelsHysteresis>()
     private val readings = MutableStateFlow<Map<String, Reading>>(emptyMap())
 
-    /** Everything but the live reading, per Reels-only app. */
+    /** When each app was last read successfully, for the watchdog. Guarded by [lock]. */
+    private val lastReadingAt = HashMap<String, Long>()
+
+    /** Everything but the live reading, per Reels-capable app. */
     private val baseInputs: Flow<Map<String, ReelsInputs>> = combine(
-        overlay.settings,
         scrollCounting.record,
         scrollCounting.connected,
         versions,
-    ) { settings, record, connected, versionMap ->
+    ) { record, connected, versionMap ->
         ReelsOnlyPillConfig.PACKAGES.associateWith { pkg ->
             ReelsInputs(
                 packageName = pkg,
-                toggleOn = settings.reelsOnlyFor(pkg),
                 versionSupported = detectors.isAvailable(pkg, versionMap[pkg] ?: AppVersion.UNKNOWN),
                 consent = record.reelsConsent,
                 serviceConnected = connected,
@@ -91,7 +98,7 @@ class ReelsDetectionRepository @Inject constructor(
     fun availability(packageName: String): Flow<ReelsTimerStatus> =
         live.map { it[packageName]?.availability ?: ReelsTimerStatus.NOT_APPLICABLE }.distinctUntilChanged()
 
-    /** Whether the service should read [packageName]'s screen (switch, toggle, consent, version). */
+    /** Whether the service should read [packageName]'s screen (switch, consent, version). */
     fun shouldDetect(packageName: String): Boolean =
         inputs.value[packageName]?.let { ReelsOnlyRules.shouldDetect(it) } ?: false
 
@@ -108,25 +115,39 @@ class ReelsDetectionRepository @Inject constructor(
         val state = ReelsState.of(result.verdict)
         val machine = hysteresis.getOrPut(packageName) { ReelsHysteresis() }
         val recheck = machine.observe(state, now)
+        lastReadingAt[packageName] = now
         publish(packageName, Reading(machine.confirmed, machine.confirmedSince, state, result.rule))
         recheck
     }
 
     override fun onAppLeft(packageName: String) = synchronized(lock) {
+        lastReadingAt.remove(packageName)
         if (hysteresis.remove(packageName) != null || packageName in readings.value) {
             readings.value = readings.value - packageName
         }
     }
 
+    /** For the watchdog: when [packageName] was last read, and whether a state is confirmed. */
+    fun watchdogInputs(packageName: String): Pair<Long?, Boolean> = synchronized(lock) {
+        lastReadingAt[packageName] to (hysteresis[packageName]?.confirmed != null)
+    }
+
+    /**
+     * The watchdog found no reading for too long: forget the confirmed state, as if the app had
+     * just opened. No cover can outlive a detector that stopped reporting (fail open).
+     */
+    fun resetStale(packageName: String) = onAppLeft(packageName)
+
     /** The service stopped: no readings until it runs again (every app falls back meanwhile). */
     fun onServiceStopped() = synchronized(lock) {
         hysteresis.clear()
+        lastReadingAt.clear()
         readings.value = emptyMap()
     }
 
     /** Apps get updated: re-read the installed versions (on resume and when the service connects). */
     fun refresh() {
-        versions.value = readVersions()
+        scope.launch(Dispatchers.IO) { versions.value = readVersions() }
     }
 
     private fun publish(packageName: String, reading: Reading) {
