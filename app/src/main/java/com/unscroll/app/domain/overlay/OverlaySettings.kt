@@ -21,11 +21,16 @@ data class OverlaySettings(
     val pillHiddenFor: Set<String> = emptySet(),
     /** Apps whose pill shows no swipe count, even with [showSwipes] on. */
     val swipesHiddenFor: Set<String> = emptySet(),
+    /** Instagram/TikTok apps with "Show timer only in Reels" turned off (on by default). */
+    val reelsOnlyOffFor: Set<String> = emptySet(),
 ) {
     /** The global switch and the app's own switch must both be on. */
     fun showsPillFor(packageName: String): Boolean = enabled && packageName !in pillHiddenFor
 
     fun showsSwipesFor(packageName: String): Boolean = showSwipes && packageName !in swipesHiddenFor
+
+    /** "Show timer only in Reels" for [packageName] (only matters for the Reels-only apps). */
+    fun reelsOnlyFor(packageName: String): Boolean = packageName !in reelsOnlyOffFor
 
     companion object {
         const val DEFAULT_OPACITY = 0.9f

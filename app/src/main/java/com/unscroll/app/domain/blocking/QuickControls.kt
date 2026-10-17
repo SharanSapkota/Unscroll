@@ -2,6 +2,7 @@ package com.unscroll.app.domain.blocking
 
 import com.unscroll.app.domain.section.BlockedSection
 import com.unscroll.app.domain.section.ReelsCapableApps
+import com.unscroll.app.domain.section.SectionBlockingConfig
 
 /** Whether "Block reels only" can be switched on for an app right now, in the order checked. */
 enum class ReelsAvailability {
@@ -71,6 +72,10 @@ data class QuickStatus(
     /** Null: until the user turns it off. */
     val remainingMillis: Long?,
 )
+
+/** A stored reels block while section blocking is switched off (SectionBlockingConfig): not shown. */
+val QuickStatus.hiddenReelsBlock: Boolean
+    get() = target == QuickBlockTarget.REELS && !SectionBlockingConfig.ENABLED
 
 /** What tapping the reels toggle does. */
 enum class ReelsTapAction { TOGGLE, OPEN_PAYWALL, OPEN_DISCLOSURE, OPEN_ACCESSIBILITY, NONE }

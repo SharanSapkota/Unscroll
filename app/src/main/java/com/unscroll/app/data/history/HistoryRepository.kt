@@ -57,7 +57,7 @@ class HistoryRepository @Inject constructor(
     }
 
     /**
-     * Deletes sessions, the nudge log and the extension log. Ends the open session
+     * Deletes sessions (and their Reels segments), the nudge log and the extension log. Ends the open session
      * first, so the tracker doesn't keep writing to a deleted row. Returns the deleted session count.
      */
     suspend fun deleteUsageHistory(): Int {
@@ -65,6 +65,7 @@ class HistoryRepository @Inject constructor(
         val deleted = database.withTransaction {
             database.frictionDao().deleteAllNudges()
             database.blockingDao().deleteAllOverrides()
+            database.sectionSegmentDao().deleteAll()
             database.sessionDao().deleteAll()
         }
         scrollPreferences.resetHistory(clock.now(), countingNow = scrollCounting.connected.value)

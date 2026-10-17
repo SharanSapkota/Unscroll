@@ -20,6 +20,7 @@ import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.section.InspectorLabel
 import com.unscroll.app.domain.section.SectionBlockMode
+import com.unscroll.app.domain.section.SectionBlockingConfig
 import com.unscroll.app.domain.section.SectionBlockingRules
 import com.unscroll.app.domain.section.SectionCoverInputs
 import com.unscroll.app.domain.section.SectionInspectorFormat
@@ -143,7 +144,8 @@ class SectionBlockingService : AccessibilityService() {
                     trackedActive = state.active,
                     rulePackages = repository.detectors.packages,
                     inspectorAllowed = repository.inspectorAllowed,
-                    reelsBlockedApps = reelsBlocked,
+                    // Switched off (SectionBlockingConfig): no app is watched for blocking.
+                    reelsBlockedApps = if (SectionBlockingConfig.ENABLED) reelsBlocked else emptySet(),
                 )
             }.distinctUntilChanged().collect { packages ->
                 monitored = packages
@@ -222,7 +224,7 @@ class SectionBlockingService : AccessibilityService() {
             sectionBlocked = sectionBlocked,
         )
         val coverView = cover ?: return
-        if (detector != null && SectionBlockingRules.shouldCover(inputs)) {
+        if (SectionBlockingConfig.ENABLED && detector != null && SectionBlockingRules.shouldCover(inputs)) {
             if (!coverView.show(SectionCoverState(pkg, detector.section))) Log.w(TAG, "Section cover refused")
         } else if (coverView.coveredPackage == pkg) {
             coverView.hide()

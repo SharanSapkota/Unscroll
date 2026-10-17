@@ -22,3 +22,13 @@ data class SessionSwipes(
     val packageName: String,
     val count: Int,
 )
+
+/** The open section segment of the session on screen, with its swipes so far. */
+data class ActiveSegment(
+    val id: Long,
+    val sessionId: Long,
+    val packageName: String,
+    val section: ScreenSection,
+    val startTime: Long,
+    val swipes: Int = 0,
+)

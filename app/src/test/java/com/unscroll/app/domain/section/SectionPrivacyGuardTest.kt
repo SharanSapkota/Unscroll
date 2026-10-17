@@ -6,9 +6,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The "never read text" guarantee for section blocking. Fails if any code on the detection path
- * reads a node's (or an event's) text, content description, hint or other user-visible content,
- * and if any other main source touches AccessibilityNodeInfo at all.
+ * The "never read text" guarantee for section blocking and the Reels-only timer. Fails if any code
+ * on either detection path reads a node's (or an event's) text, content description, hint or other
+ * user-visible content (getText, getContentDescription, getHintText, ...), and if any other main
+ * source touches AccessibilityNodeInfo at all.
  */
 class SectionPrivacyGuardTest {
 
@@ -17,15 +18,20 @@ class SectionPrivacyGuardTest {
 
     /** Everything that sees accessibility nodes or what was read from them. */
     private val detectionPath: List<File> =
-        File(sources, "domain/section").listFiles().orEmpty().filter { it.extension == "kt" } +
+        listOf("domain/section", "domain/reels", "data/reels").flatMap { dir ->
+            File(sources, dir).listFiles().orEmpty().filter { it.extension == "kt" }
+        } +
             listOf(
                 File(sources, "service/SectionNodeSnapshot.kt"),
                 File(sources, "service/SectionBlockingService.kt"),
+                // The Reels-only timer's screen checks run in the swipe counter's service.
+                File(sources, "service/ScrollAccessibilityService.kt"),
             )
 
     @Test
     fun detectionPath_neverReadsContent() {
-        assertTrue("detection path not found", detectionPath.size > 3 && detectionPath.all { it.exists() })
+        assertTrue("detection path not found", detectionPath.size > 8 && detectionPath.all { it.exists() })
+        assertTrue(detectionPath.any { it.name == "ScrollAccessibilityService.kt" })
         val offenders = detectionPath.flatMap { file ->
             file.readLines().mapIndexedNotNull { index, line ->
                 val code = line.substringBefore("//")
@@ -54,6 +60,9 @@ class SectionPrivacyGuardTest {
             "node.getContentDescription()",
             "node.hintText",
             "node.getHintText()",
+            "val hint = node.hintText?.toString()",
+            "event.getText()",
+            "event.contentDescription",
             "node.stateDescription",
             "node.tooltipText",
             "node.paneTitle",
@@ -68,6 +77,8 @@ class SectionPrivacyGuardTest {
             "node.isSelected",
             "node.isVisibleToUser",
             "event.packageName?.toString()",
+            "event.className?.toString()",
+            "root.findAccessibilityNodeInfosByViewId(fullId)",
             "val textSize = 3",
         )
         fine.forEach { line -> assertTrue(line, FORBIDDEN.none { it.containsMatchIn(line) }) }

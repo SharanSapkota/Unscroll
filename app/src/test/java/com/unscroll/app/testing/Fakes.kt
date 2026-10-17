@@ -10,8 +10,14 @@ import com.unscroll.app.domain.permission.AppPermission
 import com.unscroll.app.domain.permission.PermissionState
 import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.plus.TrackedAppsState
+import com.unscroll.app.domain.reels.ReelsLive
+import com.unscroll.app.domain.reels.ReelsState
+import com.unscroll.app.domain.reels.ReelsTimerStatus
+import com.unscroll.app.domain.reels.ReelsTracking
 import com.unscroll.app.domain.scroll.AppScrollStats
 import com.unscroll.app.domain.session.HeartbeatStore
+import com.unscroll.app.domain.session.ScreenSection
+import com.unscroll.app.domain.session.SegmentStore
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.session.SessionStore
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
@@ -19,6 +25,7 @@ import com.unscroll.app.domain.tracking.ForegroundAppDetector
 import com.unscroll.app.domain.tracking.ScreenStateSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -63,6 +70,58 @@ class FakeSessionStore : SessionStore {
             if (it.endTime == null) it.copy(endTime = maxOf(it.startTime, endTime)) else it
         }
         return count
+    }
+}
+
+/** A stored section segment, as [FakeSegmentStore] keeps it. */
+data class FakeSegment(
+    val id: Long,
+    val sessionId: Long,
+    val packageName: String,
+    val section: ScreenSection,
+    val startTime: Long,
+    val endTime: Long? = null,
+    val swipes: Int = 0,
+)
+
+class FakeSegmentStore : SegmentStore {
+    val segments = mutableListOf<FakeSegment>()
+
+    override suspend fun openSegment(sessionId: Long, packageName: String, section: ScreenSection, startTime: Long): Long {
+        val id = (segments.maxOfOrNull { it.id } ?: 0L) + 1
+        segments += FakeSegment(id, sessionId, packageName, section, startTime)
+        return id
+    }
+
+    override suspend fun closeSegment(id: Long, endTime: Long) {
+        segments.replaceAll { if (it.id == id) it.copy(endTime = maxOf(it.startTime, endTime)) else it }
+    }
+
+    override suspend fun updateSegmentSwipes(id: Long, swipes: Int) {
+        segments.replaceAll { if (it.id == id) it.copy(swipes = swipes) else it }
+    }
+
+    override suspend fun closeOrphanedSegments(endTime: Long): Int {
+        val count = segments.count { it.endTime == null }
+        segments.replaceAll { if (it.endTime == null) it.copy(endTime = maxOf(it.startTime, endTime)) else it }
+        return count
+    }
+}
+
+/** Reels-only timer state under test control. Empty by default: every app works as before. */
+class FakeReelsTracking : ReelsTracking {
+    val state = MutableStateFlow<Map<String, ReelsLive>>(emptyMap())
+    override val live: StateFlow<Map<String, ReelsLive>> = state
+    val left = mutableListOf<String>()
+
+    override fun onAppLeft(packageName: String) {
+        left += packageName
+        state.value[packageName]?.let { state.value = state.value + (packageName to it.copy(state = null, since = 0)) }
+    }
+
+    /** The timer runs for [packageName] with [section] confirmed, which began at [since]. */
+    fun set(packageName: String, section: ReelsState?, since: Long, status: ReelsTimerStatus = ReelsTimerStatus.ACTIVE) {
+        state.value = state.value + (packageName to ReelsLive(packageName, status, section, since))
     }
 }
 

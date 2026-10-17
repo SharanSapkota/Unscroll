@@ -2,8 +2,11 @@ package com.unscroll.app.service
 
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.plus.TrackedAppsState
+import com.unscroll.app.domain.reels.ReelsState
+import com.unscroll.app.domain.reels.ReelsTimerStatus
 import com.unscroll.app.domain.scroll.ScrollPosition
 import com.unscroll.app.domain.scroll.SwipeDetector
+import com.unscroll.app.domain.session.ScreenSection
 import com.unscroll.app.domain.session.Session
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.FACEBOOK
@@ -11,6 +14,9 @@ import com.unscroll.app.domain.tracking.DefaultTrackedApps.INSTAGRAM
 import com.unscroll.app.domain.tracking.DefaultTrackedApps.TIKTOK
 import com.unscroll.app.testing.FakeForegroundAppDetector
 import com.unscroll.app.testing.FakeHeartbeatStore
+import com.unscroll.app.testing.FakeReelsTracking
+import com.unscroll.app.testing.FakeSegment
+import com.unscroll.app.testing.FakeSegmentStore
 import com.unscroll.app.testing.FakeScreenState
 import com.unscroll.app.testing.FakeSessionStore
 import com.unscroll.app.testing.FakeTrackedAppsSource
@@ -31,6 +37,8 @@ class SessionManagerTest {
     private val store = FakeSessionStore()
     private val heartbeats = FakeHeartbeatStore()
     private val trackedApps = FakeTrackedAppsSource()
+    private val segments = FakeSegmentStore()
+    private val reels = FakeReelsTracking()
 
     private lateinit var manager: SessionManager
     private lateinit var trackingJob: Job
@@ -39,7 +47,7 @@ class SessionManagerTest {
     private fun TestScope.startTracking() {
         // The fake clock is the test scheduler's virtual time.
         val clock = Clock { testScheduler.currentTime }
-        manager = SessionManager(detector, screen, store, heartbeats, trackedApps, clock, backgroundScope)
+        manager = SessionManager(detector, screen, store, heartbeats, trackedApps, clock, backgroundScope, segments, reels)
         trackingJob = backgroundScope.launch { manager.run() }
         runCurrent()
     }
@@ -471,6 +479,143 @@ class SessionManagerTest {
         // A default that isn't in the list any more opens nothing.
         foreground(INSTAGRAM, atMillis = 80_000)
         assertNull(manager.currentSession.value)
+    }
+
+    // --- Reels-only timer: section segments and swipes in Reels only ---------------------------
+
+    private fun TestScope.section(packageName: String, state: ReelsState?, since: Long, atMillis: Long, status: ReelsTimerStatus = ReelsTimerStatus.ACTIVE) {
+        advanceTo(atMillis)
+        reels.set(packageName, state, since, status)
+        runCurrent()
+    }
+
+    private fun segment(id: Long, section: ScreenSection, start: Long, end: Long?, swipes: Int = 0, sessionId: Long = 1) =
+        FakeSegment(id, sessionId, INSTAGRAM, section, start, end, swipes)
+
+    @Test
+    fun segments_splitWhenSwitchingTabs_atTheMomentTheSectionBegan() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        section(INSTAGRAM, null, since = 0, atMillis = 500)
+        assertNull(manager.segment.value)
+
+        // Confirmed at 1.4 s, first read at 1 s: the segment starts at 1 s.
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 1_000, atMillis = 1_400)
+        section(INSTAGRAM, ReelsState.OTHER, since = 59_600, atMillis = 60_000)
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 89_600, atMillis = 90_000)
+        assertEquals(ScreenSection.REELS, manager.segment.value?.section)
+
+        foreground(LAUNCHER, atMillis = 120_000)
+        assertNull(manager.segment.value)
+        assertEquals(listOf(INSTAGRAM), reels.left)
+        advanceTo(124_000)
+
+        assertEquals(
+            listOf(
+                segment(1, ScreenSection.REELS, 1_000, 59_600),
+                segment(2, ScreenSection.OTHER, 59_600, 89_600),
+                segment(3, ScreenSection.REELS, 89_600, 120_000),
+            ),
+            segments.segments,
+        )
+        // The session (total time in the app) is unchanged by the segments.
+        assertEquals(listOf(session(1, INSTAGRAM, 0, 120_000)), store.sessions)
+    }
+
+    @Test
+    fun swipes_countOnlyInReels_forAppsOnTheReelsOnlyTimer() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        // Not confirmed yet: not counted.
+        section(INSTAGRAM, null, since = 0, atMillis = 100)
+        assertEquals(false, swipe(INSTAGRAM))
+
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 1_000, atMillis = 1_000)
+        assertEquals(true, swipe(INSTAGRAM))
+        assertEquals(true, swipe(INSTAGRAM))
+        section(INSTAGRAM, ReelsState.OTHER, since = 5_000, atMillis = 5_400)
+        // Chat, home feed, ...: never counted.
+        assertEquals(false, swipe(INSTAGRAM))
+        assertEquals(false, swipe(INSTAGRAM))
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 8_000, atMillis = 8_400)
+        assertEquals(true, swipe(INSTAGRAM))
+
+        assertEquals(3, manager.swipes.value?.count)
+        assertEquals(3, store.sessions.single().scrollCount)
+        assertEquals(listOf(2, 0, 1), segments.segments.map { it.swipes })
+    }
+
+    @Test
+    fun fallback_countsEverySwipe_withoutSegments() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        section(INSTAGRAM, ReelsState.UNKNOWN, since = 0, atMillis = 3_000, status = ReelsTimerStatus.SCREEN_UNREADABLE)
+        assertEquals(true, swipe(INSTAGRAM))
+        assertEquals(true, swipe(INSTAGRAM))
+        assertEquals(2, store.sessions.single().scrollCount)
+        assertEquals(emptyList<FakeSegment>(), segments.segments)
+    }
+
+    @Test
+    fun otherApps_keepCountingEverySwipe() = runTest {
+        startTracking()
+        section(INSTAGRAM, ReelsState.OTHER, since = 0, atMillis = 0)
+        foreground(FACEBOOK, atMillis = 100)
+        assertEquals(true, swipe(FACEBOOK))
+        assertNull(manager.segment.value)
+        assertEquals(1, store.sessions.single().scrollCount)
+    }
+
+    @Test
+    fun backWithinTheDebounce_sameSession_newSegmentOnceTheSectionIsConfirmedAgain() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 0, atMillis = 0)
+        foreground(LAUNCHER, atMillis = 30_000)
+        foreground(INSTAGRAM, atMillis = 31_000)
+        // The visit's state was forgotten on leaving: no segment until a new reading.
+        assertNull(manager.segment.value)
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 31_200, atMillis = 31_200)
+
+        assertEquals(
+            listOf(segment(1, ScreenSection.REELS, 0, 30_000), segment(2, ScreenSection.REELS, 31_200, null)),
+            segments.segments,
+        )
+        assertEquals(1, store.sessions.size)
+    }
+
+    @Test
+    fun screenOff_closesTheSegment() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        section(INSTAGRAM, ReelsState.IN_REELS, since = 0, atMillis = 0)
+        screenOff(atMillis = 40_000)
+        assertEquals(listOf(segment(1, ScreenSection.REELS, 0, 40_000)), segments.segments)
+    }
+
+    @Test
+    fun orphanedSegments_areClosedAtTheLastHeartbeat() = runTest {
+        store.sessions += Session(1, INSTAGRAM, 1_000, endTime = null, scrollCount = 4)
+        segments.segments += segment(1, ScreenSection.REELS, 2_000, null, swipes = 4)
+        heartbeats.last = 9_000
+
+        startTracking()
+
+        assertEquals(listOf(segment(1, ScreenSection.REELS, 2_000, 9_000, swipes = 4)), segments.segments)
+        assertEquals(9_000L, store.sessions.single().endTime)
+    }
+
+    @Test
+    fun theTimerSwitchingOff_closesTheSegment_andCountsEverySwipeAgain() = runTest {
+        startTracking()
+        foreground(INSTAGRAM, atMillis = 0)
+        section(INSTAGRAM, ReelsState.OTHER, since = 0, atMillis = 0)
+        assertEquals(false, swipe(INSTAGRAM))
+        // E.g. the service stopped or "Show timer only in Reels" was turned off.
+        section(INSTAGRAM, null, since = 0, atMillis = 10_000, status = ReelsTimerStatus.SERVICE_OFF)
+        assertNull(manager.segment.value)
+        assertEquals(true, swipe(INSTAGRAM))
+        assertEquals(listOf(segment(1, ScreenSection.OTHER, 0, 10_000)), segments.segments)
     }
 
     private fun freeTier(active: String) = TrackedAppsState(

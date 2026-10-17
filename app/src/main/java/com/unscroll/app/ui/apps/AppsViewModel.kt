@@ -3,6 +3,8 @@ package com.unscroll.app.ui.apps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.blocking.LimitRepository
+import com.unscroll.app.data.reels.ReelsToday
+import com.unscroll.app.data.reels.ReelsUsageRepository
 import com.unscroll.app.domain.blocking.AppLimit
 import com.unscroll.app.domain.blocking.BlockDecision
 import com.unscroll.app.domain.blocking.BlockEvaluator
@@ -10,6 +12,7 @@ import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.QuickBlockTarget
 import com.unscroll.app.domain.blocking.QuickControls
 import com.unscroll.app.domain.blocking.QuickStatus
+import com.unscroll.app.domain.blocking.hiddenReelsBlock
 import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
@@ -17,6 +20,7 @@ import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.plus.AppTrackingStatus
 import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.plus.TrackedAppsState
+import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
 import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
@@ -49,6 +53,8 @@ data class AppRowState(
     val quickStatus: QuickStatus? = null,
     /** "Block entire app" is running: the row's Block switch. */
     val entireAppBlocked: Boolean = false,
+    /** Today's time and swipes in Reels / For You (Instagram, TikTok), once there are any. */
+    val reels: ReelsToday? = null,
 ) {
     val tracked: Boolean get() = status == AppTrackingStatus.ACTIVE
 }
@@ -72,6 +78,7 @@ class AppsViewModel @Inject constructor(
     private val usage: UsageDataSource,
     private val evaluator: BlockEvaluator,
     private val clock: Clock,
+    private val reelsUsage: ReelsUsageRepository,
 ) : ViewModel() {
 
     /** Ticks while the tab is visible, so "min left" stays current. */
@@ -111,6 +118,7 @@ class AppsViewModel @Inject constructor(
         val zone = ZoneId.systemDefault()
         val todayStart = startOfDay(localDate(now, zone), zone)
         val usedToday = usage.appTotals(TimeRange(todayStart, now), now)
+        val reelsToday = if (ReelsOnlyPillConfig.ENABLED) reelsUsage.today(now, zone) else emptyMap()
         val rows = apps.entries.map { entry ->
             val packageName = entry.packageName
             val settings = (stored[packageName] ?: AppLimit(packageName)).settings
@@ -129,8 +137,9 @@ class AppsViewModel @Inject constructor(
                 todayMillis = used,
                 status = apps.statusOf(packageName),
                 label = entry.label,
-                quickStatus = QuickControls.status(packageName, settings, now),
+                quickStatus = QuickControls.status(packageName, settings, now)?.takeUnless { it.hiddenReelsBlock },
                 entireAppBlocked = settings.entireAppBlocked(now),
+                reels = reelsToday[packageName]?.takeIf { ReelsOnlyPillConfig.appliesTo(packageName) && it.millis > 0 },
             )
         }
         return AppsUiState(isLoading = false, apps = rows)

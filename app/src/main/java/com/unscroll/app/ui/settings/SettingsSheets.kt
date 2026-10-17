@@ -22,6 +22,7 @@ import com.unscroll.app.data.scroll.scrollServiceComponent
 import com.unscroll.app.domain.permission.HealthItem
 import com.unscroll.app.domain.permission.PermissionHealth
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
+import com.unscroll.app.domain.section.SectionBlockingConfig
 import com.unscroll.app.ui.components.ChipGroup
 import com.unscroll.app.ui.components.PermissionRow
 import com.unscroll.app.ui.components.RowDivider
@@ -87,8 +88,8 @@ internal fun TrackingGroup(
             onClick = { scrollOpen = true },
         )
         // Section blocking is part of Unscroll Plus: free users get the paywall. With payments off
-        // everyone has Plus, so this always opens the sheet.
-        SettingRow(
+        // everyone has Plus, so this always opens the sheet. Hidden while it is switched off.
+        if (SectionBlockingConfig.ENABLED) SettingRow(
             title = stringResource(R.string.section_title),
             icon = R.drawable.ic_layers,
             value = if (isPlus) {

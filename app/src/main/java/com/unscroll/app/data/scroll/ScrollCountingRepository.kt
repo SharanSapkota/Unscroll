@@ -136,6 +136,11 @@ class ScrollCountingRepository @Inject constructor(
         preferences.setConsent(consent, clock.now())
     }
 
+    /** The answer about screen checks (Reels-only timer); "I agree" on the disclosure gives both. */
+    suspend fun setReelsConsent(consent: ScrollConsent) {
+        preferences.setReelsConsent(consent, clock.now())
+    }
+
     /** "Not now" on Home's "Turn on swipe counting" banner. */
     suspend fun dismissSetupBanner() {
         preferences.dismissSetupBanner(clock.now())
@@ -144,6 +149,7 @@ class ScrollCountingRepository @Inject constructor(
     /** "Turn off": withdraws consent and asks the running service to switch itself off. */
     suspend fun turnOff() {
         preferences.setConsent(ScrollConsent.DECLINED, clock.now())
+        preferences.setReelsConsent(ScrollConsent.DECLINED, clock.now())
         _turnOffRequests.tryEmit(Unit)
     }
 

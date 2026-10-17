@@ -31,8 +31,10 @@ import com.unscroll.app.ui.components.SettingSwitchRow
 import com.unscroll.app.ui.components.SettingsGroup
 import com.unscroll.app.ui.components.UnscrollSheet
 import com.unscroll.app.ui.components.formatMinuteOfDay
+import com.unscroll.app.ui.components.rememberAppLabel
 import com.unscroll.app.ui.components.pickTime
 import com.unscroll.app.ui.components.shortMinutes
+import com.unscroll.app.ui.reels.ReelsTimerNote
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import java.time.DayOfWeek
@@ -52,6 +54,8 @@ internal class DetailActions(
     val onScheduleEnd: (Int) -> Unit = {},
     val onPillShown: (Boolean) -> Unit = {},
     val onSwipesShown: (Boolean) -> Unit = {},
+    val onReelsOnly: (Boolean) -> Unit = {},
+    val onReelsReview: () -> Unit = {},
     val onFriction: ((FrictionSettings) -> FrictionSettings) -> Unit = {},
     val onResetFriction: () -> Unit = {},
 )
@@ -279,6 +283,21 @@ internal fun TimerAndNudgesSection(state: AppDetailUiState, actions: DetailActio
                 checked = state.swipesShown,
                 onCheckedChange = actions.onSwipesShown,
             )
+            // Instagram and TikTok only: the pill (and its time and swipes) follow Reels / For You.
+            state.reels?.let { reels ->
+                SettingSwitchRow(
+                    title = stringResource(if (reels.forYou) R.string.reels_only_toggle_tiktok else R.string.reels_only_toggle),
+                    icon = R.drawable.ic_timer,
+                    checked = reels.toggleOn,
+                    onCheckedChange = actions.onReelsOnly,
+                )
+                ReelsTimerNote(
+                    appName = rememberAppLabel(state.packageName),
+                    availability = reels.availability,
+                    onReview = actions.onReelsReview,
+                    modifier = Modifier.padding(horizontal = Dimens.spaceL),
+                )
+            }
             RowDivider()
             SettingRow(
                 title = stringResource(R.string.detail_open_nudges),

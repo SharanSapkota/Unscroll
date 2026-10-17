@@ -11,8 +11,9 @@ import androidx.room.RoomDatabase
         AppFrictionEntity::class,
         NudgeLogEntity::class,
         TrackedAppEntity::class,
+        SectionSegmentEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 abstract class UnscrollDatabase : RoomDatabase() {
@@ -23,6 +24,8 @@ abstract class UnscrollDatabase : RoomDatabase() {
     abstract fun frictionDao(): FrictionDao
 
     abstract fun trackedAppDao(): TrackedAppDao
+
+    abstract fun sectionSegmentDao(): SectionSegmentDao
 
     companion object {
         const val NAME = "unscroll.db"

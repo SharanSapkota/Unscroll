@@ -41,7 +41,9 @@ import com.unscroll.app.ui.components.formatMinuteOfDay
 import com.unscroll.app.ui.components.pickTime
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
+import com.unscroll.app.ui.reels.ReelsTimerNote
 import com.unscroll.app.util.SystemSettings
+import com.unscroll.app.util.appLabel
 import com.unscroll.app.util.openSettings
 
 /**
@@ -58,6 +60,7 @@ fun SettingsScreen(
     onPickApps: () -> Unit = {},
     onSectionSetUp: () -> Unit = {},
     onSectionInspector: () -> Unit = {},
+    onReelsReview: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val trackingEnabled by viewModel.trackingEnabled.collectAsStateWithLifecycle()
@@ -71,6 +74,8 @@ fun SettingsScreen(
     val dynamicColor by viewModel.dynamicColor.collectAsStateWithLifecycle()
     val fox by viewModel.fox.collectAsStateWithLifecycle()
     val swipeDebug by viewModel.swipeDebug.collectAsStateWithLifecycle()
+    val reelsDebug by viewModel.reelsDebug.collectAsStateWithLifecycle()
+    val reelsNotes by viewModel.reelsNotes.collectAsStateWithLifecycle()
     var checklistOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -148,6 +153,16 @@ fun SettingsScreen(
             ),
             swipeCounting = scrollStatus == ScrollCountingStatus.ACTIVE,
         )
+        // Why the Reels-only timer falls back for Instagram or TikTok, if it does.
+        val packageManager = LocalContext.current.packageManager
+        reelsNotes.forEach { (pkg, availability) ->
+            ReelsTimerNote(
+                appName = packageManager.appLabel(pkg),
+                availability = availability,
+                onReview = onReelsReview,
+                modifier = Modifier.padding(horizontal = Dimens.spaceL, vertical = Dimens.spaceXs),
+            )
+        }
 
         SectionHeader(
             title = stringResource(R.string.settings_group_notifications),
@@ -205,6 +220,13 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_debug_swipes),
                     icon = R.drawable.ic_swipe,
                     subtitle = swipeDebug,
+                    showChevron = false,
+                )
+                // Reels-only timer: detector state, matched rule and version code per app.
+                SettingRow(
+                    title = stringResource(R.string.settings_debug_reels),
+                    icon = R.drawable.ic_bug,
+                    subtitle = reelsDebug,
                     showChevron = false,
                 )
                 if (PlusConfig.BILLING_ENABLED) PlusDebugRow()

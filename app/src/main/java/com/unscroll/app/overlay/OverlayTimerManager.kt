@@ -9,15 +9,17 @@ import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.overlay.PillTotalsRepository
+import com.unscroll.app.data.reels.ReelsDetectionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.overlay.OverlaySettings
 import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.overlay.PillSwipes
+import com.unscroll.app.domain.overlay.PillTarget
 import com.unscroll.app.domain.overlay.PillToday
 import com.unscroll.app.domain.overlay.PillTodayBase
 import com.unscroll.app.domain.overlay.ShownTotal
-import com.unscroll.app.domain.session.ActiveSession
+import com.unscroll.app.domain.session.SessionSwipes
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.SessionManager
 import com.unscroll.app.service.SwipeLimitEnforcer
@@ -33,7 +35,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -51,6 +55,12 @@ import kotlinx.coroutines.withContext
  * database once per visit ([PillTotalsRepository]); the pill adds the open session's time from
  * the clock every second ([PillToday]). The last total shown per app is kept as a floor, so the
  * pill never shows less than before on the same day.
+ *
+ * Reels-only timer (Instagram, TikTok, [PillTarget]): while it runs for the app on screen, the pill
+ * is only shown while the confirmed section is Reels, and shows today's time and swipes in Reels
+ * (from the open REELS segment and the earlier ones today). Any other screen removes it at once
+ * (no animation); the detector's debounce keeps it from flickering. A fallen-back app gets the
+ * whole-app pill as before.
  */
 @Singleton
 class OverlayTimerManager @Inject constructor(
@@ -64,6 +74,7 @@ class OverlayTimerManager @Inject constructor(
     private val swipeLimitEnforcer: SwipeLimitEnforcer,
     private val clock: Clock,
     private val appearance: AppearancePreferences,
+    private val reels: ReelsDetectionRepository,
 ) {
     private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
     private val collapsed = MutableStateFlow(false)
@@ -73,7 +84,18 @@ class OverlayTimerManager @Inject constructor(
     private var scope: CoroutineScope? = null
     private var swipesShown: PillSwipes? = null
     private var base: PillTodayBase? = null
+    private var baseIsReels = false
     private val shownToday = HashMap<String, ShownTotal>()
+
+    /** What the pill follows: the whole app, Reels only, or nothing. */
+    private val target = combine(
+        sessionManager.foregroundSession,
+        // Swipes change the segment on every swipe; they reach the pill through [watchSwipes].
+        sessionManager.segment.map { it?.copy(swipes = 0) }.distinctUntilChanged(),
+        reels.live,
+    ) { session, segment, live ->
+        PillTarget.of(session, segment, session?.let { live[it.packageName] })
+    }.distinctUntilChanged()
 
     suspend fun run() = withContext(Dispatchers.Main.immediate) {
         try {
@@ -81,33 +103,35 @@ class OverlayTimerManager @Inject constructor(
                 scope = this
                 launch { watchSwipes() }
                 combine(
-                    sessionManager.foregroundSession,
+                    target,
                     preferences.settings,
                     collapsed,
                     messages.message,
                     limits.observeLimits(),
-                ) { session, settings, isCollapsed, message, limitMap ->
+                ) { following, settings, isCollapsed, message, limitMap ->
+                    val packageName = following.packageName
                     // Only show a message for the app that is actually on screen.
-                    val forThisApp = message?.takeIf { it.packageName == session?.packageName }
-                    val dailyLimit = session?.let { limitMap[it.packageName]?.settings?.dailyLimitMinutes }
-                    OverlayInputs(session, settings, isCollapsed, forThisApp, dailyLimit?.let { it * MINUTE })
+                    val forThisApp = message?.takeIf { it.packageName == packageName }
+                    val dailyLimit = packageName?.let { limitMap[it]?.settings?.dailyLimitMinutes }
+                    OverlayInputs(following, settings, isCollapsed, forThisApp, dailyLimit?.let { it * MINUTE })
                 }
                     .collectLatest { inputs ->
-                        val session = inputs.session
+                        val following = inputs.target
+                        val packageName = following.packageName
                         val show = PillRules.shouldShow(
-                            foregroundPackage = session?.packageName,
+                            foregroundPackage = packageName,
                             settings = inputs.settings,
                             canDrawOverlays = canDrawOverlays(),
                         )
-                        if (session == null) retireBase()
-                        if (!show || session == null) {
+                        if (following == PillTarget.None) retireBase()
+                        if (!show || packageName == null) {
                             hide()
                             return@collectLatest
                         }
                         show(
                             OverlayUiState(
-                                appName = context.packageManager.appLabel(session.packageName),
-                                today = baseFor(session),
+                                appName = context.packageManager.appLabel(packageName),
+                                today = baseFor(following) ?: return@collectLatest,
                                 dailyLimitMillis = inputs.dailyLimitMillis,
                                 settings = inputs.settings,
                                 collapsed = inputs.collapsed,
@@ -133,8 +157,16 @@ class OverlayTimerManager @Inject constructor(
      * always used for the color) and, near a swipe limit, the swipes left.
      */
     private suspend fun watchSwipes() {
+        // On the Reels-only timer the open REELS segment's swipes stand in for the session's.
+        val shownSwipes = combine(target, sessionManager.swipes, sessionManager.segment) { following, sessionSwipes, segment ->
+            when (following) {
+                is PillTarget.Reels -> (segment?.takeIf { it.id == following.segment.id } ?: following.segment)
+                    .let { SessionSwipes(it.id, it.packageName, it.swipes) }
+                else -> sessionSwipes
+            }
+        }
         combine(
-            sessionManager.swipes,
+            shownSwipes,
             preferences.settings,
             scrollCounting.isCounting,
             swipeLimitEnforcer.foreground,
@@ -221,25 +253,42 @@ class OverlayTimerManager @Inject constructor(
     }
 
     /**
-     * The base for [session]'s pill: reused while the same session stays on screen on the same
-     * day, measured again (one query) when an app comes to the foreground or the day changes.
+     * The base for [target]'s pill: reused while the same session (or Reels segment) stays on
+     * screen on the same day, measured again (one query) when an app comes to the foreground, the
+     * user enters Reels again, or the day changes. Null for [PillTarget.None].
      */
-    private suspend fun baseFor(session: ActiveSession): PillTodayBase {
+    private suspend fun baseFor(target: PillTarget): PillTodayBase? {
         val now = clock.now()
         val zone = ZoneId.systemDefault()
         val today = PillToday.dayStart(now, zone)
-        base?.let { if (it.sessionId == session.id && it.dayStart == today) return it }
+        val reelsMode = target is PillTarget.Reels
+        val visitId = when (target) {
+            is PillTarget.App -> target.session.id
+            is PillTarget.Reels -> target.segment.id
+            PillTarget.None -> return null
+        }
+        base?.let { if (it.sessionId == visitId && baseIsReels == reelsMode && it.dayStart == today) return it }
         retireBase()
-        val floor = shownToday[session.packageName]?.floorFor(today) ?: 0L
-        return totals.base(session, now, zone, floor).also { base = it }
+        val floorKey = floorKey(target.packageName ?: return null, reelsMode)
+        val floor = shownToday[floorKey]?.floorFor(today) ?: 0L
+        val fresh = when (target) {
+            is PillTarget.App -> totals.base(target.session, now, zone, floor)
+            is PillTarget.Reels -> totals.reelsBase(target.segment, now, zone, floor)
+            PillTarget.None -> return null
+        }
+        baseIsReels = reelsMode
+        return fresh.also { base = it }
     }
 
-    /** The app left the screen: remember the total it showed, as the floor for its next visit. */
+    /** The app (or Reels) left the screen: remember the total it showed, as the floor for its next visit. */
     private fun retireBase() {
         val old = base ?: return
-        shownToday[old.packageName] = PillToday.shownAt(old, clock.now(), ZoneId.systemDefault())
+        shownToday[floorKey(old.packageName, baseIsReels)] = PillToday.shownAt(old, clock.now(), ZoneId.systemDefault())
         base = null
     }
+
+    /** Whole-app and Reels totals keep separate floors. */
+    private fun floorKey(packageName: String, reels: Boolean) = if (reels) "$packageName#reels" else packageName
 
     private fun canDrawOverlays(): Boolean = Settings.canDrawOverlays(context)
 
@@ -250,8 +299,16 @@ class OverlayTimerManager @Inject constructor(
     }
 }
 
+/** The app the pill belongs to, or null. */
+private val PillTarget.packageName: String?
+    get() = when (this) {
+        is PillTarget.App -> session.packageName
+        is PillTarget.Reels -> segment.packageName
+        PillTarget.None -> null
+    }
+
 private data class OverlayInputs(
-    val session: ActiveSession?,
+    val target: PillTarget,
     val settings: OverlaySettings,
     val collapsed: Boolean,
     val message: PillMessage?,

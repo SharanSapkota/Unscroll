@@ -22,6 +22,7 @@ enum class SwipeDebugOutcome(val label: String) {
     UNTRACKED("ignored: app not tracked"),
     NOT_COUNTED("ignored: screen off or Count swipes off"),
     NO_SESSION("ignored: no open session for this app"),
+    NOT_IN_REELS("ignored: not in Reels (Reels-only timer)"),
     WINDOW("window change"),
 }
 

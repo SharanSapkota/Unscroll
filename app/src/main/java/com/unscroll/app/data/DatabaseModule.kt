@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.unscroll.app.data.db.ALL_MIGRATIONS
 import com.unscroll.app.data.db.BlockingDao
 import com.unscroll.app.data.db.FrictionDao
+import com.unscroll.app.data.db.SectionSegmentDao
 import com.unscroll.app.data.db.SessionDao
 import com.unscroll.app.data.db.TrackedAppDao
 import com.unscroll.app.data.db.UnscrollDatabase
@@ -35,6 +36,9 @@ object DatabaseModule {
 
     @Provides
     fun provideFrictionDao(database: UnscrollDatabase): FrictionDao = database.frictionDao()
+
+    @Provides
+    fun provideSectionSegmentDao(database: UnscrollDatabase): SectionSegmentDao = database.sectionSegmentDao()
 
     @Provides
     fun provideTrackedAppDao(database: UnscrollDatabase): TrackedAppDao = database.trackedAppDao()

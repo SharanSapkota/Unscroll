@@ -8,7 +8,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 
 - Unscroll has **no account, no servers, no analytics, no ads and no internet permission**. It can't send your data anywhere.
 - Everything Unscroll records is stored only on your phone, in the app's private storage, and is deleted when you uninstall the app.
-- Unscroll never reads the content of your screen: no posts, messages, usernames, text or images. The optional section blocking only looks at technical identifiers of the screen, like the names of its views and which tab is selected, to tell short videos from chat; it stores none of them.
+- Unscroll never reads what is written or shown on your screen: no posts, messages, captions, comments, usernames, text or images. If you allow it, the optional swipe counter checks which screen of Instagram or TikTok is open, using only technical identifiers of the screen (the names of a few of its views and which tab is selected), so the timer only shows on Reels; it keeps only "Reels" or "not Reels" and stores none of the identifiers. The optional section blocking (switched off in this version) works the same way.
 
 ## What Unscroll records on your phone
 
@@ -17,6 +17,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 | Which tracked app was open (Instagram, TikTok and Facebook by default, plus any app you add), and when each session started and ended | Session timer, dashboard, limits, nudges |
 | The apps you track: package name, name, when you added it, and your per-app switches | So Unscroll tracks only the apps you chose |
 | How many times you swiped in a session (only if you turn on the optional swipe counter) | Swipe count, swipe stats, "take a break after N swipes" |
+| For Instagram and TikTok, when you were in Reels / For You or elsewhere in the app, and your swipes in Reels (only with the swipe counter and your OK to screen checks) | The Reels-only timer and the "Reels" line on the Apps tab and App detail |
 | Sent nudges and "I need access" extensions | So nudges aren't repeated, and to log extensions |
 | Your settings: limits, schedules, goal, overlay, quiet hours, consent choices, and which apps' short-video sections you block | So the app works the way you set it up |
 | Insights: your tone choice, your age if you enter it (only for the life projection), the weekly notification switch, and which insight messages were shown recently (their IDs, not their numbers) | So Insights match your settings and don't repeat |
@@ -28,7 +29,7 @@ Unscroll helps you spend less time scrolling social media. It is built so that y
 - **Usage access:** to see which app is in the foreground and measure time. Only app package names and timestamps are read.
 - **Display over other apps:** to show the floating timer and the break and block screens.
 - **Notifications** (optional): nudges and break reminders.
-- **Accessibility service** (optional, off by default, needs your explicit consent in the app): counts scroll gestures in the tracked apps. It can't read screen content (`canRetrieveWindowContent` is off) and only receives scroll and window-change events from the tracked apps.
+- **Accessibility service, "Unscroll swipe counter"** (optional, off by default, needs your explicit consent in the app): counts scroll gestures in the tracked apps, from scroll and window-change events of those apps only. For Instagram and TikTok, and only after you agreed to screen checks (asked separately), it also tells Reels / For You from the other screens: it looks up a fixed list of view IDs and reads, for each, its ID, its type, whether it is selected and whether it is visible, plus the screen (activity) name. For this the service is allowed to retrieve window content (`canRetrieveWindowContent`), but it never reads text, content descriptions, hints, messages, captions, comments or usernames, keeps only "Reels" or "not Reels" in memory, and sends nothing anywhere.
 - **Section blocking accessibility service** (optional, off by default, needs your explicit consent on its own screen in the app): a second, separate service that checks which section of an app you chose is open (for example Instagram Reels or chat) so Unscroll can cover only the short-video section. It reads only technical identifiers: the app's package name and screen (activity) name, and for each visible view its ID, its type and whether it is selected. It never reads text, content descriptions, messages, captions, comments or usernames, stores nothing about what was on screen, and sends nothing anywhere. The only actions it performs are Back and Home, when you tap "Take me back" or "Go home" on its cover.
 - **Run at startup** and a foreground service: to keep tracking after a restart.
 

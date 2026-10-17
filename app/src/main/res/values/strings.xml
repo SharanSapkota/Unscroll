@@ -58,19 +58,43 @@
 
     <!-- M7: optional scroll counting (accessibility service) -->
     <string name="accessibility_service_label">Unscroll swipe counter</string>
-    <string name="accessibility_service_description">Counts how many times you swipe in the apps you track in Unscroll, so it can show your swipe count, suggest a break, and cover the app when your swipe limit is reached. It does not read your screen, messages or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
+    <string name="accessibility_service_description">Counts how many times you swipe in the apps you track in Unscroll, so it can show your swipe count, suggest a break, and cover the app when your swipe limit is reached. In Instagram and TikTok it also checks which screen is open (using technical screen IDs only), so the timer only shows on Reels. It never reads your messages, posts or anything you type, and nothing leaves your phone. Optional: turn it off any time.</string>
 
     <string name="scroll_disclosure_title">Count your swipes (optional)</string>
     <string name="scroll_disclosure_intro">Unscroll can count how many times you swipe in the apps you choose. You\'ll see the count on the timer and the dashboard, you can ask for a break after a number of swipes, and you can set a swipe limit that covers the app when you reach it.</string>
     <string name="scroll_disclosure_does_title">What it does</string>
     <string name="scroll_disclosure_does_body">It uses Android\'s Accessibility Service to notice that a scroll happened in one of the apps you track in Unscroll (Instagram, TikTok and Facebook unless you change the list), and in which one. It counts, and it can cover the screen when your swipe limit is reached. It doesn\'t look at any other app.</string>
     <string name="scroll_disclosure_does_not_title">What it does not do</string>
-    <string name="scroll_disclosure_does_not_body">It does not read your screen, posts, messages, usernames or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.</string>
+    <string name="scroll_disclosure_does_not_body">It does not read the text on your screen, your posts, messages, usernames, captions, comments or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.</string>
+    <string name="scroll_disclosure_reels_title">Timer only in Reels</string>
+    <string name="scroll_disclosure_reels_body">Unscroll checks which screen of TikTok and Instagram is open so the timer only shows on Reels. It never reads your messages or content and sends nothing anywhere.</string>
+    <string name="scroll_disclosure_reels_how">To tell the screens apart it uses technical screen IDs (like the name of the Reels tab) and which tab is selected, only in Instagram and TikTok. It never reads what is written or shown, and nothing is stored: only \"Reels\" or \"not Reels\" is kept while you use the app.</string>
     <string name="scroll_disclosure_optional_title">It\'s optional</string>
     <string name="scroll_disclosure_optional_body">Everything else in Unscroll works without it. You can turn it off at any time in Settings, or in your phone\'s Accessibility settings.</string>
     <string name="scroll_disclosure_next">If you agree, Unscroll opens Accessibility settings. Find \"Unscroll swipe counter\" there and switch it on.</string>
     <string name="scroll_disclosure_agree">I agree</string>
     <string name="scroll_disclosure_decline">No thanks</string>
+    <!-- The updated disclosure, shown again to users who agreed to swipe counting before screen checks existed. -->
+    <string name="reels_disclosure_title">Timer only in Reels</string>
+    <string name="reels_disclosure_intro">The swipe counter you switched on can now also tell Reels from the rest of Instagram and TikTok, so the timer and the swipe count only follow Reels and For You. This needs your OK first.</string>
+    <string name="reels_disclosure_does_not_body">It does not read the text on your screen, your messages, usernames, captions, comments or anything you type, and it doesn\'t send anything anywhere. It doesn\'t look at any other app.</string>
+    <string name="reels_disclosure_optional_body">If you say no, the timer keeps showing whenever Instagram or TikTok is open, as before. You can change your mind in Settings › Timer pill.</string>
+    <string name="reels_banner_title">Timer only in Reels</string>
+    <string name="reels_banner_body">The timer can now show only while you watch Reels or For You. Review what this needs first.</string>
+    <string name="reels_review">Review</string>
+    <string name="reels_note_unsupported_version">Reels-only timer isn\'t available for your %1$s version yet. The timer shows whenever %1$s is open.</string>
+    <string name="reels_note_needs_consent">Reels-only timer needs your OK to check which screen of %1$s is open. Until then the timer shows whenever %1$s is open.</string>
+    <string name="reels_note_service_off">Reels-only timer is paused: the swipe counter is off in Accessibility settings. The timer shows whenever %1$s is open.</string>
+    <string name="reels_note_unreadable">Reels-only timer can\'t read this screen of %1$s right now, so the timer shows whenever %1$s is open.</string>
+    <string name="reels_only_toggle">Show timer only in Reels</string>
+    <string name="reels_only_toggle_tiktok">Show timer only in For You</string>
+    <string name="reels_line">Reels %1$s · %2$s</string>
+    <string name="reels_line_tiktok">For You %1$s · %2$s</string>
+    <plurals name="reels_swipes">
+        <item quantity="one">%d swipe</item>
+        <item quantity="other">%d swipes</item>
+    </plurals>
+    <string name="settings_debug_reels">Reels debug</string>
 
     <string name="scroll_restricted_link">Seeing \"Restricted setting\"?</string>
     <string name="scroll_restricted_title">Allow restricted settings</string>
@@ -403,6 +427,7 @@
     <string name="trust_bullet_device">Everything Unscroll records is stored only on this device.</string>
     <string name="trust_bullet_never">We never see or collect your usage.</string>
     <string name="trust_bullet_content">Unscroll never reads your messages, posts or anything you type.</string>
+    <string name="trust_bullet_screens">If you allow it, Unscroll checks which screen of Instagram or TikTok is open (by technical screen IDs, never what\'s written) so the timer only shows on Reels.</string>
     <string name="trust_bullet_purchases">No accounts. Purchases are handled by Google Play. We never see your usage data.</string>
     <!-- Used instead of trust_bullet_purchases while payments are off. -->
     <string name="trust_bullet_no_accounts">No accounts. We never see your usage data.</string>

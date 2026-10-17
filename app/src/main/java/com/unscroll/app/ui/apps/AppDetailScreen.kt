@@ -53,6 +53,7 @@ import com.unscroll.app.ui.components.rememberAppLabel
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
+import com.unscroll.app.ui.reels.ReelsLine
 import com.unscroll.app.util.SystemSettings
 import com.unscroll.app.util.openSettings
 import java.time.LocalDate
@@ -66,6 +67,7 @@ fun AppDetailScreen(
     modifier: Modifier = Modifier,
     onOpenPlus: () -> Unit = {},
     onSectionSetUp: () -> Unit = {},
+    onReelsReview: () -> Unit = {},
     viewModel: AppDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,6 +96,8 @@ fun AppDetailScreen(
                 onScheduleEnd = viewModel::setScheduleEnd,
                 onPillShown = viewModel::setPillShown,
                 onSwipesShown = viewModel::setSwipesShown,
+                onReelsOnly = viewModel::setReelsOnly,
+                onReelsReview = onReelsReview,
                 onFriction = viewModel::updateFriction,
                 onResetFriction = viewModel::resetFriction,
             ),
@@ -193,6 +197,10 @@ private fun Header(state: AppDetailUiState) {
             )
         }
         Text(text = durationText(state.todayMillis), style = MaterialTheme.typography.displayMedium)
+        // Part of today's time: in Reels / For You (Reels-only timer apps, once there is any).
+        state.reels?.takeIf { it.todayMillis > 0 }?.let {
+            ReelsLine(forYou = it.forYou, millis = it.todayMillis, swipes = it.todaySwipes, style = MaterialTheme.typography.bodyMedium)
+        }
         Text(
             text = stringResource(R.string.detail_today_status, limitStatusText(state.decision, state.settings, state.quickStatus)),
             style = MaterialTheme.typography.titleSmall,

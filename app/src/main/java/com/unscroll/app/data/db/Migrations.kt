@@ -232,6 +232,31 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
     }
 }
 
+/**
+ * v9 → v10: the Reels-only timer's segments (`section_segments`): the parts of a session spent in
+ * Reels / For You or elsewhere in Instagram and TikTok, with their swipes. A new table only;
+ * sessions and every other table are untouched, so all existing totals stay as they were.
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `section_segments` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`sessionId` INTEGER NOT NULL, " +
+                "`packageName` TEXT NOT NULL, " +
+                "`startTime` INTEGER NOT NULL, " +
+                "`endTime` INTEGER, " +
+                "`section` TEXT NOT NULL, " +
+                "`swipes` INTEGER NOT NULL DEFAULT 0)",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_section_segments_sessionId` ON `section_segments` (`sessionId`)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_section_segments_packageName_startTime` " +
+                "ON `section_segments` (`packageName`, `startTime`)",
+        )
+    }
+}
+
 val ALL_MIGRATIONS = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -241,4 +266,5 @@ val ALL_MIGRATIONS = arrayOf(
     MIGRATION_6_7,
     MIGRATION_7_8,
     MIGRATION_8_9,
+    MIGRATION_9_10,
 )

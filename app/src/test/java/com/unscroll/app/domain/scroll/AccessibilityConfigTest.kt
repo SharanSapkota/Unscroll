@@ -9,8 +9,9 @@ import org.junit.Test
 import org.w3c.dom.Element
 
 /**
- * Guards the privacy limits of the accessibility service config: no window content, only scroll
- * and window-change events, only the tracked apps, and no claim to be an accessibility tool.
+ * Guards the privacy limits of the accessibility service config: window content only for the
+ * Reels-only timer's view IDs (the code is checked by SectionPrivacyGuardTest), only the events it
+ * needs, only the tracked apps, and no claim to be an accessibility tool.
  */
 class AccessibilityConfigTest {
 
@@ -27,20 +28,28 @@ class AccessibilityConfigTest {
     private fun attr(name: String): String = config.getAttributeNS(ANDROID_NS, name)
 
     @Test
-    fun cannotRetrieveWindowContent() {
-        assertEquals("false", attr("canRetrieveWindowContent"))
+    fun retrievesWindowContent_forTheReelsOnlyTimer() {
+        // Deliberate: view IDs tell Reels from other screens. Only IDs, never text (guard test).
+        assertEquals("true", attr("canRetrieveWindowContent"))
     }
 
     @Test
-    fun flags_includeNotImportantViews_only() {
+    fun flags_notImportantViews_andViewIds_only() {
         // Full-screen video pagers mark their scrolling view not important for accessibility;
-        // without this flag Android drops their scroll events. No flag that reveals more.
-        assertEquals(setOf("flagDefault", "flagIncludeNotImportantViews"), attr("accessibilityFlags").split('|').toSet())
+        // without that flag Android drops their scroll events. flagReportViewIds gives the view IDs
+        // the Reels rules match. Nothing that reveals more (no interactive windows).
+        assertEquals(
+            setOf("flagDefault", "flagIncludeNotImportantViews", "flagReportViewIds"),
+            attr("accessibilityFlags").split('|').toSet(),
+        )
     }
 
     @Test
-    fun listensOnlyToScrollAndWindowChanges() {
-        assertEquals(setOf("typeViewScrolled", "typeWindowStateChanged"), attr("accessibilityEventTypes").split('|').toSet())
+    fun listensOnlyToScroll_window_contentAndSelectionChanges() {
+        assertEquals(
+            setOf("typeViewScrolled", "typeWindowStateChanged", "typeWindowContentChanged", "typeViewSelected"),
+            attr("accessibilityEventTypes").split('|').toSet(),
+        )
     }
 
     @Test

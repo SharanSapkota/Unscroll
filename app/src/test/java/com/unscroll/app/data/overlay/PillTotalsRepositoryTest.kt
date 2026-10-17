@@ -4,11 +4,14 @@ import android.app.Application
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.unscroll.app.data.db.SectionSegmentEntity
 import com.unscroll.app.data.db.SessionEntity
 import com.unscroll.app.data.db.UnscrollDatabase
 import com.unscroll.app.domain.overlay.PillRules
 import com.unscroll.app.domain.overlay.PillToday
+import com.unscroll.app.domain.session.ActiveSegment
 import com.unscroll.app.domain.session.ActiveSession
+import com.unscroll.app.domain.session.ScreenSection
 import java.time.LocalDateTime
 import java.time.ZoneId
 import kotlinx.coroutines.test.runTest
@@ -40,7 +43,7 @@ class PillTotalsRepositoryTest {
             ApplicationProvider.getApplicationContext<Application>(),
             UnscrollDatabase::class.java,
         ).allowMainThreadQueries().build()
-        repository = PillTotalsRepository(database.sessionDao())
+        repository = PillTotalsRepository(database.sessionDao(), database.sectionSegmentDao())
     }
 
     @After
@@ -105,5 +108,45 @@ class PillTotalsRepositoryTest {
         assertEquals(8, database.sessionDao().swipesBetween(app, at(0, 0), at(12, 0)))
         assertEquals(5, database.sessionDao().swipesBetween(app, at(9, 1), at(12, 0)))
         assertEquals(0, database.sessionDao().swipesBetween(app, at(13, 0), at(14, 0)))
+    }
+
+    private suspend fun segment(start: Long, end: Long?, section: ScreenSection, swipes: Int = 0, pkg: String = app): Long =
+        database.sectionSegmentDao().insert(
+            SectionSegmentEntity(sessionId = 1, packageName = pkg, startTime = start, endTime = end, section = section.name, swipes = swipes),
+        )
+
+    @Test
+    fun reelsBase_sumsEarlierReelsSegmentsToday_only() = runTest {
+        segment(at(23, 55, day = 6), at(0, 5), ScreenSection.REELS, swipes = 30) // 5 min after midnight
+        segment(at(9, 0), at(9, 10), ScreenSection.REELS, swipes = 40) // 10 min
+        segment(at(9, 10), at(9, 40), ScreenSection.OTHER, swipes = 0) // chat: never counts
+        segment(at(10, 0), at(10, 3), ScreenSection.REELS, swipes = 12, pkg = "com.zhiliaoapp.musically")
+        val openStart = at(11, 0)
+        val openId = segment(openStart, null, ScreenSection.REELS, swipes = 6)
+
+        val open = ActiveSegment(openId, sessionId = 1, packageName = app, section = ScreenSection.REELS, startTime = openStart, swipes = 6)
+        val base = repository.reelsBase(open, now = at(11, 2), zone = zone)
+
+        assertEquals(15 * minute, base.completedMillis)
+        // Swipes of the Reels segments that started today, before the open one.
+        assertEquals(40, base.completedSwipes)
+        // Live: + 2 minutes in this Reels visit, and its own 6 swipes.
+        assertEquals("17:00", PillRules.formatTime(PillToday.totalMillis(base, at(11, 2), zone)))
+        assertEquals(46, PillToday.swipes(base, sessionSwipes = 6, now = at(11, 2), zone = zone))
+    }
+
+    @Test
+    fun reelsBase_afterMidnight_startsFromZero() = runTest {
+        segment(at(22, 0, day = 6), at(22, 30, day = 6), ScreenSection.REELS, swipes = 20)
+        val openStart = at(23, 58, day = 6)
+        val openId = segment(openStart, null, ScreenSection.REELS)
+        val open = ActiveSegment(openId, sessionId = 1, packageName = app, section = ScreenSection.REELS, startTime = openStart)
+
+        val base = repository.reelsBase(open, now = at(0, 1), zone = zone)
+
+        assertEquals(0L, base.completedMillis)
+        assertEquals(0, base.completedSwipes)
+        // Only the minute after midnight counts.
+        assertEquals(minute, PillToday.totalMillis(base, at(0, 1), zone))
     }
 }

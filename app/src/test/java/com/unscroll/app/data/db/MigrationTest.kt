@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
@@ -58,6 +59,7 @@ class MigrationTest {
                         if (version >= 6) MIGRATION_5_6.migrate(db)
                         if (version >= 7) MIGRATION_6_7.migrate(db)
                         if (version >= 8) MIGRATION_7_8.migrate(db)
+                        if (version >= 9) MIGRATION_8_9.migrate(db)
                     }
 
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
@@ -505,6 +507,35 @@ class MigrationTest {
             assertEquals(1234L, updated.entireAppBlockedUntil)
             assertEquals(Long.MAX_VALUE, updated.reelsBlockedUntil)
             assertEquals(30, updated.lastReelsDuration)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
+    fun migrate9To10_addsSectionSegments_keepingEverything() = runTest {
+        createDatabase(version = 9)
+        val database = Room.databaseBuilder(context, UnscrollDatabase::class.java, DB_NAME)
+            .addMigrations(*ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            assertTrue(database.hasTable("section_segments"))
+            // No data wiped: both sessions are still there, with their swipes.
+            val sessions = database.sessionDao().getAll()
+            assertEquals(listOf("com.instagram.android", "com.facebook.katana"), sessions.map { it.packageName })
+            assertEquals(listOf(0, 3), sessions.map { it.scrollCount })
+            assertEquals(4, database.trackedAppDao().observeAll().first().size)
+
+            val dao = database.sectionSegmentDao()
+            assertEquals(emptyList<SectionSegmentEntity>(), dao.getAll())
+            val id = dao.insert(SectionSegmentEntity(sessionId = 2, packageName = "com.instagram.android", startTime = 70_000, section = "REELS"))
+            dao.updateSwipes(id, 4)
+            dao.close(id, 90_000)
+            assertEquals(
+                SectionSegmentEntity(id, 2, "com.instagram.android", 70_000, 90_000, "REELS", 4),
+                dao.getAll().single(),
+            )
         } finally {
             database.close()
         }

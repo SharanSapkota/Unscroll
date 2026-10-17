@@ -74,6 +74,7 @@ import com.unscroll.app.ui.components.TrustSheet
 import com.unscroll.app.ui.fox.FoxMascot
 import com.unscroll.app.ui.scroll.DisclosureBlock
 import com.unscroll.app.ui.scroll.RestrictedSettingHint
+import com.unscroll.app.ui.scroll.ReelsDisclosureBlock
 import com.unscroll.app.ui.scroll.ScrollCountingViewModel
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.Motion
@@ -330,6 +331,7 @@ private fun SwipesPage(status: ScrollCountingStatus, onEnable: () -> Unit) {
             title = stringResource(R.string.scroll_disclosure_does_title),
             body = stringResource(R.string.scroll_disclosure_does_body),
         )
+        ReelsDisclosureBlock()
         DisclosureBlock(
             title = stringResource(R.string.scroll_disclosure_does_not_title),
             body = stringResource(R.string.scroll_disclosure_does_not_body),

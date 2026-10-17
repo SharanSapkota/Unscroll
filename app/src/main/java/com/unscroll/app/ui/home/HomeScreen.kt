@@ -58,6 +58,7 @@ import com.unscroll.app.domain.insights.UsagePeriod
 import com.unscroll.app.domain.insights.UsageSummary
 import com.unscroll.app.domain.insights.WeekComparison
 import com.unscroll.app.domain.permission.AppPermission
+import com.unscroll.app.domain.section.SectionBlockingConfig
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.domain.tracking.TrackingStatus
 import com.unscroll.app.ui.components.AppTile
@@ -70,6 +71,7 @@ import com.unscroll.app.ui.components.SegmentedControl
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.fox.FoxCorner
 import com.unscroll.app.ui.plus.PlusEndedBanner
+import com.unscroll.app.ui.scroll.ReelsConsentBanner
 import com.unscroll.app.ui.scroll.ScrollCountingBanner
 import com.unscroll.app.ui.section.SectionBlockingBanner
 import com.unscroll.app.ui.theme.Dimens
@@ -84,6 +86,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onScrollCountingSetUp: () -> Unit = {},
     onRestrictedSettingHelp: () -> Unit = {},
+    onReelsReview: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     insightViewModel: InsightViewModel = hiltViewModel(),
 ) {
@@ -105,7 +108,8 @@ fun HomeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
                 if (PlusConfig.BILLING_ENABLED) PlusEndedBanner()
                 ScrollCountingBanner(onSetUp = onScrollCountingSetUp, onRestrictedHelp = onRestrictedSettingHelp)
-                SectionBlockingBanner()
+                ReelsConsentBanner(onReview = onReelsReview)
+                if (SectionBlockingConfig.ENABLED) SectionBlockingBanner()
             }
         },
         // The fox peeks in from the top corner; tap it for a message.

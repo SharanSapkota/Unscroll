@@ -3,6 +3,8 @@ package com.unscroll.app.ui.scroll
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.scroll.ScrollCountingRepository
+import com.unscroll.app.domain.plus.TrackedAppsSource
+import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingRules
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 class ScrollCountingViewModel @Inject constructor(
     private val repository: ScrollCountingRepository,
     private val clock: Clock,
+    trackedApps: TrackedAppsSource,
 ) : ViewModel() {
 
     val status: StateFlow<ScrollCountingStatus> = repository.status
@@ -43,9 +46,38 @@ class ScrollCountingViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SwipeBanner.NONE)
 
-    /** "I agree" on the disclosure screen. The caller then opens Accessibility settings. */
+    /** Screen checks for the Reels-only timer (asked again of users who agreed before). */
+    val reelsConsent: StateFlow<ScrollConsent> = repository.record.map { it.reelsConsent }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScrollConsent.NOT_ASKED)
+
+    /** The service is running (the updated disclosure then needn't open Accessibility settings). */
+    val connected: StateFlow<Boolean> = repository.connected
+
+    /**
+     * Home's "Timer only in Reels" banner: swipe counting was agreed to before screen checks
+     * existed, the user hasn't answered the updated disclosure, and Instagram or TikTok is tracked.
+     */
+    val showReelsBanner: StateFlow<Boolean> = combine(repository.record, trackedApps.state) { record, apps ->
+        ReelsOnlyPillConfig.ENABLED &&
+            record.consent == ScrollConsent.AGREED &&
+            record.reelsConsent == ScrollConsent.NOT_ASKED &&
+            apps.active.any { it in ReelsOnlyPillConfig.PACKAGES }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /**
+     * "I agree" on the disclosure screen, which covers swipe counting and the Reels-only timer's
+     * screen checks. The caller then opens Accessibility settings.
+     */
     fun agree() {
-        viewModelScope.launch { repository.setConsent(ScrollConsent.AGREED) }
+        viewModelScope.launch {
+            repository.setConsent(ScrollConsent.AGREED)
+            repository.setReelsConsent(ScrollConsent.AGREED)
+        }
+    }
+
+    /** The updated disclosure (screen checks only): "I agree" or "No thanks". Swipe counting stays. */
+    fun answerReels(agreed: Boolean) {
+        viewModelScope.launch { repository.setReelsConsent(if (agreed) ScrollConsent.AGREED else ScrollConsent.DECLINED) }
     }
 
     /** "No thanks": the app keeps working exactly as before. */

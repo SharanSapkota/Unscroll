@@ -14,6 +14,7 @@ import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.permission.PermissionRepository
 import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.data.plus.TrackedAppsRepository
+import com.unscroll.app.data.reels.ReelsDetectionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.service.BlockExpiryScheduler
@@ -27,6 +28,9 @@ import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var reelsDetection: ReelsDetectionRepository
 
     @Inject
     lateinit var permissionRepository: PermissionRepository
@@ -87,6 +91,8 @@ class MainActivity : ComponentActivity() {
         // Plus may have started, ended or renewed while away; a tracked app may have been installed.
         entitlement.refresh()
         trackedApps.refresh()
+        // Instagram or TikTok may have been updated: the Reels-only timer's rules are per version.
+        reelsDetection.refresh()
         // Timed blocks that ran out while away turn off now (they already stopped blocking).
         blockExpiry.syncAsync()
         // Starting tracking (also after a force stop) is handled by the collector in onCreate.

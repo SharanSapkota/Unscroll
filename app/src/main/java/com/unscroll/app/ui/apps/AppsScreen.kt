@@ -41,6 +41,7 @@ import com.unscroll.app.domain.blocking.QuickStatus
 import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.plus.AppTrackingStatus
 import com.unscroll.app.domain.section.BlockedSection
+import com.unscroll.app.domain.section.ReelsCapableApps
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
 import com.unscroll.app.ui.components.LoadingPlaceholder
@@ -50,6 +51,7 @@ import com.unscroll.app.ui.components.rememberHaptics
 import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.fox.FoxCorner
 import com.unscroll.app.ui.plus.PlusBadge
+import com.unscroll.app.ui.reels.ReelsLine
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 
@@ -157,6 +159,9 @@ private fun AppRow(app: AppRowState, onClick: () -> Unit, onBlock: (Boolean) -> 
                     color = limitStatusColor(app.decision, app.settings, app.quickStatus),
                     maxLines = 1,
                 )
+                app.reels?.let {
+                    ReelsLine(forYou = app.packageName !in ReelsCapableApps.INSTAGRAM, millis = it.millis, swipes = it.swipes)
+                }
             }
             Text(text = durationText(app.todayMillis), style = MaterialTheme.typography.titleMedium)
             // "Block entire app", for the app's remembered duration (more in App detail).

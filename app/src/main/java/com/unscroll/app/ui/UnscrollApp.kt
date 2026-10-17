@@ -42,6 +42,7 @@ import com.unscroll.app.ui.navigation.TopLevelDestination
 import com.unscroll.app.ui.plus.PaywallScreen
 import com.unscroll.app.ui.plus.PickAppsScreen
 import com.unscroll.app.ui.scroll.AccessibilityDisclosureScreen
+import com.unscroll.app.ui.scroll.ReelsDisclosureScreen
 import com.unscroll.app.ui.scroll.RestrictedSettingHelpScreen
 import com.unscroll.app.ui.section.SectionBlockingDisclosureScreen
 import com.unscroll.app.ui.section.SectionInspectorScreen
@@ -53,6 +54,7 @@ private const val ROUTE_SCROLL_DISCLOSURE = "settings/scroll-disclosure"
 private const val ROUTE_RESTRICTED_HELP = "settings/restricted-setting-help"
 private const val ROUTE_PICK_APPS = "settings/pick-apps"
 private const val ROUTE_SECTION_DISCLOSURE = "settings/section-disclosure"
+private const val ROUTE_REELS_DISCLOSURE = "settings/reels-disclosure"
 
 /** Debug builds only. */
 private const val ROUTE_SECTION_INSPECTOR = "settings/section-inspector"
@@ -134,6 +136,7 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onOpenApp = openApp,
                     onScrollCountingSetUp = { navController.navigate(ROUTE_SCROLL_DISCLOSURE) { launchSingleTop = true } },
                     onRestrictedSettingHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) { launchSingleTop = true } },
+                    onReelsReview = { navController.navigate(ROUTE_REELS_DISCLOSURE) { launchSingleTop = true } },
                 )
             }
             composable(TopLevelDestination.APPS.route) {
@@ -154,6 +157,7 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onPickApps = { navController.navigate(ROUTE_PICK_APPS) },
                     onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
                     onSectionInspector = { navController.navigate(ROUTE_SECTION_INSPECTOR) },
+                    onReelsReview = { navController.navigate(ROUTE_REELS_DISCLOSURE) },
                 )
             }
             if (PlusConfig.BILLING_ENABLED) {
@@ -173,6 +177,7 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onBack = { navController.popBackStack() },
                     onOpenPlus = openPlus,
                     onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
+                    onReelsReview = { navController.navigate(ROUTE_REELS_DISCLOSURE) },
                 )
             }
             composable(ROUTE_SCROLL_DISCLOSURE) {
@@ -180,6 +185,9 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onFinished = { navController.popBackStack() },
                     onRestrictedHelp = { navController.navigate(ROUTE_RESTRICTED_HELP) },
                 )
+            }
+            composable(ROUTE_REELS_DISCLOSURE) {
+                ReelsDisclosureScreen(onFinished = { navController.popBackStack() })
             }
             composable(ROUTE_SECTION_DISCLOSURE) {
                 SectionBlockingDisclosureScreen(

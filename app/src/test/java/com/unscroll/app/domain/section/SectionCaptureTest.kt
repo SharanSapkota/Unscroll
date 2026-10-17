@@ -88,8 +88,10 @@ class SectionCaptureTest {
     @Test
     fun unsupportedApps_answerUnknown_forEveryCapture() {
         // TikTok and Facebook: no safe difference in the captures, so nothing is ever blocked.
+        // (TikTok's rule set is pinned to a version name for the Reels-only timer only; blocking
+        // looks rules up by version code and never reaches it, see ReelsCaptureTest.)
+        assertFalse(SectionRulesConfig.FACEBOOK.isReady)
         unsupported.forEach { app ->
-            assertFalse(app.rules.appName, app.rules.isReady)
             (app.blocked + app.allowed).forEach { captured ->
                 versions.forEach { assertEquals(captured.name, SectionVerdict.UNKNOWN, detect(captured, it)) }
             }
@@ -137,6 +139,10 @@ class SectionCaptureTest {
                 set.allowedViewIds.forEach {
                     assertTrue("$it not in ${app.rules.appName}'s allowed captures", it in allowedIds)
                     assertFalse("$it is on the blocked screen", it in blockedIds)
+                }
+                set.anchorViewIds.forEach {
+                    assertTrue("anchor $it not on ${app.rules.appName}'s blocked capture", it in blockedIds)
+                    assertTrue("anchor $it not on ${app.rules.appName}'s allowed captures", it in allowedIds)
                 }
             }
         }
