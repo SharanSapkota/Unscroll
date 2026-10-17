@@ -12,7 +12,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -64,6 +64,14 @@ jobs:
             echo "Payments on: BILLING permission present."
           fi
 
+      # The release variant itself (R8 minification and resource shrinking, the keep rules, the
+      # release manifest), built unsigned: CI has no keystore. Uploads still need a signed bundle.
+      - name: Release build (R8, unsigned)
+        run: |
+          ./gradlew assembleRelease -Punscroll.allowUnsignedRelease=true --console=plain --stacktrace
+          ls -l app/build/outputs/apk/release/
+          test -f app/build/outputs/mapping/release/mapping.txt || { echo "::error::R8 did not run (no mapping.txt)"; exit 1; }
+
       # Release builds need keystore.properties, which CI doesn't have: bundleRelease must stop
       # with the clear signing message (and not with any other error).
       - name: Release build without signing fails clearly
@@ -87,4 +95,5 @@ jobs:
           path: |
             app/build/reports/
             app/build/test-results/
+            app/build/outputs/mapping/release/
           if-no-files-found: ignore

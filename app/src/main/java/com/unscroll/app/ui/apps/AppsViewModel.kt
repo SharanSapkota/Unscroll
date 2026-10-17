@@ -20,6 +20,7 @@ import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.plus.AppTrackingStatus
 import com.unscroll.app.domain.plus.TrackedAppsSource
 import com.unscroll.app.domain.plus.TrackedAppsState
+import com.unscroll.app.domain.reels.ReelsLimitScope
 import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
 import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -128,7 +129,8 @@ class AppsViewModel @Inject constructor(
                 settings = settings,
                 decision = evaluator.evaluate(
                     settings = settings,
-                    usedTodayMillis = used,
+                    // Instagram/TikTok: the time limit counts Reels time only.
+                    usedTodayMillis = if (ReelsLimitScope.reelsOnly(packageName)) reelsToday[packageName]?.millis ?: 0L else used,
                     extensionUntil = limits.activeExtensionUntil(packageName, now),
                     now = now,
                     zone = zone,

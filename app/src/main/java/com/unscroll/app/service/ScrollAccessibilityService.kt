@@ -9,8 +9,10 @@ import android.view.accessibility.AccessibilityEvent
 import com.unscroll.app.data.reels.ReelsDetectionRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.plus.TrackedAppsSource
+import com.unscroll.app.domain.reels.DetectorWatchdog
 import com.unscroll.app.domain.reels.ReelsHysteresis
 import com.unscroll.app.domain.reels.ReelsOnlyRules
+import com.unscroll.app.domain.reels.WatchdogAction
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollPosition
 import com.unscroll.app.domain.scroll.SwipeDebugInfo
@@ -19,6 +21,7 @@ import com.unscroll.app.domain.scroll.SwipeDetector
 import com.unscroll.app.domain.section.SectionResult
 import com.unscroll.app.domain.section.SectionScreen
 import com.unscroll.app.domain.time.Clock
+import com.unscroll.app.util.AppLog
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -65,6 +68,13 @@ import kotlinx.coroutines.launch
  *   already over its limit the moment it opens.
  * - Swipes go straight to [SessionManager], which owns sessions; this service never writes them
  *   itself. Nothing leaves the device.
+ *
+ * Robustness: every callback is wrapped so an exception can never crash the service (it is
+ * logged and the event dropped); screen checks run on [Dispatchers.Default], at most one per
+ * [ReelsHysteresis.CHECK_INTERVAL_MILLIS], never on the callback thread, and touch no database;
+ * every node is recycled ([SectionNodeSnapshot]); a watchdog
+ * ([DetectorWatchdog]) re-reads the screen when events stop and forgets a state no reading has
+ * confirmed for 3 s, so a cover can't outlive the detector.
  */
 @AndroidEntryPoint
 class ScrollAccessibilityService : AccessibilityService() {
@@ -106,12 +116,17 @@ class ScrollAccessibilityService : AccessibilityService() {
     /** Debug builds: the last logged reading per package. Checks only (one at a time). */
     private val lastReelsLog = HashMap<String, SectionResult>()
 
+    /** When each app's screen check last ran (the watchdog's input). */
+    private val lastCheckAt = ConcurrentHashMap<String, Long>()
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         detector = SwipeDetector(clock, isCounted = { it in counted })
         powerManager = getSystemService(PowerManager::class.java)
         repository.onServiceConnected()
         repository.goHomeAction = { performGlobalAction(GLOBAL_ACTION_HOME) }
+        // The limit cover's "Take me back to chat" (Instagram/TikTok).
+        repository.goBackAction = { performGlobalAction(GLOBAL_ACTION_BACK) }
         val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         scope = serviceScope
         serviceScope.launch {
@@ -134,10 +149,11 @@ class ScrollAccessibilityService : AccessibilityService() {
         // Off the main thread: lookups are binder calls into the app, never on the UI path.
         serviceScope.launch(Dispatchers.Default) {
             checks.collect { pkg ->
-                checkScreen(pkg)
+                checkScreenSafely(pkg)
                 delay(ReelsHysteresis.CHECK_INTERVAL_MILLIS)
             }
         }
+        serviceScope.launch(Dispatchers.Default) { watchdog() }
         serviceScope.launch {
             // Switched on in system settings after the user said no in the app: switch off again.
             if (repository.record.first().consent == ScrollConsent.DECLINED) disableSelf()
@@ -159,12 +175,21 @@ class ScrollAccessibilityService : AccessibilityService() {
         try {
             serviceInfo = info
         } catch (e: RuntimeException) {
-            Log.w(TAG, "Could not update the monitored apps; filtering events instead", e)
+            AppLog.w(TAG, "Could not update the monitored apps; filtering events instead", e)
         }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !::detector.isInitialized) return
+        try {
+            handleEvent(event)
+        } catch (e: RuntimeException) {
+            // Never let one bad event take the service down.
+            AppLog.w(TAG, "Event dropped", e)
+        }
+    }
+
+    private fun handleEvent(event: AccessibilityEvent) {
         // Only the type, the package name, the window class (window changes of apps on the
         // Reels-only timer) and (for scrolls) the position numbers are read.
         val packageName = event.packageName?.toString()
@@ -203,6 +228,40 @@ class ScrollAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun checkScreenSafely(pkg: String) {
+        lastCheckAt[pkg] = clock.now()
+        try {
+            checkScreen(pkg)
+        } catch (e: RuntimeException) {
+            // A stale window or a binder error: no reading this time (UNKNOWN frames are ignored,
+            // and the watchdog takes over if it keeps failing).
+            AppLog.w(TAG, "Screen check failed for $pkg", e)
+        }
+    }
+
+    /**
+     * While Instagram or TikTok is on screen: re-reads the screen when no event triggered a check
+     * for a while, and forgets a confirmed state that no reading has backed for
+     * [DetectorWatchdog.STALE_MILLIS]. Checks are only requested, so they stay throttled.
+     */
+    private suspend fun watchdog() {
+        while (true) {
+            delay(DetectorWatchdog.TICK_MILLIS)
+            val pkg = sessionManager.foregroundSession.value?.packageName ?: continue
+            if (pkg !in reelsDetected || powerManager?.isInteractive == false) continue
+            val (lastReading, confirmed) = reels.watchdogInputs(pkg)
+            when (DetectorWatchdog.action(lastCheckAt[pkg], lastReading, confirmed, clock.now())) {
+                WatchdogAction.NONE -> Unit
+                WatchdogAction.RECHECK -> checks.tryEmit(pkg)
+                WatchdogAction.RESET -> {
+                    AppLog.i(TAG, "No screen reading for $pkg; state reset")
+                    reels.resetStale(pkg)
+                    checks.tryEmit(pkg)
+                }
+            }
+        }
+    }
+
     /**
      * Reads which section of [pkg] is open and reports it to [ReelsDetectionRepository]. Skipped
      * with the screen off, for apps whose screen isn't checked, and when another window is active.
@@ -216,6 +275,7 @@ class ScrollAccessibilityService : AccessibilityService() {
         val root = try {
             rootInActiveWindow
         } catch (e: RuntimeException) {
+            AppLog.w(TAG, "No active window", e)
             null
         }
         val rootPackage = root?.packageName?.toString()
@@ -279,8 +339,10 @@ class ScrollAccessibilityService : AccessibilityService() {
         recheck = null
         scope?.cancel()
         scope = null
+        lastCheckAt.clear()
         reels.onServiceStopped()
         repository.goHomeAction = null
+        repository.goBackAction = null
         repository.onServiceDisconnected()
     }
 }

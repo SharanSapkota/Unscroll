@@ -16,6 +16,7 @@ import com.unscroll.app.domain.overlay.PillPosition
 import com.unscroll.app.domain.overlay.PillSize
 import com.unscroll.app.domain.overlay.ScreenOrientation
 import com.unscroll.app.domain.overlay.SwipeColorThresholds
+import com.unscroll.app.domain.reels.TimerVisibility
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -54,9 +55,10 @@ class OverlayPreferences @Inject constructor(
         it[SWIPES_HIDDEN_FOR] = (it[SWIPES_HIDDEN_FOR] ?: emptySet()).toggle(packageName, hidden = !shown)
     }
 
-    /** Per app: "Show timer only in Reels" (Instagram and TikTok; on by default). */
-    suspend fun setReelsOnlyFor(packageName: String, on: Boolean) = edit {
-        it[REELS_ONLY_OFF_FOR] = (it[REELS_ONLY_OFF_FOR] ?: emptySet()).toggle(packageName, hidden = !on)
+    /** Per app: "Timer visibility" (Instagram and TikTok; "Always while in the app" by default). */
+    suspend fun setTimerVisibility(packageName: String, visibility: TimerVisibility) = edit {
+        it[TIMER_ONLY_IN_REELS_FOR] = (it[TIMER_ONLY_IN_REELS_FOR] ?: emptySet())
+            .toggle(packageName, hidden = visibility == TimerVisibility.ONLY_REELS)
     }
 
     suspend fun setSwipeThresholds(thresholds: SwipeColorThresholds) {
@@ -123,7 +125,7 @@ class OverlayPreferences @Inject constructor(
         ).normalized(),
         pillHiddenFor = this[PILL_HIDDEN_FOR] ?: emptySet(),
         swipesHiddenFor = this[SWIPES_HIDDEN_FOR] ?: emptySet(),
-        reelsOnlyOffFor = this[REELS_ONLY_OFF_FOR] ?: emptySet(),
+        timerOnlyInReelsFor = this[TIMER_ONLY_IN_REELS_FOR] ?: emptySet(),
     )
 
     private companion object {
@@ -141,7 +143,9 @@ class OverlayPreferences @Inject constructor(
         val SWIPE_DANGER = intPreferencesKey("overlay_daily_swipe_danger")
         val PILL_HIDDEN_FOR = stringSetPreferencesKey("overlay_pill_hidden_for")
         val SWIPES_HIDDEN_FOR = stringSetPreferencesKey("overlay_swipes_hidden_for")
-        val REELS_ONLY_OFF_FOR = stringSetPreferencesKey("overlay_reels_only_off_for")
+        // Replaces "overlay_reels_only_off_for" (the old "Show timer only in Reels" switch), which
+        // RemovedPreferencesMigration deletes: everyone starts on "Always while in the app".
+        val TIMER_ONLY_IN_REELS_FOR = stringSetPreferencesKey("overlay_timer_only_in_reels_for")
 
         fun xKey(orientation: ScreenOrientation) =
             intPreferencesKey("overlay_x_${orientation.name.lowercase()}")

@@ -3,6 +3,7 @@ package com.unscroll.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.unscroll.app.data.appearance.AppearancePreferences
+import com.unscroll.app.data.diagnostics.DiagnosticsRepository
 import com.unscroll.app.data.friction.QuietHoursPreferences
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.permission.PermissionRepository
@@ -56,7 +57,22 @@ class SettingsViewModel @Inject constructor(
     private val scrollCounting: ScrollCountingRepository,
     reels: ReelsDetectionRepository,
     trackedApps: TrackedAppsSource,
+    private val diagnostics: DiagnosticsRepository,
 ) : ViewModel() {
+
+    private val _diagnosticsReport = MutableStateFlow<String?>(null)
+
+    /** The "Copy diagnostics" report being previewed, or null. */
+    val diagnosticsReport: StateFlow<String?> = _diagnosticsReport.asStateFlow()
+
+    /** Builds the report for the preview (off the main thread). Shared only if the user taps Share. */
+    fun prepareDiagnostics() {
+        viewModelScope.launch { _diagnosticsReport.value = diagnostics.report() }
+    }
+
+    fun dismissDiagnostics() {
+        _diagnosticsReport.value = null
+    }
 
     val quietHours: StateFlow<QuietHours> = quietHoursPreferences.quietHours
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), QuietHours())

@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.provider.Settings
-import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -18,19 +17,22 @@ import javax.inject.Singleton
  * dims and desaturates the look.
  *
  * It never takes touches (FLAG_NOT_TOUCHABLE), and its alpha stays at or under 0.8, the limit
- * Android 12+ allows for an untrusted overlay that touches pass through. Main thread only.
+ * Android 12+ allows for an untrusted overlay that touches pass through. Main thread only; shown
+ * and hidden by OverlayCoordinator (only where interruptions are allowed: never off Reels in
+ * Instagram or TikTok).
  */
 @Singleton
 class TintOverlay @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-    private val windowManager: WindowManager? = context.getSystemService(WindowManager::class.java)
+    private val windowContext: Context by lazy { context.overlayWindowContext() }
+    private val windowManager: WindowManager? by lazy { windowContext.getSystemService(WindowManager::class.java) }
     private var view: View? = null
 
     fun show() {
         if (view != null || !Settings.canDrawOverlays(context)) return
         val manager = windowManager ?: return
-        val tint = View(context).apply { setBackgroundColor(Color.rgb(96, 96, 96)) }
+        val tint = View(windowContext).apply { setBackgroundColor(Color.rgb(96, 96, 96)) }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -41,19 +43,12 @@ class TintOverlay @Inject constructor(
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply { alpha = TINT_ALPHA }
-        try {
-            manager.addView(tint, params)
-            view = tint
-        } catch (e: WindowManager.BadTokenException) {
-            Log.w(TAG, "Tint not shown", e)
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Tint not shown", e)
-        }
+        if (WindowOps.add(manager, tint, params, TAG)) view = tint
     }
 
     fun hide() {
         val current = view ?: return
-        if (current.isAttachedToWindow) windowManager?.removeViewImmediate(current)
+        windowManager?.let { WindowOps.remove(it, current, TAG) }
         view = null
     }
 

@@ -82,12 +82,16 @@
     <string name="reels_banner_title">Timer only in Reels</string>
     <string name="reels_banner_body">The timer can now show only while you watch Reels or For You. Review what this needs first.</string>
     <string name="reels_review">Review</string>
-    <string name="reels_note_unsupported_version">Reels-only timer isn\'t available for your %1$s version yet. The timer shows whenever %1$s is open.</string>
-    <string name="reels_note_needs_consent">Reels-only timer needs your OK to check which screen of %1$s is open. Until then the timer shows whenever %1$s is open.</string>
-    <string name="reels_note_service_off">Reels-only timer is paused: the swipe counter is off in Accessibility settings. The timer shows whenever %1$s is open.</string>
-    <string name="reels_note_unreadable">Reels-only timer can\'t read this screen of %1$s right now, so the timer shows whenever %1$s is open.</string>
-    <string name="reels_only_toggle">Show timer only in Reels</string>
-    <string name="reels_only_toggle_tiktok">Show timer only in For You</string>
+    <string name="reels_note_unsupported_version">Reels detection isn\'t available for your %1$s version yet, so limits won\'t block.</string>
+    <string name="reels_note_needs_consent">Reels detection needs your OK to check which screen of %1$s is open. Until then, limits won\'t block.</string>
+    <string name="reels_note_service_off">Reels detection is off: swipe counting is off in Accessibility settings. Until it\'s on, limits won\'t block in %1$s.</string>
+    <string name="reels_note_unreadable">Reels detection can\'t read this screen of %1$s right now, so limits won\'t block.</string>
+    <string name="detail_timer_visibility">Timer visibility</string>
+    <string name="timer_visibility_always">Always while in the app</string>
+    <string name="timer_visibility_only_reels">Only on Reels</string>
+    <string name="timer_visibility_only_for_you">Only on For You</string>
+    <string name="timer_visibility_hint">The timer counts Reels only. Elsewhere in the app it is dimmed and paused, or hidden.</string>
+    <string name="timer_visibility_hint_for_you">The timer counts For You only. Elsewhere in the app it is dimmed and paused, or hidden.</string>
     <string name="reels_line">Reels %1$s · %2$s</string>
     <string name="reels_line_tiktok">For You %1$s · %2$s</string>
     <plurals name="reels_swipes">
@@ -173,7 +177,6 @@
     </plurals>
 
     <!-- Swipe limit (hard stop) -->
-    <string name="swipe_cover_title">Limit reached</string>
     <string name="swipe_cover_need_access">I need %1$d more swipes</string>
     <!-- The pill near a swipe limit, after the swipe icon. -->
     <plurals name="overlay_swipes_left_short">
@@ -184,6 +187,12 @@
     <string name="nav_home">Home</string>
     <string name="action_fix">Fix</string>
     <string name="action_go_home">Go home</string>
+    <string name="overlay_paused">Paused</string>
+    <string name="cover_time_limit">Time limit reached</string>
+    <string name="cover_schedule">Blocked by your schedule</string>
+    <string name="cover_today_in_app">today</string>
+    <string name="cover_today_in_reels">in Reels today</string>
+    <string name="cover_today_in_for_you">in For You today</string>
     <string name="action_got_it">Got it</string>
     <string name="action_done">Done</string>
     <string name="action_grant">Grant</string>
@@ -320,8 +329,14 @@
     <string name="detail_today_status">Today · %1$s</string>
     <string name="detail_saved">Saved</string>
     <string name="detail_limits">Limits</string>
-    <string name="detail_limits_info">Changes apply right away. When the daily limit is reached, the app is blocked until tomorrow. A swipe limit covers the app once you reach it, for the rest of the day or the swipe session, and only works while scroll counting is on.</string>
-    <string name="detail_daily_limit">Daily limit</string>
+    <string name="detail_limits_info">Changes apply right away. Time limit and swipe limit are separate: whichever is reached first stops the app until tomorrow (or the swipe session ends). A swipe limit only works while swipe counting is on.</string>
+    <string name="detail_limits_info_reels">Changes apply right away. Here both limits count Reels / For You only, and only Reels / For You is covered when one is reached: chat, search and the rest stay open. A swipe limit only works while swipe counting is on.</string>
+    <string name="detail_time_limit">Time limit</string>
+    <string name="detail_counts_reels_time">Counts time in Reels only</string>
+    <string name="detail_counts_for_you_time">Counts time in For You only</string>
+    <string name="detail_counts_reels_swipes">Counts swipes in Reels only</string>
+    <string name="detail_counts_for_you_swipes">Counts swipes in For You only</string>
+    <string name="detail_turn_on_swipe_counting">Turn on swipe counting</string>
     <string name="detail_swipe_limit">Swipe limit</string>
     <string name="detail_needs_counting">Needs scroll counting</string>
     <string name="detail_custom_minutes">Minutes</string>
@@ -368,6 +383,13 @@
     <string name="settings_group_pill">Timer pill</string>
     <string name="settings_group_notifications">Notifications</string>
     <string name="settings_group_data">Data &amp; privacy</string>
+    <string name="settings_group_help">Help</string>
+    <string name="diagnostics_copy">Copy diagnostics</string>
+    <string name="diagnostics_copy_hint">See it first. Shared only if you choose.</string>
+    <string name="diagnostics_info">Diagnostics help find bugs: app and Android versions, phone model, permissions, which screen the Reels detector last saw, the installed versions of Instagram and TikTok, and the last 200 technical log lines. No usage history, no screen text, nothing you read or type. Nothing is sent: you see it first and pick where to share it.</string>
+    <string name="diagnostics_preview_title">Diagnostics</string>
+    <string name="diagnostics_share">Share</string>
+    <string name="diagnostics_subject">Unscroll diagnostics</string>
     <string name="settings_group_appearance">Appearance</string>
     <string name="settings_group_debug">Debug</string>
     <string name="settings_tracking">Tracking</string>
@@ -439,7 +461,7 @@
 
     <!-- Block screen and swipe cover -->
     <string name="block_headline_blocked">Blocked</string>
-    <string name="block_headline_limit">Limit reached</string>
+    <string name="block_headline_limit">Time limit reached</string>
     <string name="block_headline_swipes">Swipe limit reached</string>
     <string name="block_headline_until">Blocked until %1$s</string>
     <string name="block_today">today</string>

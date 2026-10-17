@@ -13,6 +13,7 @@ import com.unscroll.app.domain.blocking.BlockEvaluator
 import com.unscroll.app.domain.blocking.BlockReason
 import com.unscroll.app.domain.blocking.BlockSchedule
 import com.unscroll.app.domain.blocking.BlockScreenRules
+import com.unscroll.app.domain.blocking.LimitDefaults
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.QuickBlockTarget
 import com.unscroll.app.domain.blocking.TimedBlock
@@ -69,6 +70,34 @@ class LimitRepositoryTest {
     @Test
     fun unconfiguredApp_hasNoRules() = runTest {
         assertEquals(AppLimit(PKG), repository.getLimit(PKG))
+    }
+
+    @Test
+    fun defaults_onlyForAppsWithoutStoredLimits() = runTest {
+        repository.insertDefaultsIfAbsent(PKG)
+        assertEquals(30, repository.getLimit(PKG).settings.dailyLimitMinutes)
+        assertNull(repository.getLimit(PKG).settings.swipeLimit)
+
+        // The user switched the time limit off: inserting defaults again changes nothing.
+        repository.updateLimit(PKG) { it.copy(dailyLimitMinutes = null) }
+        repository.insertDefaultsIfAbsent(PKG)
+        assertNull(repository.getLimit(PKG).settings.dailyLimitMinutes)
+    }
+
+    @Test
+    fun turningALimitOff_appliesImmediately() = runTest {
+        repository.updateLimit(PKG) { LimitDefaults.withTimeLimit(it, on = true) }
+        assertEquals(BlockReason.DAILY_LIMIT_REACHED, (decide(usedTodayMillis = 31 * 60_000L) as BlockDecision.Blocked).reason)
+        repository.updateLimit(PKG) { LimitDefaults.withTimeLimit(it, on = false) }
+        assertEquals(BlockDecision.Allowed(remainingMillis = null), decide(usedTodayMillis = 31 * 60_000L))
+    }
+
+    @Test
+    fun extensions_pingTheEnforcers() = runTest {
+        val before = repository.extensionChanges.value
+        repository.grantExtension(PKG, now, 5 * 60_000L)
+        repository.grantSwipeExtension(PKG, now)
+        assertEquals(before + 2, repository.extensionChanges.value)
     }
 
     @Test

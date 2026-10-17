@@ -18,33 +18,31 @@ class QuickControlsTest {
     private val ready = SectionAccess(rulesAvailable = true, isPlus = true, consented = true, serviceOn = true, turnedOff = false)
 
     @Test
-    fun reelsCapableApps_areExactlyTheFive() {
+    fun reelsCapableApps_areExactlyInstagramAndTikTok() {
         assertEquals(
-            setOf(
-                "com.instagram.android",
-                "com.zhiliaoapp.musically",
-                "com.ss.android.ugc.trill",
-                "com.facebook.katana",
-                "com.google.android.youtube",
-            ),
+            setOf("com.instagram.android", "com.zhiliaoapp.musically", "com.ss.android.ugc.trill"),
             ReelsCapableApps.packages,
         )
-        assertEquals(BlockedSection.SHORTS, ReelsCapableApps.sectionFor("com.google.android.youtube"))
+        assertEquals(BlockedSection.REELS, ReelsCapableApps.sectionFor("com.instagram.android"))
         assertEquals(BlockedSection.FOR_YOU, ReelsCapableApps.sectionFor("com.ss.android.ugc.trill"))
-        assertEquals(BlockedSection.REELS, ReelsCapableApps.sectionFor("com.facebook.katana"))
+        // Facebook and YouTube keep their captured identifiers but get whole-app controls only.
+        assertNull(ReelsCapableApps.sectionFor("com.facebook.katana"))
+        assertNull(ReelsCapableApps.sectionFor("com.google.android.youtube"))
     }
 
     @Test
-    fun sectionRules_coverExactlyTheReelsCapableApps() {
-        assertEquals(ReelsCapableApps.packages, SectionRulesConfig.APPS.flatMap { it.packages }.toSet())
+    fun sectionRules_coverTheReelsCapableApps_plusTheCapturedOthers() {
+        val withRules = SectionRulesConfig.APPS.flatMap { it.packages }.toSet()
+        assertTrue(withRules.containsAll(ReelsCapableApps.packages))
+        assertEquals(ReelsCapableApps.packages + ReelsCapableApps.FACEBOOK + ReelsCapableApps.YOUTUBE, withRules)
         SectionRulesConfig.APPS.forEach { rules ->
-            rules.packages.forEach { assertEquals(rules.section, ReelsCapableApps.sectionFor(it)) }
+            rules.packages.filter(ReelsCapableApps::isReelsCapable).forEach { assertEquals(rules.section, ReelsCapableApps.sectionFor(it)) }
         }
     }
 
     @Test
     fun nonReelsApps_neverExposeTheReelsToggle() {
-        listOf("com.reddit.frontpage", "com.twitter.android", "com.android.chrome", "com.whatsapp").forEach { pkg ->
+        listOf("com.reddit.frontpage", "com.twitter.android", "com.android.chrome", "com.whatsapp", "com.facebook.katana", "com.google.android.youtube").forEach { pkg ->
             // Even with a stored reels block, a normal app only gets "Block entire app".
             val state = QuickControls.build(pkg, LimitSettings(reelsBlockedUntil = TimedBlock.FOREVER), now, ready)
             assertNull(pkg, state.reels)
@@ -177,16 +175,18 @@ class QuickControlsTest {
         // Instagram and YouTube have captured identifiers; TikTok and Facebook are still empty.
         val detectors = SectionDetectors()
         val withRules = setOf("com.instagram.android", "com.google.android.youtube")
-        ReelsCapableApps.packages.forEach { assertEquals(it, it in withRules, detectors.isAvailable(it, versionCode = 1L)) }
+        (ReelsCapableApps.packages + ReelsCapableApps.FACEBOOK + ReelsCapableApps.YOUTUBE).forEach {
+            assertEquals(it, it in withRules, detectors.isAvailable(it, versionCode = 1L))
+        }
         assertFalse(detectors.isAvailable("com.reddit.frontpage", versionCode = 1L))
     }
 
     @Test
     fun status_entireFirst_thenReels() {
-        val pkg = "com.google.android.youtube"
+        val pkg = "com.instagram.android"
         assertNull(QuickControls.status(pkg, LimitSettings(), now))
         assertEquals(
-            QuickStatus(QuickBlockTarget.REELS, BlockedSection.SHORTS, 12 * MINUTE),
+            QuickStatus(QuickBlockTarget.REELS, BlockedSection.REELS, 12 * MINUTE),
             QuickControls.status(pkg, LimitSettings(reelsBlockedUntil = now + 12 * MINUTE), now),
         )
         assertEquals(

@@ -76,6 +76,7 @@ fun SettingsScreen(
     val swipeDebug by viewModel.swipeDebug.collectAsStateWithLifecycle()
     val reelsDebug by viewModel.reelsDebug.collectAsStateWithLifecycle()
     val reelsNotes by viewModel.reelsNotes.collectAsStateWithLifecycle()
+    val diagnosticsReport by viewModel.diagnosticsReport.collectAsStateWithLifecycle()
     var checklistOpen by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -177,6 +178,13 @@ fun SettingsScreen(
             ),
         )
         DataPrivacyGroup()
+
+        SectionHeader(
+            title = stringResource(R.string.settings_group_help),
+            info = stringResource(R.string.diagnostics_info),
+        )
+        DiagnosticsGroup(onPrepare = viewModel::prepareDiagnostics)
+        diagnosticsReport?.let { DiagnosticsPreviewDialog(report = it, onDismiss = viewModel::dismissDiagnostics) }
 
         SectionHeader(title = stringResource(R.string.settings_group_appearance))
         SettingsGroup {

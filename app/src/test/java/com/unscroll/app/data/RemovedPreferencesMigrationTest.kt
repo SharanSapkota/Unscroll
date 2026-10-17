@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -51,6 +52,20 @@ class RemovedPreferencesMigrationTest {
         val migrated = RemovedPreferencesMigration.migrate(old)
 
         assertEquals(mapOf<Preferences.Key<*>, Any>(Pair(daily, 45)), migrated.asMap())
+    }
+
+    @Test
+    fun removesTheOldReelsOnlySwitch_keepsTheNewTimerVisibility() = runTest {
+        val visibility = stringSetPreferencesKey("overlay_timer_only_in_reels_for")
+        val old = mutablePreferencesOf(
+            stringSetPreferencesKey("overlay_reels_only_off_for") to setOf("com.instagram.android"),
+            visibility to setOf("com.zhiliaoapp.musically"),
+        )
+        assertTrue(RemovedPreferencesMigration.shouldMigrate(old))
+
+        val migrated = RemovedPreferencesMigration.migrate(old)
+
+        assertEquals(mapOf<Preferences.Key<*>, Any>(Pair(visibility, setOf("com.zhiliaoapp.musically"))), migrated.asMap())
     }
 
     @Test

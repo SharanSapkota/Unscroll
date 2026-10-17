@@ -10,6 +10,7 @@ import com.unscroll.app.domain.tracking.ForegroundEvent
 import com.unscroll.app.domain.tracking.ForegroundEventType
 import com.unscroll.app.domain.tracking.ForegroundTracker
 import com.unscroll.app.domain.tracking.ScreenStateSource
+import com.unscroll.app.util.AppLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -59,7 +60,14 @@ class AppDetector @Inject constructor(
         begin: Long,
         end: Long,
     ): List<ForegroundEvent> {
-        val usageEvents = queryEvents(begin, end) ?: return emptyList()
+        val usageEvents = try {
+            queryEvents(begin, end)
+        } catch (e: RuntimeException) {
+            // Usage access revoked while running (some OEMs throw instead of returning nothing):
+            // no events, so no session; Home and Settings ask the user to grant it again.
+            AppLog.w(TAG, "Usage events unavailable", e)
+            null
+        } ?: return emptyList()
         val event = UsageEvents.Event()
         val result = mutableListOf<ForegroundEvent>()
         while (usageEvents.hasNextEvent()) {
@@ -75,6 +83,7 @@ class AppDetector @Inject constructor(
     }
 
     private companion object {
+        const val TAG = "AppDetector"
         const val POLL_INTERVAL_MILLIS = 1_000L
         const val OVERLAP_MILLIS = 2_000L
         const val INITIAL_LOOKBACK_MILLIS = 60 * 60 * 1_000L

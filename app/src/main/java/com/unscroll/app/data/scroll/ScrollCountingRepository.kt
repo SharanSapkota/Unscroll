@@ -74,6 +74,13 @@ class ScrollCountingRepository @Inject constructor(
     @Volatile
     var goHomeAction: (() -> Boolean)? = null
 
+    /**
+     * Set by the running service: performGlobalAction(GLOBAL_ACTION_BACK). The limit cover's
+     * "Take me back to chat" (Instagram/TikTok) uses it.
+     */
+    @Volatile
+    var goBackAction: (() -> Boolean)? = null
+
     /** Re-evaluated once more when the bind grace period after a process start is over. */
     private val graceTicks: Flow<Unit> = flow {
         emit(Unit)

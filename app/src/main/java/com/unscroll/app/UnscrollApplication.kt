@@ -1,6 +1,7 @@
 package com.unscroll.app
 
 import android.app.Application
+import android.os.StrictMode
 import com.unscroll.app.data.plus.EntitlementRepository
 import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.service.BlockExpiryScheduler
@@ -24,6 +25,9 @@ class UnscrollApplication : Application() {
     lateinit var weeklyInsight: WeeklyInsightScheduler
 
     override fun onCreate() {
+        // Debug builds: report disk or network work on the main thread, leaked closeables,
+        // misused contexts and the like in logcat (tag StrictMode). Release builds don't.
+        if (BuildConfig.DEBUG) enableStrictMode()
         super.onCreate()
         // Ask Play Billing whether the user has Plus, and listen for purchase changes. Until it
         // answers (or when it can't), the last known state applies.
@@ -34,5 +38,10 @@ class UnscrollApplication : Application() {
         sectionBlocking.migrateLegacyBlockedApps()
         // The optional weekly insight notification follows its switch (off by default).
         weeklyInsight.start()
+    }
+
+    private fun enableStrictMode() {
+        StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build())
+        StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().detectAll().penaltyLog().build())
     }
 }

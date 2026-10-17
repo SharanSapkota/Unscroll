@@ -2,6 +2,7 @@ package com.unscroll.app.data.plus
 
 import com.unscroll.app.data.apps.InstalledApps
 import com.unscroll.app.data.apps.TrackedAppsPreferences
+import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.db.TrackedAppDao
 import com.unscroll.app.data.db.TrackedAppEntity
 import com.unscroll.app.domain.ApplicationScope
@@ -46,6 +47,12 @@ import kotlinx.coroutines.launch
  * (SessionManager asks [isActive]). Removing an app only hides it: its history and settings stay
  * in their tables, so adding it again restores them.
  *
+ * Limit defaults: an app that gets tracked for the first time (a fresh install's defaults, or an
+ * app added with "+") starts with a 30-minute time limit and no swipe limit
+ * ([com.unscroll.app.domain.blocking.LimitDefaults]). Apps that already have stored limits keep
+ * them, and apps an existing user tracked before this default existed have no stored row and keep
+ * "no limit": nothing changes for them.
+ *
  * With payments off (PlusConfig) EntitlementRepository reports Plus, so every listed app is active
  * and adding never needs Plus. Apps the free tier had paused come back by themselves: that pause
  * was never stored (only the user's own "Track this app" off is), and the stored picks are kept
@@ -63,6 +70,7 @@ class TrackedAppsRepository @Inject constructor(
     private val usage: UsageDataSource,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
+    private val limits: LimitRepository,
 ) : TrackedAppsSource {
 
     /** Bumped on resume, so installs and uninstalls are noticed. */
@@ -120,6 +128,8 @@ class TrackedAppsRepository @Inject constructor(
             row?.copy(removed = false, status = TrackedAppStatus.ACTIVE.name, cachedLabel = label ?: row.cachedLabel)
                 ?: TrackedAppEntity(packageName = packageName, cachedLabel = label, addedAt = clock.now()),
         )
+        // Never tracked before: the default limits. Re-added apps keep what they had.
+        if (row == null) limits.insertDefaultsIfAbsent(packageName)
         // A free user's new app is one of their free picks.
         if (!state.isPlus) preferences.savePickedApps(state.active + packageName)
         return AddResult.ADDED
@@ -184,11 +194,14 @@ class TrackedAppsRepository @Inject constructor(
     }
 
     private suspend fun seedDefaults() {
+        val fresh = DefaultTrackedApps.packageNames.filter { dao.get(it) == null }
         dao.insertIgnore(
             DefaultTrackedApps.packageNames.mapIndexed { index, packageName ->
                 TrackedAppEntity(packageName = packageName, cachedLabel = null, addedAt = index.toLong())
             },
         )
+        // Only defaults that weren't in the list yet (a fresh install) get the default limits.
+        fresh.forEach { limits.insertDefaultsIfAbsent(it) }
         seed.setSeeded()
         cacheLabels()
     }

@@ -69,4 +69,29 @@ class PillTotalsRepository @Inject constructor(
             floorMillis = floorMillis,
         )
     }
+
+    /**
+     * Instagram/TikTok off Reels: today's Reels time and swipes so far, to show frozen on the
+     * dimmed pill. [PillTodayBase.sessionStart] is [now], the moment the numbers froze, so
+     * [PillToday.totalMillis] at that moment is exactly this total.
+     */
+    suspend fun reelsPaused(packageName: String, now: Long, zone: ZoneId, floorMillis: Long = 0): PillTodayBase {
+        val dayStart = PillToday.dayStart(now, zone)
+        val today = segments.totals(ScreenSection.REELS.name, rangeStart = dayStart, rangeEnd = now, now = now)
+            .firstOrNull { it.packageName == packageName }
+        return PillTodayBase(
+            packageName = packageName,
+            sessionId = PAUSED_ID,
+            sessionStart = now,
+            dayStart = dayStart,
+            completedMillis = today?.totalMillis ?: 0L,
+            completedSwipes = today?.swipes ?: 0,
+            floorMillis = floorMillis,
+        )
+    }
+
+    companion object {
+        /** The paused base belongs to no session or segment. */
+        const val PAUSED_ID = -1L
+    }
 }

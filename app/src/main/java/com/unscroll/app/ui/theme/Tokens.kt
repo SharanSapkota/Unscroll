@@ -76,6 +76,9 @@ object Dimens {
     val pillBorder = 1.5.dp
     val pillShadow = 4.dp
     val pillMessageMaxWidth = 280.dp
+
+    /** "Copy diagnostics" preview: the report scrolls inside this height. */
+    val diagnosticsPreviewMaxHeight = 420.dp
     val pillPreviewHeight = 72.dp
 
     /** The fox mascot. */

@@ -14,6 +14,7 @@ import com.unscroll.app.domain.insights.TimeRange
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
+import com.unscroll.app.domain.reels.ReelsLimitScope
 import com.unscroll.app.domain.time.Clock
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.ZoneId
@@ -108,7 +109,9 @@ class BlockViewModel @Inject constructor(
         val now = clock.now()
         val zone = ZoneId.systemDefault()
         val decision = evaluator.evaluate(
-            settings = settings,
+            // Instagram/TikTok: only "Block entire app" opens this screen; their time limit and
+            // schedule cover Reels only and never keep this screen up.
+            settings = ReelsLimitScope.wholeAppPart(state.packageName, settings),
             usedTodayMillis = usedToday(now, zone),
             extensionUntil = limits.activeExtensionUntil(state.packageName, now),
             now = now,

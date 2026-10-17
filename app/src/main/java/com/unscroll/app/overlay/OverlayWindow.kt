@@ -3,6 +3,7 @@ package com.unscroll.app.overlay
 import android.content.Context
 import android.graphics.PixelFormat
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,8 +24,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.math.roundToInt
 
 /**
- * One overlay window holding the pill. Deliberately thin: it only talks to WindowManager. All
- * decisions (when to show, what to show, where it may go) are made elsewhere. Main thread only.
+ * One overlay window holding the pill. Deliberately thin: it only talks to WindowManager (through
+ * [WindowOps]). All decisions (when to show, what to show, where it may go) are made by
+ * OverlayCoordinator. Main thread only.
+ *
+ * Tab changes never remove the window: [setParked] only hides it in place (invisible and not
+ * touchable) and brings it back. [detach] removes it even before it attached (a frame after
+ * adding), disposes the composition and destroys its lifecycle owner, so nothing leaks.
  */
 internal class OverlayWindow(
     private val context: Context,
@@ -83,10 +89,13 @@ internal class OverlayWindow(
         }
     }
 
-    val isAttached: Boolean get() = view.isAttachedToWindow
+    /** True from a successful [attach] until [detach]. */
+    val isAdded: Boolean get() = WindowOps.isAdded(view)
 
-    /** Adds the window. Throws if the overlay permission is missing; the caller handles that. */
-    fun attach(savedPosition: PillPosition?) {
+    private var parked = false
+
+    /** Adds the window. Returns false if it could not be added (no permission, bad token). */
+    fun attach(savedPosition: PillPosition?): Boolean {
         hasSavedPosition = savedPosition != null
         // Without a saved position, start roughly at top center; the first layout pass centers it
         // exactly once the real size is known.
@@ -97,8 +106,26 @@ internal class OverlayWindow(
         }
         params.x = start.x
         params.y = start.y
+        applyParked()
         owner.onCreate()
-        windowManager.addView(view, params)
+        return WindowOps.add(windowManager, view, params, TAG)
+    }
+
+    /**
+     * "Only on Reels" off Reels: the window stays, invisible and not touchable (touches go to the
+     * app). Back on Reels it shows again in the same place. No remove, no re-add, no flicker.
+     */
+    fun setParked(parked: Boolean) {
+        if (this.parked == parked) return
+        this.parked = parked
+        applyParked()
+        WindowOps.update(windowManager, view, params, TAG)
+    }
+
+    private fun applyParked() {
+        view.visibility = if (parked) View.INVISIBLE else View.VISIBLE
+        params.flags = if (parked) params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        else params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
     }
 
     fun update(newState: OverlayUiState) {
@@ -111,7 +138,9 @@ internal class OverlayWindow(
     }
 
     fun detach() {
-        if (view.isAttachedToWindow) windowManager.removeViewImmediate(view)
+        // Removed even if it hasn't attached yet, or a second pill could stay on screen.
+        WindowOps.remove(windowManager, view, TAG)
+        view.disposeComposition()
         owner.onDestroy()
     }
 
@@ -157,7 +186,7 @@ internal class OverlayWindow(
         if (params.x == position.x && params.y == position.y) return
         params.x = position.x
         params.y = position.y
-        if (view.isAttachedToWindow) windowManager.updateViewLayout(view, params)
+        if (view.isAttachedToWindow) WindowOps.update(windowManager, view, params, TAG)
     }
 
     private fun marginTop(screen: ScreenBounds): Int =
@@ -166,6 +195,7 @@ internal class OverlayWindow(
     private fun dp(value: Int): Int = (value * context.resources.displayMetrics.density).roundToInt()
 
     private companion object {
+        const val TAG = "OverlayWindow"
         const val DEFAULT_MARGIN_DP = 8
         const val ESTIMATED_WIDTH_DP = 96
     }

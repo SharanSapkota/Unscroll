@@ -178,6 +178,7 @@ fun UnscrollApp(modifier: Modifier = Modifier) {
                     onOpenPlus = openPlus,
                     onSectionSetUp = { navController.navigate(ROUTE_SECTION_DISCLOSURE) },
                     onReelsReview = { navController.navigate(ROUTE_REELS_DISCLOSURE) },
+                    onScrollCountingSetUp = { navController.navigate(ROUTE_SCROLL_DISCLOSURE) },
                 )
             }
             composable(ROUTE_SCROLL_DISCLOSURE) {

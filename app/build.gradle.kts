@@ -23,6 +23,13 @@ val signingKeys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword"
 val missingSigningKeys: List<String> = signingKeys.filter { keystoreProperties.getProperty(it).isNullOrBlank() }
 
 /**
+ * CI only: `-Punscroll.allowUnsignedRelease=true` lets `assembleRelease` build an unsigned release
+ * APK (R8 and resource shrinking included) without keystore.properties, to check the release
+ * variant on every PR. Never for uploads: bundleRelease still needs the signing config.
+ */
+val allowUnsignedRelease: Boolean = providers.gradleProperty("unscroll.allowUnsignedRelease").orNull?.toBooleanStrict() ?: false
+
+/**
  * THE master switch for payments (Unscroll Plus, Google Play Billing). Off for now: everything is
  * unlocked for everyone, no BillingClient is created, the paywall and every Plus row are hidden,
  * and release builds drop the com.android.vending.BILLING permission. The billing code stays in
@@ -42,8 +49,8 @@ android {
         applicationId = "com.sharansapkota.unscroll"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         // Payments on or off, from billingEnabled above (the only place to change it).
         buildConfigField("boolean", "BILLING_ENABLED", billingEnabled.toString())
@@ -69,7 +76,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release")
-            isMinifyEnabled = false
+            // R8: shrink, optimize and obfuscate; keep rules for what the libraries don't cover
+            // are in proguard-rules.pro (debug and verbose logging is stripped there too).
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -113,7 +123,12 @@ val checkReleaseSigning by tasks.registering {
         }
     }
 }
-tasks.matching { it.name in setOf("assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle") }
+val signedReleaseTasks = if (allowUnsignedRelease) {
+    setOf("bundleRelease", "packageReleaseBundle")
+} else {
+    setOf("assembleRelease", "bundleRelease", "packageRelease", "packageReleaseBundle")
+}
+tasks.matching { it.name in signedReleaseTasks }
     .configureEach { dependsOn(checkReleaseSigning) }
 
 room {
@@ -144,6 +159,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // Debug builds only: finds leaked Activities, Services, views and overlay windows (heap dumps
+    // stay on the device). Never in release builds.
+    debugImplementation(libs.leakcanary)
 
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.navigation.compose)
@@ -166,4 +184,9 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.androidx.test.ext.junit)
+    // Compose UI tests under Robolectric (Apps tab and App detail controls per app). They live in
+    // src/testDebug: the test activity they need comes from ui-test-manifest, a debug dependency.
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

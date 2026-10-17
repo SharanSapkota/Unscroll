@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -42,6 +43,9 @@ import com.unscroll.app.domain.blocking.QuickControlsState
 import com.unscroll.app.domain.blocking.ReelsTapAction
 import com.unscroll.app.domain.blocking.SectionAccess
 import com.unscroll.app.domain.insights.DayUsage
+import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
+import com.unscroll.app.domain.section.ReelsCapableApps
+import com.unscroll.app.domain.section.SectionBlockingConfig
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
 import com.unscroll.app.ui.components.LoadingPlaceholder
@@ -54,7 +58,9 @@ import com.unscroll.app.ui.durationText
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.ui.reels.ReelsLine
+import com.unscroll.app.ui.reels.ReelsTimerNote
 import com.unscroll.app.util.SystemSettings
+import com.unscroll.app.util.openAccessibilitySettings
 import com.unscroll.app.util.openSettings
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -68,6 +74,7 @@ fun AppDetailScreen(
     onOpenPlus: () -> Unit = {},
     onSectionSetUp: () -> Unit = {},
     onReelsReview: () -> Unit = {},
+    onScrollCountingSetUp: () -> Unit = {},
     viewModel: AppDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -83,10 +90,16 @@ fun AppDetailScreen(
     }
     Box(modifier = modifier.fillMaxSize()) {
         AppDetailContent(
-            state = state,
+            stateIn = state,
             actions = DetailActions(
-                onDailyLimit = viewModel::setDailyLimit,
+                onTimeLimitOn = viewModel::setTimeLimitOn,
+                onTimeLimit = viewModel::setDailyLimit,
+                onSwipeLimitOn = viewModel::setSwipeLimitOn,
                 onSwipeLimit = viewModel::setSwipeLimit,
+                // Agreed before: straight to the switch. Otherwise the disclosure comes first.
+                onTurnOnSwipeCounting = {
+                    if (state.scrollCountingConsented) context.openAccessibilitySettings() else onScrollCountingSetUp()
+                },
                 onSwipeScope = viewModel::setSwipeLimitScope,
                 onSwipeGap = viewModel::setSwipeSessionGap,
                 onSwipeAccess = viewModel::setSwipeAccessAllowed,
@@ -96,7 +109,7 @@ fun AppDetailScreen(
                 onScheduleEnd = viewModel::setScheduleEnd,
                 onPillShown = viewModel::setPillShown,
                 onSwipesShown = viewModel::setSwipesShown,
-                onReelsOnly = viewModel::setReelsOnly,
+                onTimerVisibility = viewModel::setTimerVisibility,
                 onReelsReview = onReelsReview,
                 onFriction = viewModel::updateFriction,
                 onResetFriction = viewModel::resetFriction,
@@ -137,7 +150,7 @@ fun AppDetailScreen(
 
 @Composable
 internal fun AppDetailContent(
-    state: AppDetailUiState,
+    stateIn: AppDetailUiState,
     actions: DetailActions,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -148,6 +161,9 @@ internal fun AppDetailContent(
     quick: QuickControlsState? = null,
     quickActions: QuickActions = QuickActions(),
 ) {
+    // Reels-specific controls (Timer visibility, the Reels line, the fail-open note, Reels-only
+    // limit wording) exist for Instagram and TikTok only, whatever the state says.
+    val state = if (ReelsOnlyPillConfig.appliesTo(stateIn.packageName)) stateIn else stateIn.copy(reels = null)
     var advancedOpen by rememberSaveable { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize()) {
         IconButton(onClick = onBack, modifier = Modifier.padding(start = Dimens.spaceXs)) {
@@ -168,13 +184,18 @@ internal fun AppDetailContent(
             ),
             verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
         ) {
-            item(key = "header") { Header(state) }
+            item(key = "header") { Header(state, onReelsReview = actions.onReelsReview) }
             // The quick toggles come first; everything else is one tap away under Advanced options.
-            quick?.let { item(key = "quick") { QuickControlsSection(it, quickActions) } }
+            // "Block reels only": Reels-capable apps, and only while section blocking is switched on.
+            quick?.let { controls ->
+                val shown = if (SectionBlockingConfig.ENABLED && ReelsCapableApps.isReelsCapable(state.packageName)) controls else controls.copy(reels = null)
+                item(key = "quick") { QuickControlsSection(shown, quickActions) }
+            }
             item(key = "advanced") {
                 AdvancedOptions(open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
                     LimitsSection(state, actions)
-                    section?.let { SectionBlockingDetail(it, state.settings.dailyLimitMinutes != null, sectionActions) }
+                    section?.takeIf { SectionBlockingConfig.ENABLED && ReelsCapableApps.isReelsCapable(state.packageName) }
+                        ?.let { SectionBlockingDetail(it, state.settings.dailyLimitMinutes != null, sectionActions) }
                     BlockingSection(state.settings, actions)
                     TimerAndNudgesSection(state, actions)
                     MiniStats(state)
@@ -186,7 +207,7 @@ internal fun AppDetailContent(
 }
 
 @Composable
-private fun Header(state: AppDetailUiState) {
+private fun Header(state: AppDetailUiState, onReelsReview: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Dimens.spaceL)) {
             AppIcon(state.packageName, size = Dimens.appIconLarge)
@@ -206,8 +227,20 @@ private fun Header(state: AppDetailUiState) {
             style = MaterialTheme.typography.titleSmall,
             color = limitStatusColor(state.decision, state.settings, state.quickStatus),
         )
+        // Instagram/TikTok without working Reels detection: limits won't block (fail open).
+        state.reels?.let { reels ->
+            ReelsTimerNote(
+                appName = rememberAppLabel(state.packageName),
+                availability = reels.availability,
+                onReview = onReelsReview,
+                modifier = Modifier.testTag(TAG_REELS_NOTE),
+            )
+        }
     }
 }
+
+/** The fail-open note on App detail (Instagram/TikTok only). */
+internal const val TAG_REELS_NOTE = "reelsNote"
 
 @Composable
 private fun MiniStats(state: AppDetailUiState) {
@@ -255,7 +288,7 @@ private fun AppDetailPreview() {
     val today = LocalDate.of(2026, 10, 6)
     UnscrollTheme {
         AppDetailContent(
-            state = AppDetailUiState(
+            stateIn = AppDetailUiState(
                 packageName = DefaultTrackedApps.INSTAGRAM,
                 isLoading = false,
                 settings = LimitSettings(dailyLimitMinutes = 60, swipeLimit = 100),

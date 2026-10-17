@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -40,7 +41,7 @@ import com.unscroll.app.domain.blocking.QuickBlockTarget
 import com.unscroll.app.domain.blocking.QuickStatus
 import com.unscroll.app.domain.blocking.TimedBlock
 import com.unscroll.app.domain.plus.AppTrackingStatus
-import com.unscroll.app.domain.section.BlockedSection
+import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
 import com.unscroll.app.domain.section.ReelsCapableApps
 import com.unscroll.app.domain.tracking.DefaultTrackedApps
 import com.unscroll.app.ui.components.AppIcon
@@ -77,7 +78,7 @@ fun AppsScreen(
 }
 
 @Composable
-private fun AppsContent(
+internal fun AppsContent(
     state: AppsUiState,
     onOpenApp: (String) -> Unit,
     onOpenPlus: () -> Unit,
@@ -159,8 +160,14 @@ private fun AppRow(app: AppRowState, onClick: () -> Unit, onBlock: (Boolean) -> 
                     color = limitStatusColor(app.decision, app.settings, app.quickStatus),
                     maxLines = 1,
                 )
-                app.reels?.let {
-                    ReelsLine(forYou = app.packageName !in ReelsCapableApps.INSTAGRAM, millis = it.millis, swipes = it.swipes)
+                // Reels-specific: Instagram and TikTok only, whatever the state says.
+                app.reels?.takeIf { ReelsOnlyPillConfig.appliesTo(app.packageName) }?.let {
+                    ReelsLine(
+                        forYou = ReelsCapableApps.saysForYou(app.packageName),
+                        millis = it.millis,
+                        swipes = it.swipes,
+                        modifier = Modifier.testTag(TAG_REELS_LINE),
+                    )
                 }
             }
             Text(text = durationText(app.todayMillis), style = MaterialTheme.typography.titleMedium)
@@ -232,6 +239,9 @@ private fun PausedAppRow(app: AppRowState, onClick: () -> Unit) {
 
 private const val PAUSED_ALPHA = 0.5f
 
+/** The Reels / For You line: Instagram and TikTok only. */
+internal const val TAG_REELS_LINE = "reelsLine"
+
 @PreviewLightDark
 @Composable
 private fun AppsPreview() {
@@ -256,10 +266,9 @@ private fun AppsPreview() {
                     ),
                     AppRowState(
                         "com.google.android.youtube",
-                        LimitSettings(reelsBlockedUntil = 12 * 60_000L),
-                        BlockDecision.Allowed(null),
+                        LimitSettings(dailyLimitMinutes = 30),
+                        BlockDecision.Allowed(remainingMillis = null),
                         35 * 60_000L,
-                        quickStatus = QuickStatus(QuickBlockTarget.REELS, BlockedSection.SHORTS, remainingMillis = 12 * 60_000L),
                         label = "YouTube",
                     ),
                     AppRowState(

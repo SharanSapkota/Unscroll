@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,13 +14,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.unscroll.app.R
+import com.unscroll.app.domain.blocking.LimitDefaults
 import com.unscroll.app.domain.blocking.LimitSettings
 import com.unscroll.app.domain.blocking.SwipeLimitRules
 import com.unscroll.app.domain.blocking.SwipeLimitScope
 import com.unscroll.app.domain.friction.FrictionSettings
+import com.unscroll.app.domain.reels.TimerVisibility
 import com.unscroll.app.domain.scroll.SwipeBreakTracker
 import com.unscroll.app.ui.components.ChipGroup
 import com.unscroll.app.ui.components.CustomNumberDialog
@@ -31,10 +35,8 @@ import com.unscroll.app.ui.components.SettingSwitchRow
 import com.unscroll.app.ui.components.SettingsGroup
 import com.unscroll.app.ui.components.UnscrollSheet
 import com.unscroll.app.ui.components.formatMinuteOfDay
-import com.unscroll.app.ui.components.rememberAppLabel
 import com.unscroll.app.ui.components.pickTime
 import com.unscroll.app.ui.components.shortMinutes
-import com.unscroll.app.ui.reels.ReelsTimerNote
 import com.unscroll.app.ui.theme.Dimens
 import com.unscroll.app.ui.theme.UnscrollTheme
 import java.time.DayOfWeek
@@ -43,8 +45,11 @@ import java.util.Locale
 
 /** Callbacks for App detail. Every one saves at once. */
 internal class DetailActions(
-    val onDailyLimit: (Int?) -> Unit = {},
-    val onSwipeLimit: (Int?) -> Unit = {},
+    val onTimeLimitOn: (Boolean) -> Unit = {},
+    val onTimeLimit: (Int) -> Unit = {},
+    val onSwipeLimitOn: (Boolean) -> Unit = {},
+    val onSwipeLimit: (Int) -> Unit = {},
+    val onTurnOnSwipeCounting: () -> Unit = {},
     val onSwipeScope: (SwipeLimitScope) -> Unit = {},
     val onSwipeGap: (Int) -> Unit = {},
     val onSwipeAccess: (Boolean) -> Unit = {},
@@ -54,106 +59,129 @@ internal class DetailActions(
     val onScheduleEnd: (Int) -> Unit = {},
     val onPillShown: (Boolean) -> Unit = {},
     val onSwipesShown: (Boolean) -> Unit = {},
-    val onReelsOnly: (Boolean) -> Unit = {},
+    val onTimerVisibility: (TimerVisibility) -> Unit = {},
     val onReelsReview: () -> Unit = {},
     val onFriction: ((FrictionSettings) -> FrictionSettings) -> Unit = {},
     val onResetFriction: () -> Unit = {},
 )
 
-/** A chip value: a preset, "Off" (null), or "Custom". */
+/** A chip value: a preset or "Custom". Off is the control's own switch. */
 private sealed interface LimitChoice {
-    data object Off : LimitChoice
     data class Preset(val value: Int) : LimitChoice
     data object Custom : LimitChoice
 }
 
-private val TIME_PRESETS = listOf(15, 30, 45, 60, 120)
-private val SWIPE_PRESETS = listOf(25, 50, 100, 200)
-
-private fun choices(presets: List<Int>): List<LimitChoice> =
-    listOf(LimitChoice.Off) + presets.map { LimitChoice.Preset(it) } + LimitChoice.Custom
+private fun choices(presets: List<Int>): List<LimitChoice> = presets.map { LimitChoice.Preset(it) } + LimitChoice.Custom
 
 private fun LimitChoice.isSelected(current: Int?, presets: List<Int>): Boolean = when (this) {
-    LimitChoice.Off -> current == null
     is LimitChoice.Preset -> current == value
     LimitChoice.Custom -> current != null && current !in presets
 }
 
+/**
+ * Two separate controls, each a switch with value chips: "Time limit" (on at 30 min for new apps)
+ * and "Swipe limit" (off by default; 100 per day when switched on; needs swipe counting).
+ * Whichever is reached first covers the app. For Instagram/TikTok both count Reels only.
+ */
 @Composable
 internal fun LimitsSection(state: AppDetailUiState, actions: DetailActions) {
     val settings = state.settings
+    val reels = state.reels
     var customTime by rememberSaveable { mutableStateOf(false) }
     var customSwipes by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.spaceS)) {
         SectionHeader(
             title = stringResource(R.string.detail_limits),
-            info = stringResource(R.string.detail_limits_info),
+            info = stringResource(if (reels != null) R.string.detail_limits_info_reels else R.string.detail_limits_info),
         )
         SettingsGroup {
-            SettingRow(
-                title = stringResource(R.string.detail_daily_limit),
+            val timeLimit = settings.dailyLimitMinutes
+            SettingSwitchRow(
+                title = stringResource(R.string.detail_time_limit),
                 icon = R.drawable.ic_timer,
-                value = settings.dailyLimitMinutes?.let { shortMinutes(it) } ?: stringResource(R.string.value_off),
-            )
-            ChipGroup(
-                options = choices(TIME_PRESETS),
-                isSelected = { it.isSelected(settings.dailyLimitMinutes, TIME_PRESETS) },
-                label = { choice ->
-                    when (choice) {
-                        LimitChoice.Off -> stringResource(R.string.value_off)
-                        is LimitChoice.Preset -> shortMinutes(choice.value)
-                        LimitChoice.Custom -> stringResource(R.string.value_custom)
-                    }
+                checked = timeLimit != null,
+                onCheckedChange = actions.onTimeLimitOn,
+                subtitle = when {
+                    reels == null -> null
+                    reels.forYou -> stringResource(R.string.detail_counts_for_you_time)
+                    else -> stringResource(R.string.detail_counts_reels_time)
                 },
-                onSelect = { choice ->
-                    when (choice) {
-                        LimitChoice.Off -> actions.onDailyLimit(null)
-                        is LimitChoice.Preset -> actions.onDailyLimit(choice.value)
-                        LimitChoice.Custom -> customTime = true
-                    }
-                },
-                contentPadding = PaddingValues(start = Dimens.spaceL, end = Dimens.spaceL, bottom = Dimens.spaceM),
+                modifier = Modifier.testTag(TAG_TIME_LIMIT),
             )
-            RowDivider()
-            SettingRow(
+            if (timeLimit != null) {
+                ChipGroup(
+                    options = choices(LimitDefaults.TIME_PRESETS),
+                    isSelected = { it.isSelected(timeLimit, LimitDefaults.TIME_PRESETS) },
+                    label = { choice ->
+                        when (choice) {
+                            is LimitChoice.Preset -> shortMinutes(choice.value)
+                            LimitChoice.Custom -> if (timeLimit !in LimitDefaults.TIME_PRESETS) shortMinutes(timeLimit) else stringResource(R.string.value_custom)
+                        }
+                    },
+                    onSelect = { choice ->
+                        when (choice) {
+                            is LimitChoice.Preset -> actions.onTimeLimit(choice.value)
+                            LimitChoice.Custom -> customTime = true
+                        }
+                    },
+                    contentPadding = PaddingValues(start = Dimens.spaceL, end = Dimens.spaceL, bottom = Dimens.spaceM),
+                )
+            }
+        }
+        SettingsGroup {
+            val swipeLimit = settings.swipeLimit
+            val counting = state.scrollCountingActive
+            SettingSwitchRow(
                 title = stringResource(R.string.detail_swipe_limit),
                 icon = R.drawable.ic_swipe,
-                value = settings.swipeLimit?.let { pluralStringResource(R.plurals.value_swipes, it, it) }
-                    ?: stringResource(R.string.value_off),
-                subtitle = if (state.scrollCountingActive) null else stringResource(R.string.detail_needs_counting),
-                subtitleColor = UnscrollTheme.status.warn,
-            )
-            ChipGroup(
-                options = choices(SWIPE_PRESETS),
-                isSelected = { it.isSelected(settings.swipeLimit, SWIPE_PRESETS) },
-                label = { choice ->
-                    when (choice) {
-                        LimitChoice.Off -> stringResource(R.string.value_off)
-                        is LimitChoice.Preset -> choice.value.toString()
-                        LimitChoice.Custom -> stringResource(R.string.value_custom)
-                    }
+                checked = swipeLimit != null,
+                onCheckedChange = actions.onSwipeLimitOn,
+                enabled = counting,
+                subtitle = when {
+                    !counting -> stringResource(R.string.detail_needs_counting)
+                    reels == null -> null
+                    reels.forYou -> stringResource(R.string.detail_counts_for_you_swipes)
+                    else -> stringResource(R.string.detail_counts_reels_swipes)
                 },
-                onSelect = { choice ->
-                    when (choice) {
-                        LimitChoice.Off -> actions.onSwipeLimit(null)
-                        is LimitChoice.Preset -> actions.onSwipeLimit(choice.value)
-                        LimitChoice.Custom -> customSwipes = true
-                    }
-                },
-                contentPadding = PaddingValues(start = Dimens.spaceL, end = Dimens.spaceL, bottom = Dimens.spaceM),
+                subtitleColor = if (counting) MaterialTheme.colorScheme.onSurfaceVariant else UnscrollTheme.status.warn,
+                modifier = Modifier.testTag(TAG_SWIPE_LIMIT),
             )
-            if (settings.swipeLimit != null) SwipeLimitOptions(settings, actions)
+            if (!counting) {
+                TextButton(
+                    onClick = actions.onTurnOnSwipeCounting,
+                    modifier = Modifier.padding(start = Dimens.spaceS, bottom = Dimens.spaceS),
+                ) { Text(stringResource(R.string.detail_turn_on_swipe_counting)) }
+            } else if (swipeLimit != null) {
+                ChipGroup(
+                    options = choices(LimitDefaults.SWIPE_PRESETS),
+                    isSelected = { it.isSelected(swipeLimit, LimitDefaults.SWIPE_PRESETS) },
+                    label = { choice ->
+                        when (choice) {
+                            is LimitChoice.Preset -> choice.value.toString()
+                            LimitChoice.Custom -> if (swipeLimit !in LimitDefaults.SWIPE_PRESETS) swipeLimit.toString() else stringResource(R.string.value_custom)
+                        }
+                    },
+                    onSelect = { choice ->
+                        when (choice) {
+                            is LimitChoice.Preset -> actions.onSwipeLimit(choice.value)
+                            LimitChoice.Custom -> customSwipes = true
+                        }
+                    },
+                    contentPadding = PaddingValues(start = Dimens.spaceL, end = Dimens.spaceL, bottom = Dimens.spaceM),
+                )
+                SwipeLimitOptions(settings, actions)
+            }
         }
     }
     if (customTime) {
         CustomNumberDialog(
-            title = stringResource(R.string.detail_daily_limit),
+            title = stringResource(R.string.detail_time_limit),
             fieldLabel = stringResource(R.string.detail_custom_minutes),
             initial = settings.dailyLimitMinutes,
             range = 1..MAX_LIMIT_MINUTES,
             onConfirm = {
                 customTime = false
-                actions.onDailyLimit(it)
+                actions.onTimeLimit(it)
             },
             onDismiss = { customTime = false },
         )
@@ -283,21 +311,8 @@ internal fun TimerAndNudgesSection(state: AppDetailUiState, actions: DetailActio
                 checked = state.swipesShown,
                 onCheckedChange = actions.onSwipesShown,
             )
-            // Instagram and TikTok only: the pill (and its time and swipes) follow Reels / For You.
-            state.reels?.let { reels ->
-                SettingSwitchRow(
-                    title = stringResource(if (reels.forYou) R.string.reels_only_toggle_tiktok else R.string.reels_only_toggle),
-                    icon = R.drawable.ic_timer,
-                    checked = reels.toggleOn,
-                    onCheckedChange = actions.onReelsOnly,
-                )
-                ReelsTimerNote(
-                    appName = rememberAppLabel(state.packageName),
-                    availability = reels.availability,
-                    onReview = actions.onReelsReview,
-                    modifier = Modifier.padding(horizontal = Dimens.spaceL),
-                )
-            }
+            // Instagram and TikTok only: where the pill shows while Reels / For You isn't on screen.
+            state.reels?.let { reels -> TimerVisibilityRow(reels, actions.onTimerVisibility) }
             RowDivider()
             SettingRow(
                 title = stringResource(R.string.detail_open_nudges),
@@ -417,5 +432,44 @@ internal fun TimerAndNudgesSection(state: AppDetailUiState, actions: DetailActio
         null -> Unit
     }
 }
+
+/**
+ * "Timer visibility" (Instagram and TikTok only): "Always while in the app" (default; dimmed and
+ * paused off Reels) or "Only on Reels". Both count Reels time and swipes only.
+ */
+@Composable
+private fun TimerVisibilityRow(reels: ReelsTimerUi, onSelect: (TimerVisibility) -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = Dimens.spaceL, vertical = Dimens.spaceS)
+            .testTag(TAG_TIMER_VISIBILITY),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceS),
+    ) {
+        Text(text = stringResource(R.string.detail_timer_visibility), style = MaterialTheme.typography.bodyLarge)
+        SegmentedControl(
+            options = TimerVisibility.entries,
+            selected = reels.visibility,
+            label = {
+                stringResource(
+                    when (it) {
+                        TimerVisibility.ALWAYS -> R.string.timer_visibility_always
+                        TimerVisibility.ONLY_REELS -> if (reels.forYou) R.string.timer_visibility_only_for_you else R.string.timer_visibility_only_reels
+                    },
+                )
+            },
+            onSelect = onSelect,
+        )
+        Text(
+            text = stringResource(if (reels.forYou) R.string.timer_visibility_hint_for_you else R.string.timer_visibility_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Test tags: the Reels-only controls must exist for Instagram/TikTok only. */
+internal const val TAG_TIMER_VISIBILITY = "timerVisibility"
+internal const val TAG_TIME_LIMIT = "timeLimit"
+internal const val TAG_SWIPE_LIMIT = "swipeLimit"
 
 private const val MAX_LIMIT_MINUTES = 24 * 60
