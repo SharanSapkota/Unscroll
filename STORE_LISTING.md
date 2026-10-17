@@ -21,8 +21,8 @@ Doomscrolling steals hours you never get back. Unscroll shows you exactly how mu
 ## Permission disclosures to prepare
 - Usage access: to detect which app is open and measure time
 - Display over other apps: to show the live timer and block screen
-- Accessibility (optional, M7): to count scroll gestures in the tracked apps; no screen content is read or stored. Full wording below; Play declaration draft in docs/ACCESSIBILITY_DECLARATION.md.
-- Accessibility, second service (optional): section blocking checks which section of a chosen app is open using technical identifiers only (view IDs, class names, selected tab, screen name), never text or messages, and covers only the short-video section. Its own disclosure below.
+- Accessibility (optional, M7): to count scroll gestures in the tracked apps, and, after a separate OK, to check which screen of Instagram or TikTok is open (technical view IDs and the selected tab only, never text or messages) so the timer only shows on Reels. Nothing on screen is stored. Full wording below; Play declaration draft in docs/ACCESSIBILITY_DECLARATION.md.
+- Accessibility, second service (optional; switched off in current builds, `SectionBlockingConfig.ENABLED = false`): section blocking checks which section of a chosen app is open using technical identifiers only (view IDs, class names, selected tab, screen name), never text or messages, and covers only the short-video section. Its own disclosure below.
 
 ## Accessibility prominent disclosure (in-app, required)
 Shown on its own screen (Settings › Scroll counting › Set up, also reached from the permission checklist and Home's "Turn on swipe counting" banner) and on the optional "Count your swipes" onboarding page before the user is sent to Accessibility settings, and only acted on after an explicit "I agree" (or, in onboarding, "Enable") tap. Keep the app's `scroll_disclosure_*` strings and this text in sync:
@@ -32,14 +32,19 @@ Shown on its own screen (Settings › Scroll counting › Set up, also reached f
 >
 > **What it does:** It uses Android's Accessibility Service to notice that a scroll happened in one of the apps you track in Unscroll (Instagram, TikTok and Facebook unless you change the list), and in which one. It counts, and it can cover the screen when your swipe limit is reached. It doesn't look at any other app.
 >
-> **What it does not do:** It does not read your screen, posts, messages, usernames or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.
+> **Timer only in Reels:** Unscroll checks which screen of TikTok and Instagram is open so the timer only shows on Reels. It never reads your messages or content and sends nothing anywhere.
+> To tell the screens apart it uses technical screen IDs (like the name of the Reels tab) and which tab is selected, only in Instagram and TikTok. It never reads what is written or shown, and nothing is stored: only "Reels" or "not Reels" is kept while you use the app.
+>
+> **What it does not do:** It does not read the text on your screen, your posts, messages, usernames, captions, comments or anything you type. It does not tap or type anything for you; the only thing it can do is send you to the home screen when your own swipe limit is reached. It does not send data anywhere: the counts stay on this phone, and Unscroll has no account and no internet access for this.
 >
 > **It's optional:** Everything else in Unscroll works without it. You can turn it off at any time in Settings, or in your phone's Accessibility settings.
 >
 > [I agree] [No thanks]
 
+Users who agreed before the Reels-only timer existed see an updated disclosure (`reels_disclosure_*` strings, from Home's "Timer only in Reels" banner or "Review" in Settings › Timer pill / App detail) with the same "Timer only in Reels" sentence, and must tap "I agree" again before any screen is checked. "No thanks" keeps swipe counting and the whole-app timer.
+
 Store listing sentence (for the full description, near the feature list):
-> Unscroll's optional swipe counter uses the Accessibility Service API to count scroll gestures in the apps you choose to track, and to cover an app when the swipe limit you set is reached. It never reads your screen content or messages, and no data leaves your phone.
+> Unscroll's optional swipe counter uses the Accessibility Service API to count scroll gestures in the apps you choose to track, and to cover an app when the swipe limit you set is reached. If you allow it, it also checks which screen of Instagram or TikTok is open, using technical screen identifiers only, so the timer only shows on Reels. It never reads your messages, posts or anything written on screen, and no data leaves your phone.
 
 ## Section blocking prominent disclosure (in-app, required)
 Shown on its own screen (Settings › Tracking › Section blocking › Set up, or App detail › Quick block › Block Reels only) before the user is sent to Accessibility settings for the second service, and only acted on after an explicit "I agree" tap. Keep the app's `section_disclosure_*` strings and this text in sync:

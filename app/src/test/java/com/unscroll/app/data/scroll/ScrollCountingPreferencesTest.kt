@@ -45,6 +45,21 @@ class ScrollCountingPreferencesTest {
     }
 
     @Test
+    fun reelsConsent_isAskedSeparately_soEarlierAgreementsDontCover() = runTest {
+        val preferences = createPreferences()
+        // Agreed to swipe counting before screen checks existed: the timer needs a new answer.
+        preferences.setConsent(ScrollConsent.AGREED, now = 1_000)
+        assertEquals(ScrollConsent.NOT_ASKED, preferences.record.first().reelsConsent)
+
+        preferences.setReelsConsent(ScrollConsent.AGREED, now = 2_000)
+        assertEquals(ScrollConsent.AGREED, preferences.record.first().reelsConsent)
+        preferences.setReelsConsent(ScrollConsent.DECLINED, now = 3_000)
+        assertEquals(ScrollConsent.DECLINED, preferences.record.first().reelsConsent)
+        // Swipe counting itself is untouched.
+        assertEquals(ScrollConsent.AGREED, preferences.record.first().consent)
+    }
+
+    @Test
     fun connectingWithoutConsent_recordsNothing() = runTest {
         val preferences = createPreferences()
         preferences.onServiceConnected(now = 5_000)

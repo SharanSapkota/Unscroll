@@ -6,6 +6,7 @@ import com.unscroll.app.data.appearance.AppearancePreferences
 import com.unscroll.app.data.friction.QuietHoursPreferences
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.permission.PermissionRepository
+import com.unscroll.app.data.reels.ReelsDetectionRepository
 import com.unscroll.app.data.sample.SampleDataSeeder
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.domain.fox.FoxSettings
@@ -17,6 +18,9 @@ import com.unscroll.app.domain.overlay.SwipeColorThresholds
 import com.unscroll.app.domain.permission.HealthItem
 import com.unscroll.app.domain.permission.PermissionHealth
 import com.unscroll.app.domain.permission.PermissionState
+import com.unscroll.app.domain.plus.TrackedAppsSource
+import com.unscroll.app.domain.reels.ReelsTimerStatus
+import com.unscroll.app.domain.reels.ReelsDebugFormat
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.domain.scroll.SwipeDebugFormat
@@ -28,6 +32,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -49,6 +54,8 @@ class SettingsViewModel @Inject constructor(
     private val appearancePreferences: AppearancePreferences,
     private val permissionRepository: PermissionRepository,
     private val scrollCounting: ScrollCountingRepository,
+    reels: ReelsDetectionRepository,
+    trackedApps: TrackedAppsSource,
 ) : ViewModel() {
 
     val quietHours: StateFlow<QuietHours> = quietHoursPreferences.quietHours
@@ -82,6 +89,18 @@ class SettingsViewModel @Inject constructor(
     val swipeDebug: StateFlow<String?> = combine(scrollCounting.connected, scrollCounting.debugInfo) { connected, info ->
         if (scrollCounting.debugEnabled) SwipeDebugFormat.line(connected, info) else null
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Debug builds only: the Reels-only timer's detector state per app (state, rule, version). */
+    val reelsDebug: StateFlow<String?> = reels.live.map { live ->
+        if (scrollCounting.debugEnabled) live.values.joinToString("\n") { ReelsDebugFormat.line(it) }.ifEmpty { null } else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Tracked Instagram/TikTok apps whose Reels-only timer falls back for a reason worth a note. */
+    val reelsNotes: StateFlow<List<Pair<String, ReelsTimerStatus>>> = combine(reels.live, trackedApps.state) { live, apps ->
+        live.values
+            .filter { it.packageName in apps.active && it.availability.showsNote }
+            .map { it.packageName to it.availability }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val scrollStatus: StateFlow<ScrollCountingStatus> = scrollCounting.status
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ScrollCountingStatus.OFF)

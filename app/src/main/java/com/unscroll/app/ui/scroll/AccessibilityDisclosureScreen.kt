@@ -15,6 +15,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -23,7 +24,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.unscroll.app.ui.theme.Dimens
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.unscroll.app.R
+import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
 import com.unscroll.app.ui.theme.UnscrollTheme
 import com.unscroll.app.util.openAccessibilitySettings
 
@@ -78,6 +81,7 @@ private fun AccessibilityDisclosureContent(
             title = stringResource(R.string.scroll_disclosure_does_title),
             body = stringResource(R.string.scroll_disclosure_does_body),
         )
+        ReelsDisclosureBlock()
         DisclosureBlock(
             title = stringResource(R.string.scroll_disclosure_does_not_title),
             body = stringResource(R.string.scroll_disclosure_does_not_body),
@@ -100,6 +104,81 @@ private fun AccessibilityDisclosureContent(
         }
         TextButton(onClick = onRestrictedHelp) {
             Text(stringResource(R.string.scroll_restricted_link))
+        }
+    }
+}
+
+/**
+ * The screen checks for the Reels-only timer: the required sentence and how it works. Part of every
+ * accessibility disclosure (Settings, onboarding, the updated disclosure for existing users).
+ */
+@Composable
+internal fun ReelsDisclosureBlock() {
+    if (!ReelsOnlyPillConfig.ENABLED) return
+    DisclosureBlock(
+        title = stringResource(R.string.scroll_disclosure_reels_title),
+        body = stringResource(R.string.scroll_disclosure_reels_body) + "\n\n" + stringResource(R.string.scroll_disclosure_reels_how),
+    )
+}
+
+/**
+ * The updated disclosure for users who agreed to swipe counting before the Reels-only timer
+ * existed: screen checks need their own "I agree". "No thanks" keeps swipe counting and the
+ * whole-app timer. If the service isn't running yet, "I agree" also opens Accessibility settings.
+ */
+@Composable
+fun ReelsDisclosureScreen(
+    onFinished: () -> Unit,
+    viewModel: ScrollCountingViewModel = hiltViewModel(),
+) {
+    val context = LocalContext.current
+    val connected by viewModel.connected.collectAsStateWithLifecycle()
+    ReelsDisclosureContent(
+        onAgree = {
+            viewModel.answerReels(agreed = true)
+            if (!connected) context.openAccessibilitySettings()
+            onFinished()
+        },
+        onDecline = {
+            viewModel.answerReels(agreed = false)
+            onFinished()
+        },
+    )
+}
+
+@Composable
+private fun ReelsDisclosureContent(onAgree: () -> Unit, onDecline: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(Dimens.spaceXl),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spaceL),
+    ) {
+        Text(
+            text = stringResource(R.string.reels_disclosure_title),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        Text(text = stringResource(R.string.reels_disclosure_intro), style = MaterialTheme.typography.bodyLarge)
+        DisclosureBlock(
+            title = stringResource(R.string.scroll_disclosure_does_title),
+            body = stringResource(R.string.scroll_disclosure_reels_body) + "\n\n" + stringResource(R.string.scroll_disclosure_reels_how),
+        )
+        DisclosureBlock(
+            title = stringResource(R.string.scroll_disclosure_does_not_title),
+            body = stringResource(R.string.reels_disclosure_does_not_body),
+            highlight = true,
+        )
+        DisclosureBlock(
+            title = stringResource(R.string.scroll_disclosure_optional_title),
+            body = stringResource(R.string.reels_disclosure_optional_body),
+        )
+        Button(onClick = onAgree, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.scroll_disclosure_agree))
+        }
+        OutlinedButton(onClick = onDecline, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.scroll_disclosure_decline))
         }
     }
 }
@@ -129,6 +208,12 @@ internal fun DisclosureBlock(title: String, body: String, highlight: Boolean = f
             Text(text = body, style = MaterialTheme.typography.bodyMedium)
         }
     }
+}
+
+@Preview(showBackground = true, heightDp = 1200)
+@Composable
+private fun ReelsDisclosurePreview() {
+    UnscrollTheme { ReelsDisclosureContent(onAgree = {}, onDecline = {}) }
 }
 
 @Preview(showBackground = true, heightDp = 1200)

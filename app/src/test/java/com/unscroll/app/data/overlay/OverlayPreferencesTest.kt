@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -60,6 +61,20 @@ class OverlayPreferencesTest {
             ),
             preferences.settings.first(),
         )
+    }
+
+    @Test
+    fun reelsOnly_isOnByDefault_andSavedPerApp() = runTest {
+        val preferences = createPreferences()
+        assertTrue(preferences.settings.first().reelsOnlyFor("com.instagram.android"))
+
+        preferences.setReelsOnlyFor("com.instagram.android", on = false)
+        val settings = preferences.settings.first()
+        assertFalse(settings.reelsOnlyFor("com.instagram.android"))
+        assertTrue(settings.reelsOnlyFor("com.zhiliaoapp.musically"))
+
+        preferences.setReelsOnlyFor("com.instagram.android", on = true)
+        assertTrue(preferences.settings.first().reelsOnlyFor("com.instagram.android"))
     }
 
     @Test

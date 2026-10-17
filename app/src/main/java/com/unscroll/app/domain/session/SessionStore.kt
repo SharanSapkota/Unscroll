@@ -23,3 +23,19 @@ interface HeartbeatStore {
 
     suspend fun lastHeartbeat(): Long?
 }
+
+/** The two sections a segment can be in (Reels-only timer, Instagram and TikTok). */
+enum class ScreenSection { REELS, OTHER }
+
+/** Persistence of section segments (parts of a session in one section). SessionManager only. */
+interface SegmentStore {
+    /** Inserts an open segment of session [sessionId] and returns its id. */
+    suspend fun openSegment(sessionId: Long, packageName: String, section: ScreenSection, startTime: Long): Long
+
+    suspend fun closeSegment(id: Long, endTime: Long)
+
+    suspend fun updateSegmentSwipes(id: Long, swipes: Int)
+
+    /** Closes segments left open by a killed process, like [SessionStore.closeOrphanedSessions]. */
+    suspend fun closeOrphanedSegments(endTime: Long): Int
+}

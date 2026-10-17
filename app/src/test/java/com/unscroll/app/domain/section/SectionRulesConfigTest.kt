@@ -24,7 +24,9 @@ class SectionRulesConfigTest {
 
     @Test
     fun unsupportedApps_detectNothing() {
-        // TikTok and Facebook stay empty (see SectionRulesConfig): UNKNOWN, even for a busy screen.
+        // TikTok and Facebook can't be blocked (see SectionRulesConfig): UNKNOWN, even for a busy
+        // screen. TikTok's only rule set is pinned to a version name (Reels-only timer), which the
+        // blocking path (version codes) never matches.
         val busy = SectionNode(
             viewId = "x:id/anything",
             className = "android.widget.FrameLayout",
@@ -32,8 +34,9 @@ class SectionRulesConfigTest {
             children = List(20) { SectionNode(viewId = "x:id/node$it", className = "android.view.View", isSelected = it % 2 == 0) },
         )
         val detectors = SectionDetectors()
+        assertFalse(SectionRulesConfig.FACEBOOK.isReady)
+        assertTrue(SectionRulesConfig.TIKTOK.ruleSets.all { it.isEmpty || it.versionNames.isNotEmpty() })
         listOf(SectionRulesConfig.TIKTOK, SectionRulesConfig.FACEBOOK).forEach { rules ->
-            assertFalse(rules.appName, rules.isReady)
             rules.packages.forEach { pkg ->
                 val verdict = detectors.forPackage(pkg)!!.detect(SectionScreen(pkg, "AnyActivity", busy), 1L)
                 assertEquals(pkg, SectionVerdict.UNKNOWN, verdict)
@@ -61,10 +64,12 @@ class SectionRulesConfigTest {
     }
 
     @Test
-    fun scrollCountingXml_isUnchanged_noWindowContent() {
-        // Without section blocking consent the existing service behaves exactly as before.
+    fun scrollCountingXml_readsViewIds_forTheReelsOnlyTimer() {
+        // The swipe counter now also tells Reels from other screens (view IDs only), after its
+        // own consent; AccessibilityConfigTest checks the rest of its config.
         val path = "src/main/res/xml/accessibility_service_config.xml"
-        assertEquals("false", parse(path).attr("canRetrieveWindowContent"))
+        assertEquals("true", parse(path).attr("canRetrieveWindowContent"))
+        assertTrue("flagReportViewIds" in parse(path).attr("accessibilityFlags").split('|'))
     }
 
     private fun serviceConfig(): Element = parse("src/main/res/xml/section_blocking_service_config.xml")

@@ -8,13 +8,16 @@ import com.unscroll.app.data.onboarding.OnboardingRepository
 import com.unscroll.app.data.permission.AndroidPermissionChecker
 import com.unscroll.app.data.permission.PermissionChecker
 import com.unscroll.app.data.plus.TrackedAppsRepository
+import com.unscroll.app.data.reels.ReelsDetectionRepository
 import com.unscroll.app.data.session.SessionRepository
 import com.unscroll.app.data.tracking.TrackingPreferences
 import com.unscroll.app.data.usage.UsageRepository
 import com.unscroll.app.domain.apps.ExcludedApps
 import com.unscroll.app.domain.insights.UsageDataSource
 import com.unscroll.app.domain.plus.TrackedAppsSource
+import com.unscroll.app.domain.reels.ReelsTracking
 import com.unscroll.app.domain.session.HeartbeatStore
+import com.unscroll.app.domain.session.SegmentStore
 import com.unscroll.app.domain.session.SessionStore
 import dagger.Binds
 import dagger.Module
@@ -37,6 +40,12 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindSessionStore(impl: SessionRepository): SessionStore
+
+    @Binds
+    abstract fun bindSegmentStore(impl: SessionRepository): SegmentStore
+
+    @Binds
+    abstract fun bindReelsTracking(impl: ReelsDetectionRepository): ReelsTracking
 
     @Binds
     abstract fun bindHeartbeatStore(impl: TrackingPreferences): HeartbeatStore

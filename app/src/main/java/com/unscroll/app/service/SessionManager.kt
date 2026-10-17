@@ -2,8 +2,15 @@ package com.unscroll.app.service
 
 import com.unscroll.app.domain.ApplicationScope
 import com.unscroll.app.domain.plus.TrackedAppsSource
+import com.unscroll.app.domain.reels.ReelsLive
+import com.unscroll.app.domain.reels.ReelsOnlyRules
+import com.unscroll.app.domain.reels.ReelsState
+import com.unscroll.app.domain.reels.ReelsTracking
+import com.unscroll.app.domain.session.ActiveSegment
 import com.unscroll.app.domain.session.ActiveSession
 import com.unscroll.app.domain.session.HeartbeatStore
+import com.unscroll.app.domain.session.ScreenSection
+import com.unscroll.app.domain.session.SegmentStore
 import com.unscroll.app.domain.session.SessionStore
 import com.unscroll.app.domain.session.SessionSwipes
 import com.unscroll.app.domain.time.Clock
@@ -19,6 +26,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -42,6 +51,12 @@ import kotlinx.coroutines.withContext
  *   the service and TrackingService never fight over a session.
  * - Only active apps ([TrackedAppsSource]) are tracked. A paused app (free tier) opens no session,
  *   so it gets no pill, limits or blocking, and an open session ends when its app gets paused.
+ * - Reels-only timer (Instagram, TikTok; [ReelsTracking]): while it runs for the app on screen,
+ *   the session is split into section segments (REELS / OTHER, [SegmentStore]) at the moment the
+ *   confirmed section began, and only swipes in Reels are counted (session and segment). Leaving
+ *   the app, the screen turning off or the session ending closes the open segment; orphaned
+ *   segments are closed at the last heartbeat like sessions. The session itself is unchanged, so
+ *   total time in the app stays what it was. Apps without it (or fallen back) work as before.
  */
 @Singleton
 class SessionManager @Inject constructor(
@@ -52,6 +67,8 @@ class SessionManager @Inject constructor(
     private val trackedApps: TrackedAppsSource,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
+    private val segments: SegmentStore,
+    private val reels: ReelsTracking,
 ) {
     private val mutex = Mutex()
 
@@ -74,6 +91,11 @@ class SessionManager @Inject constructor(
     /** Swipes in the current session, or null when no session is open. */
     val swipes: StateFlow<SessionSwipes?> = _swipes.asStateFlow()
 
+    private val _segment = MutableStateFlow<ActiveSegment?>(null)
+
+    /** The open section segment of the app on screen (Reels-only timer), with its swipes, or null. */
+    val segment: StateFlow<ActiveSegment?> = _segment.asStateFlow()
+
     // All mutable state below is only touched while holding [mutex].
     private var leftAt: Long? = null
     private var pendingClose: Job? = null
@@ -93,6 +115,13 @@ class SessionManager @Inject constructor(
                 launch {
                     trackedApps.state.collect { apps -> onAppsChanged(apps.active) }
                 }
+                launch {
+                    // Only a change of mode or confirmed section matters, not every new reading.
+                    reels.live
+                        .map { apps -> apps.mapValues { (_, live) -> live.reelsOnly to live.state } }
+                        .distinctUntilChanged()
+                        .collect { mutex.withLock { syncSegment(clock.now()) } }
+                }
                 detector.foregroundApp.collect { onForegroundApp(it) }
             }
         } finally {
@@ -106,7 +135,9 @@ class SessionManager @Inject constructor(
      */
     suspend fun recoverOrphanedSessions(): Int = mutex.withLock {
         if (_currentSession.value != null) return@withLock 0
-        store.closeOrphanedSessions(heartbeatStore.lastHeartbeat() ?: 0L)
+        val lastHeartbeat = heartbeatStore.lastHeartbeat() ?: 0L
+        segments.closeOrphanedSegments(lastHeartbeat)
+        store.closeOrphanedSessions(lastHeartbeat)
     }
 
     suspend fun onForegroundApp(packageName: String?) = mutex.withLock {
@@ -145,9 +176,16 @@ class SessionManager @Inject constructor(
     suspend fun onSwipe(packageName: String): Boolean = mutex.withLock {
         val session = _foregroundSession.value
         if (session == null || session.packageName != packageName) return@withLock false
+        // On the Reels-only timer only swipes in Reels count, for the session and the segment.
+        if (!ReelsOnlyRules.countsSwipe(reels.live.value[packageName])) return@withLock false
         val count = (_swipes.value?.takeIf { it.sessionId == session.id }?.count ?: 0) + 1
         _swipes.value = SessionSwipes(session.id, session.packageName, count)
         store.updateScrollCount(session.id, count)
+        _segment.value?.takeIf { it.sessionId == session.id && it.section == ScreenSection.REELS }?.let { open ->
+            val swipes = open.swipes + 1
+            _segment.value = open.copy(swipes = swipes)
+            segments.updateSegmentSwipes(open.id, swipes)
+        }
         true
     }
 
@@ -163,6 +201,7 @@ class SessionManager @Inject constructor(
         _currentSession.value = session
         _foregroundSession.value = session
         _swipes.value = SessionSwipes(id, packageName, 0)
+        syncSegment(now)
         heartbeat = scope.launch {
             while (isActive) {
                 heartbeatStore.saveHeartbeat(clock.now())
@@ -171,8 +210,9 @@ class SessionManager @Inject constructor(
         }
     }
 
-    private fun scheduleClose(session: ActiveSession, now: Long) {
+    private suspend fun scheduleClose(session: ActiveSession, now: Long) {
         _foregroundSession.value = null
+        leaveSegment(session.packageName, endTime = now)
         if (pendingClose != null) return // Keep the time the user first left.
         leftAt = now
         pendingClose = scope.launch {
@@ -185,21 +225,68 @@ class SessionManager @Inject constructor(
         }
     }
 
-    private fun cancelPendingClose() {
+    /** Back in the app within the debounce window: same session, the segment follows the section. */
+    private suspend fun cancelPendingClose() {
+        stopPendingClose()
+        _foregroundSession.value = _currentSession.value
+        syncSegment(clock.now())
+    }
+
+    private fun stopPendingClose() {
         pendingClose?.cancel()
         pendingClose = null
         leftAt = null
-        _foregroundSession.value = _currentSession.value
     }
 
     private suspend fun close(session: ActiveSession, endTime: Long) {
-        cancelPendingClose()
+        stopPendingClose()
+        leaveSegment(session.packageName, endTime)
         heartbeat?.cancel()
         heartbeat = null
         _currentSession.value = null
         _foregroundSession.value = null
         _swipes.value = null
         store.closeSession(session.id, endTime)
+    }
+
+    /**
+     * Opens, switches or closes the segment of the app on screen to match its confirmed section.
+     * The boundary is when the new section really began ([ReelsLive.since], before the
+     * confirmation delay), never before the open segment's or the session's start, never after now.
+     */
+    private suspend fun syncSegment(now: Long) {
+        val session = _foregroundSession.value
+        val live = session?.let { reels.live.value[it.packageName] }
+        val wanted = live?.takeIf { it.reelsOnly }?.state?.section()
+        val open = _segment.value
+        if (open != null && open.sessionId == session?.id && open.section == wanted) return
+        // A new section began at [ReelsLive.since]; with none wanted (fallback, timer off) end now.
+        var boundary = if (wanted != null) (live?.since ?: now).coerceAtMost(now) else now
+        if (open != null) {
+            boundary = boundary.coerceAtLeast(open.startTime)
+            closeSegment(open, if (open.sessionId == session?.id) boundary else now)
+        }
+        if (session == null || wanted == null) return
+        val start = boundary.coerceIn(session.startTime, now)
+        val id = segments.openSegment(session.id, session.packageName, wanted, start)
+        _segment.value = ActiveSegment(id, session.id, session.packageName, wanted, start)
+    }
+
+    /** The app left the screen (or its session ended): close its segment, forget its live state. */
+    private suspend fun leaveSegment(packageName: String, endTime: Long) {
+        _segment.value?.let { closeSegment(it, endTime) }
+        reels.onAppLeft(packageName)
+    }
+
+    private suspend fun closeSegment(segment: ActiveSegment, endTime: Long) {
+        _segment.value = null
+        segments.closeSegment(segment.id, endTime.coerceAtLeast(segment.startTime))
+    }
+
+    private fun ReelsState.section(): ScreenSection? = when (this) {
+        ReelsState.IN_REELS -> ScreenSection.REELS
+        ReelsState.OTHER -> ScreenSection.OTHER
+        ReelsState.UNKNOWN -> null
     }
 
     companion object {

@@ -54,6 +54,11 @@ class OverlayPreferences @Inject constructor(
         it[SWIPES_HIDDEN_FOR] = (it[SWIPES_HIDDEN_FOR] ?: emptySet()).toggle(packageName, hidden = !shown)
     }
 
+    /** Per app: "Show timer only in Reels" (Instagram and TikTok; on by default). */
+    suspend fun setReelsOnlyFor(packageName: String, on: Boolean) = edit {
+        it[REELS_ONLY_OFF_FOR] = (it[REELS_ONLY_OFF_FOR] ?: emptySet()).toggle(packageName, hidden = !on)
+    }
+
     suspend fun setSwipeThresholds(thresholds: SwipeColorThresholds) {
         val safe = thresholds.normalized()
         edit {
@@ -118,6 +123,7 @@ class OverlayPreferences @Inject constructor(
         ).normalized(),
         pillHiddenFor = this[PILL_HIDDEN_FOR] ?: emptySet(),
         swipesHiddenFor = this[SWIPES_HIDDEN_FOR] ?: emptySet(),
+        reelsOnlyOffFor = this[REELS_ONLY_OFF_FOR] ?: emptySet(),
     )
 
     private companion object {
@@ -135,6 +141,7 @@ class OverlayPreferences @Inject constructor(
         val SWIPE_DANGER = intPreferencesKey("overlay_daily_swipe_danger")
         val PILL_HIDDEN_FOR = stringSetPreferencesKey("overlay_pill_hidden_for")
         val SWIPES_HIDDEN_FOR = stringSetPreferencesKey("overlay_swipes_hidden_for")
+        val REELS_ONLY_OFF_FOR = stringSetPreferencesKey("overlay_reels_only_off_for")
 
         fun xKey(orientation: ScreenOrientation) =
             intPreferencesKey("overlay_x_${orientation.name.lowercase()}")

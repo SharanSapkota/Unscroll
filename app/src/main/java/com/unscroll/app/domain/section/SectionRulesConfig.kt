@@ -16,19 +16,23 @@ package com.unscroll.app.domain.section
  * SectionCaptureTest, which fails if any captured allowed screen would be blocked):
  * - Instagram: Reels tab and Reels viewer. Readable resource names, a combination of IDs.
  * - YouTube: the Shorts player. Readable resource names, a combination of IDs.
- * - TikTok: unsupported (empty, UNKNOWN). Its IDs are obfuscated and change with releases, and
- *   For You can't be told from Following with what was captured.
+ * - TikTok: only for the Reels-only timer, pinned to the captured version name (47.0.3) and to
+ *   com.zhiliaoapp.musically. Its IDs are obfuscated and change with releases, and For You can't
+ *   be told from Following with what was captured. Section blocking looks rules up by version
+ *   code only, so for blocking TikTok stays unsupported (UNKNOWN) as before.
  * - Facebook: unsupported (empty, UNKNOWN). Its resource names are stripped from the build, so
  *   only class names differ, and those are shared with Stories and in-feed videos.
  *
  * Version codes weren't part of the captures (the Inspector header only logs them since this
- * change), so the two rule sets have open version ranges. The identifiers are readable names
- * that have to match in combination; after a rename they simply stop matching (fail open).
+ * change), so the Instagram and YouTube rule sets have open version ranges. The identifiers are
+ * readable names that have to match in combination; after a rename they simply stop matching
+ * (fail open), and Instagram's tab-bar anchor turns an unrecognized screen into UNKNOWN.
  */
 object SectionRulesConfig {
 
     private const val IG = "com.instagram.android:id"
     private const val YT = "com.google.android.youtube:id"
+    private const val TT = "com.zhiliaoapp.musically:id"
 
     private fun capture(versionName: String) = SectionCapture(
         device = "Pixel 8",
@@ -59,6 +63,10 @@ object SectionRulesConfig {
                     "$IG/message_thread_container",
                     "$IG/row_thread_composer_container",
                 ),
+                // The bottom tab bar is on every captured screen (home, search, Reels, inbox,
+                // profile). A screen with no rule match and no tab bar is one the captures don't
+                // cover (or IDs were renamed by an update): UNKNOWN, so the timer falls back.
+                anchorViewIds = setOf("$IG/tab_bar"),
             ),
         ),
     )
@@ -68,12 +76,21 @@ object SectionRulesConfig {
         packages = ReelsCapableApps.TIKTOK,
         section = BlockedSection.FOR_YOU,
         ruleSets = listOf(
-            // TODO(section-ids): unsupported. Captured TikTok 47.0.3: the IDs are obfuscated
-            // ("id/omq"), so they need an exact version-code range, which the captures lack. The
-            // selected IDs (the Home bottom tab and the top tab "android:id/text1") would be
-            // the same on Following, which wasn't captured. Needed: a Following capture and the
-            // version code (now in the Inspector header).
-            SectionRuleSet(),
+            // Captured TikTok 47.0.3 (com.zhiliaoapp.musically). Obfuscated IDs ("id/omq") change
+            // with every release and the captures have no version code, so this set is pinned to
+            // that exact version name and package: any other version is UNKNOWN (the timer falls
+            // back to the whole app). For You: the Home bottom tab (omq) selected, with the video
+            // pager's readable views (video_seek_bar, view_pager_layout_wrapper), which none of the
+            // captured chat, friends, profile or upload screens have. Following (also under Home)
+            // wasn't captured and would most likely match too. TODO(section-ids): section blocking
+            // still needs a Following capture and the version code (now in the Inspector header).
+            SectionRuleSet(
+                verifiedOn = capture(versionName = "47.0.3"),
+                versionNames = setOf("47.0.3"),
+                packages = setOf("com.zhiliaoapp.musically"),
+                selectedTabViewIds = setOf("$TT/omq"),
+                requiredViewIds = setOf("$TT/video_seek_bar", "$TT/view_pager_layout_wrapper"),
+            ),
         ),
     )
 

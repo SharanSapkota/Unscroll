@@ -8,6 +8,8 @@ import com.unscroll.app.data.blocking.LimitRepository
 import com.unscroll.app.data.friction.FrictionRepository
 import com.unscroll.app.data.overlay.OverlayPreferences
 import com.unscroll.app.data.plus.TrackedAppsRepository
+import com.unscroll.app.data.reels.ReelsDetectionRepository
+import com.unscroll.app.data.reels.ReelsUsageRepository
 import com.unscroll.app.data.scroll.ScrollCountingRepository
 import com.unscroll.app.data.section.SectionBlockingRepository
 import com.unscroll.app.domain.apps.TrackedAppStatus
@@ -21,6 +23,7 @@ import com.unscroll.app.domain.blocking.QuickBlockTarget
 import com.unscroll.app.domain.blocking.QuickControls
 import com.unscroll.app.domain.blocking.QuickControlsState
 import com.unscroll.app.domain.blocking.QuickStatus
+import com.unscroll.app.domain.blocking.hiddenReelsBlock
 import com.unscroll.app.domain.blocking.ReelsTapAction
 import com.unscroll.app.domain.blocking.SectionAccess
 import com.unscroll.app.domain.blocking.SwipeLimitRules
@@ -33,11 +36,14 @@ import com.unscroll.app.domain.insights.UsageMath
 import com.unscroll.app.domain.insights.localDate
 import com.unscroll.app.domain.insights.startOfDay
 import com.unscroll.app.domain.overlay.OverlaySettings
+import com.unscroll.app.domain.reels.ReelsTimerStatus
+import com.unscroll.app.domain.reels.ReelsOnlyPillConfig
 import com.unscroll.app.domain.scroll.ScrollConsent
 import com.unscroll.app.domain.scroll.ScrollCountingStatus
 import com.unscroll.app.domain.section.BlockedSection
 import com.unscroll.app.domain.section.ReelsCapableApps
 import com.unscroll.app.domain.section.SectionBlockMode
+import com.unscroll.app.domain.section.SectionBlockingConfig
 import com.unscroll.app.domain.time.Clock
 import com.unscroll.app.service.BlockExpiryScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,6 +85,18 @@ data class AppDetailUiState(
     val weekOpens: Int = 0,
     val weekAverageMillis: Long = 0,
     val weekLongestMillis: Long = 0,
+    /** The Reels-only timer (Instagram and TikTok only; null for every other app). */
+    val reels: ReelsTimerUi? = null,
+)
+
+/** App detail's Reels line, its "Show timer only in Reels" switch and the fallback note. */
+data class ReelsTimerUi(
+    /** TikTok says "For You" instead of "Reels". */
+    val forYou: Boolean,
+    val toggleOn: Boolean,
+    val availability: ReelsTimerStatus,
+    val todayMillis: Long,
+    val todaySwipes: Int,
 )
 
 /** The app's place in the tracked list: "Track this app", "Count swipes", installed or not. */
@@ -114,6 +132,8 @@ class AppDetailViewModel @Inject constructor(
     installedApps: InstalledApps,
     private val blockExpiry: BlockExpiryScheduler,
     private val clock: Clock,
+    reelsDetection: ReelsDetectionRepository,
+    private val reelsUsage: ReelsUsageRepository,
 ) : ViewModel() {
 
     val packageName: String = checkNotNull(savedStateHandle.get<String>(ARG_PACKAGE))
@@ -133,12 +153,12 @@ class AppDetailViewModel @Inject constructor(
 
     val uiState: StateFlow<AppDetailUiState> = combine(
         combine(limits.observeLimits(), friction.observeSettings()) { l, f -> l to f },
-        overlay.settings,
+        combine(overlay.settings, reelsDetection.availability(packageName)) { o, r -> o to r },
         scrollCounting.isCounting,
         usage.observeChanges(),
         ticks,
-    ) { (stored, frictionSettings), overlaySettings, counting, _, _ ->
-        Inputs(stored[packageName] ?: AppLimit(packageName), frictionSettings[packageName], overlaySettings, counting)
+    ) { (stored, frictionSettings), (overlaySettings, reelsAvailability), counting, _, _ ->
+        Inputs(stored[packageName] ?: AppLimit(packageName), frictionSettings[packageName], overlaySettings, counting, reelsAvailability)
     }
         .mapLatest { build(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppDetailUiState(packageName))
@@ -160,7 +180,9 @@ class AppDetailViewModel @Inject constructor(
     /** "Always" / "After limit" for the reels toggle; null for apps that aren't Reels-capable. */
     val section: StateFlow<SectionAppState?> = sectionBlocking.settings
         .map { settings ->
-            ReelsCapableApps.sectionFor(packageName)?.let { SectionAppState(it, settings.modeFor(packageName)) }
+            ReelsCapableApps.sectionFor(packageName)
+                ?.takeIf { SectionBlockingConfig.ENABLED }
+                ?.let { SectionAppState(it, settings.modeFor(packageName)) }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -194,7 +216,8 @@ class AppDetailViewModel @Inject constructor(
         val now = clock.now()
         // A block that just ran out: its toggle shows off already; tidy up the stored state.
         if (QuickBlockRules.clearExpired(settings, now) != settings) blockExpiry.syncAsync()
-        QuickControls.build(packageName, settings, now, access)
+        // Section blocking switched off (SectionBlockingConfig): only "Block entire app".
+        QuickControls.build(packageName, settings, now, access).let { if (SectionBlockingConfig.ENABLED) it else it.copy(reels = null) }
     }
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -297,6 +320,9 @@ class AppDetailViewModel @Inject constructor(
 
     fun resetFriction() = save { friction.resetToDefaults(packageName) }
 
+    /** "Show timer only in Reels" (Instagram and TikTok). */
+    fun setReelsOnly(on: Boolean) = save { overlay.setReelsOnlyFor(packageName, on) }
+
     /** Limits apply at once, stronger or weaker (no cooldown). */
     private fun change(transform: (LimitSettings) -> LimitSettings) = save { limits.updateLimit(packageName, transform) }
 
@@ -331,7 +357,7 @@ class AppDetailViewModel @Inject constructor(
                 zone = zone,
                 packageName = packageName,
             ),
-            quickStatus = QuickControls.status(packageName, settings, now),
+            quickStatus = QuickControls.status(packageName, settings, now)?.takeUnless { it.hiddenReelsBlock },
             todayMillis = todayMillis,
             friction = inputs.friction ?: FrictionSettings.DEFAULT,
             pillShown = packageName !in inputs.overlay.pillHiddenFor,
@@ -342,6 +368,18 @@ class AppDetailViewModel @Inject constructor(
             weekOpens = stats?.opens ?: 0,
             weekAverageMillis = stats?.let { if (it.opens > 0) it.totalDurationMillis / it.opens else 0L } ?: 0L,
             weekLongestMillis = stats?.longestMillis ?: 0L,
+            reels = if (ReelsOnlyPillConfig.appliesTo(packageName)) {
+                val reelsToday = reelsUsage.today(now, zone)[packageName]
+                ReelsTimerUi(
+                    forYou = packageName !in ReelsCapableApps.INSTAGRAM,
+                    toggleOn = inputs.overlay.reelsOnlyFor(packageName),
+                    availability = inputs.reelsAvailability,
+                    todayMillis = reelsToday?.millis ?: 0L,
+                    todaySwipes = reelsToday?.swipes ?: 0,
+                )
+            } else {
+                null
+            },
         )
     }
 
@@ -350,6 +388,7 @@ class AppDetailViewModel @Inject constructor(
         val friction: FrictionSettings?,
         val overlay: OverlaySettings,
         val counting: Boolean,
+        val reelsAvailability: ReelsTimerStatus,
     )
 
     companion object {

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.core.content.pm.PackageInfoCompat
 import com.unscroll.app.domain.apps.LaunchableApp
+import com.unscroll.app.domain.section.AppVersion
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,6 +24,9 @@ interface InstalledApps {
 
     /** The installed version code, or null if it isn't installed (section rules are per version). */
     fun versionCode(packageName: String): Long? = null
+
+    /** The installed version (code and name), unknown if it isn't installed (Reels-only timer rules). */
+    fun version(packageName: String): AppVersion = AppVersion(versionCode(packageName), versionName = null)
 }
 
 /**
@@ -53,6 +57,13 @@ class AndroidInstalledApps @Inject constructor(
         PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(packageName, 0))
     } catch (e: PackageManager.NameNotFoundException) {
         null
+    }
+
+    override fun version(packageName: String): AppVersion = try {
+        val info = context.packageManager.getPackageInfo(packageName, 0)
+        AppVersion(PackageInfoCompat.getLongVersionCode(info), info.versionName)
+    } catch (e: PackageManager.NameNotFoundException) {
+        AppVersion.UNKNOWN
     }
 
     override suspend fun launchable(): List<LaunchableApp> = withContext(Dispatchers.IO) {

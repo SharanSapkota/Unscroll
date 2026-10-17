@@ -28,6 +28,12 @@ data class ScrollCountingRecord(
     val countingSince: Long? = null,
     /** When the user last dismissed Home's "Turn on swipe counting" banner, or null. */
     val setupBannerDismissedAt: Long? = null,
+    /**
+     * The answer to the updated disclosure that adds screen checks (which screen of Instagram and
+     * TikTok is open, for the Reels-only timer). Asked separately, so users who agreed to swipe
+     * counting before see the disclosure again; without it the timer falls back to the whole app.
+     */
+    val reelsConsent: ScrollConsent = ScrollConsent.NOT_ASKED,
 )
 
 /** Consent and history for the optional accessibility service, in the preferences DataStore. */
@@ -45,6 +51,8 @@ class ScrollCountingPreferences @Inject constructor(
                 connectedSinceConsent = prefs[CONNECTED_SINCE_CONSENT] ?: false,
                 countingSince = prefs[COUNTING_SINCE],
                 setupBannerDismissedAt = prefs[SETUP_BANNER_DISMISSED_AT],
+                reelsConsent = prefs[REELS_CONSENT]?.let { name -> ScrollConsent.entries.firstOrNull { it.name == name } }
+                    ?: ScrollConsent.NOT_ASKED,
             )
         }
         .distinctUntilChanged()
@@ -55,6 +63,14 @@ class ScrollCountingPreferences @Inject constructor(
             if (it[CONSENT] != consent.name) it[CONNECTED_SINCE_CONSENT] = false
             it[CONSENT] = consent.name
             it[CONSENT_AT] = now
+        }
+    }
+
+    /** The answer about screen checks for the Reels-only timer (the updated disclosure). */
+    suspend fun setReelsConsent(consent: ScrollConsent, now: Long) {
+        dataStore.edit {
+            it[REELS_CONSENT] = consent.name
+            it[REELS_CONSENT_AT] = now
         }
     }
 
@@ -88,5 +104,7 @@ class ScrollCountingPreferences @Inject constructor(
         val CONNECTED_SINCE_CONSENT = booleanPreferencesKey("scroll_connected_since_consent")
         val COUNTING_SINCE = longPreferencesKey("scroll_counting_since")
         val SETUP_BANNER_DISMISSED_AT = longPreferencesKey("scroll_setup_banner_dismissed_at")
+        val REELS_CONSENT = stringPreferencesKey("reels_detection_consent")
+        val REELS_CONSENT_AT = longPreferencesKey("reels_detection_consent_at")
     }
 }

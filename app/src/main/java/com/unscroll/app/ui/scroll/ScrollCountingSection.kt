@@ -149,6 +149,39 @@ fun ScrollCountingBanner(
     )
 }
 
+/**
+ * Home: "Timer only in Reels" for users who agreed to swipe counting before screen checks existed.
+ * Stays until they answer the updated disclosure (Review).
+ */
+@Composable
+fun ReelsConsentBanner(
+    onReview: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ScrollCountingViewModel = hiltViewModel(),
+) {
+    val show by viewModel.showReelsBanner.collectAsStateWithLifecycle()
+    if (!show) return
+    ReelsConsentBannerContent(onReview, modifier)
+}
+
+@Composable
+private fun ReelsConsentBannerContent(onReview: () -> Unit, modifier: Modifier = Modifier) {
+    UnscrollCard(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(Dimens.spaceL),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spaceXs),
+        ) {
+            Text(text = stringResource(R.string.reels_banner_title), style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(R.string.reels_banner_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onReview) { Text(stringResource(R.string.reels_review)) }
+        }
+    }
+}
+
 @Composable
 private fun ScrollCountingBannerContent(
     banner: SwipeBanner,
@@ -205,6 +238,12 @@ private fun ScrollCountingBannerContent(
             }
         }
     }
+}
+
+@PreviewLightDark
+@Composable
+private fun ReelsConsentBannerPreview() {
+    UnscrollTheme { ReelsConsentBannerContent(onReview = {}) }
 }
 
 @PreviewLightDark

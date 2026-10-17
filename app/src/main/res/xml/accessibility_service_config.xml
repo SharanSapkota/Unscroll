@@ -1,19 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Opt-in scroll counting (M7). Privacy limits, enforced by Android itself:
-    - canRetrieveWindowContent="false": the service gets no screen text, content descriptions or
-      view hierarchy. It only uses each event's type and package name.
-    - Only scroll and window-change events, and only from the tracked apps. packageNames lists the
-      default apps (DefaultTrackedApps; AccessibilityConfigTest checks this) so the limit holds from
-      the first event; the service replaces it with the user's tracked list (TrackedAppsRepository)
-      when it connects and whenever the list changes, and drops events from any other app.
+    Opt-in swipe counting (M7) and the Reels-only timer. What this service requests, and why:
+
+    - canRetrieveWindowContent="true" and flagReportViewIds: the Reels-only timer has to tell
+      Instagram Reels / TikTok For You from the other screens of those apps. It only does so after
+      the user agreed to screen checks on the in-app disclosure (asked again for existing users),
+      and only for Instagram and TikTok while "Show timer only in Reels" is on. It looks up only the
+      view IDs listed in SectionRulesConfig (findAccessibilityNodeInfosByViewId) and reads, per node,
+      viewIdResourceName, className, isSelected and isVisibleToUser, plus the window class of window
+      changes. It never reads text, content descriptions, hints or anything the user sees or types
+      (SectionPrivacyGuardTest checks the code); only the verdict (Reels or not) is kept, in memory.
+      Swipe counting itself still uses only each event's type, package and scroll position numbers.
+    - Events: scroll and window-state changes (swipes, the swipe limit), plus window-content and
+      view-selected changes so a tab switch is noticed. The service turns the last two off at
+      runtime (serviceInfo.eventTypes) while no app's screen is checked.
+    - Only the tracked apps: packageNames lists the default apps (DefaultTrackedApps;
+      AccessibilityConfigTest checks this) so the limit holds from the first event; the service
+      replaces it with the user's tracked list (TrackedAppsRepository) when it connects and whenever
+      the list changes, and drops events from any other app.
 
     flagIncludeNotImportantViews: full-screen video pagers (Instagram Reels, TikTok, YouTube Shorts)
     mark their scrolling view as "not important for accessibility", and Android drops events from
     such views for every service that doesn't set this flag. Without it, swipes in exactly the apps
-    Unscroll is for never arrived. It changes which events arrive, not what they contain: with
-    canRetrieveWindowContent="false" there is still no text or view hierarchy. No other flag is set
-    (no flagReportViewIds, no flagRetrieveInteractiveWindows).
+    Unscroll is for never arrived. No other flag (no flagRetrieveInteractiveWindows).
 
     isAccessibilityTool="false": Unscroll is a digital-wellbeing app, not a tool that helps people
     with disabilities use their device (like a screen reader or switch access). Claiming otherwise
@@ -22,10 +31,10 @@
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:accessibilityEventTypes="typeViewScrolled|typeWindowStateChanged"
+    android:accessibilityEventTypes="typeViewScrolled|typeWindowStateChanged|typeWindowContentChanged|typeViewSelected"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews"
-    android:canRetrieveWindowContent="false"
+    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews|flagReportViewIds"
+    android:canRetrieveWindowContent="true"
     android:description="@string/accessibility_service_description"
     android:isAccessibilityTool="false"
     android:notificationTimeout="100"
